@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LabDrop — Transfer Lab Files to Your Phone</title>
+  <meta name="description" content="LabDrop: Instantly transfer lab files to your phone. Select files, scan QR, download. No login required." />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>" />
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header__logo">
+        <div class="header__icon">🧪</div>
+        <h1 class="header__title">LabDrop</h1>
+      </div>
+      <p class="header__subtitle">Transfer lab files to your phone instantly</p>
+    </header>
+
+    <!-- Alert area -->
+    <div id="alertArea"></div>
+
+    <!-- ============================================ -->
+    <!-- Section 1: File Selection                    -->
+    <!-- ============================================ -->
+    <div id="selectSection" class="section">
+      <div class="card">
+        <div class="card__title">
+          <span>📂</span> Select Your Files
+        </div>
+
+        <!-- Drop Zone -->
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="fileInput" multiple />
+          <div class="dropzone__icon">📁</div>
+          <div class="dropzone__text">Drag & drop files here</div>
+          <div class="dropzone__hint">or click to browse · Max 50 MB per file · Up to 20 files</div>
+        </div>
+
+        <!-- Selected File List -->
+        <div id="fileListWrapper" class="section--hidden">
+          <ul class="file-list" id="fileList"></ul>
+          <div class="summary">
+            <span class="summary__text" id="fileSummary"></span>
+            <button class="btn btn--secondary" id="clearFilesBtn" type="button">Clear All</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create Transfer Button -->
+      <div style="margin-top: var(--space-lg); text-align: center;">
+        <button class="btn btn--primary btn--lg btn--block" id="createTransferBtn" type="button" disabled>
+          🚀 Create Transfer
+        </button>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- Section 2: Uploading Progress                -->
+    <!-- ============================================ -->
+    <div id="uploadSection" class="section section--hidden">
+      <div class="card">
+        <div class="card__title">
+          <span class="spinner"></span> Uploading Files…
+        </div>
+        <div class="progress-bar">
+          <div class="progress-bar__fill" id="progressBarFill"></div>
+        </div>
+        <p class="progress-text" id="progressText">Preparing upload…</p>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- Section 3: QR Code / Transfer Active         -->
+    <!-- ============================================ -->
+    <div id="qrSection" class="section section--hidden">
+      <div class="card qr-section">
+        <div class="card__title" style="justify-content: center;">
+          <span>📱</span> Scan with Your Phone
+        </div>
+
+        <!-- QR Code -->
+        <div class="qr-section__image-wrapper">
+          <img class="qr-section__image" id="qrImage" src="" alt="QR Code" />
+        </div>
+
+        <!-- Transfer Code -->
+        <div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin-bottom: 2px;">Transfer Code</div>
+          <div class="qr-section__code" id="transferCode"></div>
+        </div>
+
+        <!-- URL -->
+        <div style="margin-top: var(--space-md);">
+          <span class="qr-section__url" id="transferUrl"></span>
+          <button class="copy-btn" id="copyUrlBtn" title="Copy URL">📋 Copy</button>
+        </div>
+
+        <!-- Timer -->
+        <div class="timer" id="timer">
+          <span class="timer__icon">⏱️</span>
+          <span id="timerText">30:00</span>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+          <div class="stat">
+            <div class="stat__value" id="statFiles">0</div>
+            <div class="stat__label">Files</div>
+          </div>
+          <div class="stat">
+            <div class="stat__value" id="statSize">0 B</div>
+            <div class="stat__label">Total Size</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- File List in QR View -->
+      <div class="card" style="margin-top: var(--space-lg);">
+        <div class="card__title"><span>📎</span> Included Files</div>
+        <ul class="file-list" id="qrFileList"></ul>
+      </div>
+
+      <!-- Actions -->
+      <div style="margin-top: var(--space-lg); display: flex; gap: var(--space-md);">
+        <button class="btn btn--danger btn--block" id="cancelTransferBtn" type="button">✕ Cancel Transfer</button>
+        <button class="btn btn--primary btn--block" id="newTransferBtn" type="button">＋ New Transfer</button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      LabDrop · No login. No USB. No hassle. · Select → Scan → Download
+    </footer>
+
+  </div>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>

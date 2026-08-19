@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LabDrop — Your Files</title>
+  <meta name="description" content="Download your lab files transferred via LabDrop." />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>" />
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- Loading State -->
+    <div id="loadingState" class="loading-state">
+      <div class="spinner" style="width: 36px; height: 36px; border-width: 3px;"></div>
+      <div class="loading-state__text">Loading your files…</div>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="section section--hidden">
+      <div class="error-page">
+        <div class="error-page__icon" id="errorIcon">😕</div>
+        <h1 class="error-page__title" id="errorTitle">Something went wrong</h1>
+        <p class="error-page__message" id="errorMessage">Please try again.</p>
+        <div style="margin-top: var(--space-xl);">
+          <button class="btn btn--secondary" id="retryBtn" type="button">🔄 Retry</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transfer View -->
+    <div id="transferView" class="section section--hidden">
+
+      <!-- Header -->
+      <header class="mobile-header">
+        <h1 class="mobile-header__title">🧪 LabDrop</h1>
+        <p class="mobile-header__subtitle">Your lab files are ready</p>
+      </header>
+
+      <!-- Stats Card -->
+      <div class="card">
+        <div class="stats">
+          <div class="stat">
+            <div class="stat__value" id="mStatFiles">0</div>
+            <div class="stat__label">Files</div>
+          </div>
+          <div class="stat">
+            <div class="stat__value" id="mStatSize">0 B</div>
+            <div class="stat__label">Total Size</div>
+          </div>
+          <div class="stat">
+            <div class="stat__value" id="mStatExpiry">--:--</div>
+            <div class="stat__label">Expires In</div>
+          </div>
+        </div>
+
+        <!-- Download All -->
+        <div class="download-btn-wrapper">
+          <a class="btn btn--success btn--lg btn--block" id="downloadAllBtn" href="#">
+            ⬇️ Download All (ZIP)
+          </a>
+        </div>
+      </div>
+
+      <!-- File List -->
+      <div class="card" style="margin-top: var(--space-lg);">
+        <div class="card__title"><span>📎</span> Files</div>
+        <ul class="file-list" id="mFileList"></ul>
+      </div>
+
+      <!-- Footer -->
+      <footer class="footer">
+        LabDrop · No login. No USB. No hassle.
+      </footer>
+    </div>
+
+  </div>
+
+  <script src="/js/mobile.js"></script>
+</body>
+</html>

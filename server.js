@@ -1,0 +1,513 @@
+// ============================================================
+// LabDrop — Temporary Lab File Transfer System
+// server.js — Main application entry point
+// ============================================================
+
+const express = require('express');
+const multer = require('multer');
+const archiver = require('archiver');
+const QRCode = require('qrcode');
+const { v4: uuidv4 } = require('uuid');
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
+const crypto = require('crypto');
+
+// ============================================================
+// Configuration
+// ============================================================
+
+const CONFIG = {
+  PORT: parseInt(process.env.LABDROP_PORT || '3000', 10),
+  UPLOAD_DIR: path.join(__dirname, 'uploads'),
+  MAX_FILE_SIZE: parseInt(process.env.LABDROP_MAX_FILE_SIZE || String(50 * 1024 * 1024), 10), // 50 MB
+  MAX_FILES_PER_TRANSFER: parseInt(process.env.LABDROP_MAX_FILES || '20', 10),
+  TRANSFER_EXPIRY_MINUTES: parseInt(process.env.LABDROP_EXPIRY_MINUTES || '30', 10),
+  CLEANUP_INTERVAL_MS: 60 * 1000, // Check every 1 minute
+};
+
+// Dangerous file extensions that should be blocked
+const BLOCKED_EXTENSIONS = new Set([
+  '.exe', '.bat', '.cmd', '.com', '.msi', '.scr', '.pif',
+  '.vbs', '.vbe', '.js', '.jse', '.wsf', '.wsh', '.ps1',
+]);
+
+// ============================================================
+// In-memory transfer store
+// ============================================================
+
+// Map<transferId, TransferObject>
+// TransferObject: { id, shortCode, files[], createdAt, expiresAt, totalSize }
+// files[]: { id, originalName, sanitizedName, storagePath, size, mimetype }
+const transfers = new Map();
+
+// ============================================================
+// Utility: Get best local IPv4 address
+// ============================================================
+
+function getLocalIPv4() {
+  const interfaces = os.networkInterfaces();
+  // Prefer common interface names first
+  const preferredNames = ['Wi-Fi', 'Ethernet', 'en0', 'eth0', 'wlan0'];
+
+  for (const name of preferredNames) {
+    const iface = interfaces[name];
+    if (iface) {
+      const v4 = iface.find(i => i.family === 'IPv4' && !i.internal);
+      if (v4) return v4.address;
+    }
+  }
+
+  // Fallback: pick the first external IPv4 address
+  for (const name of Object.keys(interfaces)) {
+    const iface = interfaces[name];
+    const v4 = iface.find(i => i.family === 'IPv4' && !i.internal);
+    if (v4) return v4.address;
+  }
+
+  return '127.0.0.1';
+}
+
+// ============================================================
+// Utility: Sanitize filename
+// ============================================================
+
+function sanitizeFilename(filename) {
+  // Remove path separators and null bytes
+  let safe = filename.replace(/[/\\:\0]/g, '_');
+  // Remove leading dots (prevent hidden files / dotfile tricks)
+  safe = safe.replace(/^\.+/, '');
+  // Collapse whitespace
+  safe = safe.replace(/\s+/g, ' ').trim();
+  // Fallback if empty
+  if (!safe) safe = 'file';
+  // Limit length
+  if (safe.length > 200) {
+    const ext = path.extname(safe);
+    safe = safe.substring(0, 200 - ext.length) + ext;
+  }
+  return safe;
+}
+
+// ============================================================
+// Utility: Generate short code (human-readable transfer code)
+// ============================================================
+
+function generateShortCode() {
+  // 6-character alphanumeric code (uppercase + digits, no ambiguous chars)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I,O,0,1
+  let code = '';
+  const bytes = crypto.randomBytes(6);
+  for (let i = 0; i < 6; i++) {
+    code += chars[bytes[i] % chars.length];
+  }
+  return code;
+}
+
+// ============================================================
+// Utility: Get file icon category
+// ============================================================
+
+function getFileCategory(filename) {
+  const ext = path.extname(filename).toLowerCase();
+  const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.svg', '.ico', '.tiff'];
+  const codeExts = ['.c', '.cpp', '.h', '.hpp', '.java', '.py', '.js', '.ts', '.rb', '.go', '.rs', '.cs', '.php', '.html', '.css', '.sql', '.sh', '.bash', '.r', '.m', '.swift', '.kt'];
+  const docExts = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.odt', '.odp', '.ods', '.txt', '.rtf', '.md'];
+  const dataExts = ['.csv', '.json', '.xml', '.yaml', '.yml', '.ini', '.cfg', '.log'];
+  const archiveExts = ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2'];
+
+  if (imageExts.includes(ext)) return 'image';
+  if (codeExts.includes(ext)) return 'code';
+  if (docExts.includes(ext)) return 'document';
+  if (dataExts.includes(ext)) return 'data';
+  if (archiveExts.includes(ext)) return 'archive';
+  return 'file';
+}
+
+// ============================================================
+// Ensure uploads directory exists
+// ============================================================
+
+if (!fs.existsSync(CONFIG.UPLOAD_DIR)) {
+  fs.mkdirSync(CONFIG.UPLOAD_DIR, { recursive: true });
+}
+
+// ============================================================
+// Express app setup
+// ============================================================
+
+const app = express();
+
+// Serve static files from public/
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ============================================================
+// Multer configuration for file uploads
+// ============================================================
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // Each transfer gets its own subdirectory (created in the route handler)
+    cb(null, req.transferDir);
+  },
+  filename: (req, file, cb) => {
+    const fileId = uuidv4();
+    const sanitized = sanitizeFilename(file.originalname);
+    // Prefix with fileId to prevent collisions
+    cb(null, `${fileId}__${sanitized}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: CONFIG.MAX_FILE_SIZE,
+    files: CONFIG.MAX_FILES_PER_TRANSFER,
+  },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (BLOCKED_EXTENSIONS.has(ext)) {
+      cb(new Error(`File type "${ext}" is not allowed for security reasons.`));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
+// Middleware: create transfer directory before multer processes files
+app.use('/api/upload', (req, res, next) => {
+  const transferId = uuidv4();
+  const transferDir = path.join(CONFIG.UPLOAD_DIR, transferId);
+  fs.mkdirSync(transferDir, { recursive: true });
+  req.transferId = transferId;
+  req.transferDir = transferDir;
+  next();
+});
+
+// ============================================================
+// API Routes
+// ============================================================
+
+// --- Upload files and create a transfer ---
+app.post('/api/upload', (req, res) => {
+  const uploadHandler = upload.array('files', CONFIG.MAX_FILES_PER_TRANSFER);
+
+  uploadHandler(req, res, async (err) => {
+    if (err) {
+      // Clean up the created directory on error
+      const dir = req.transferDir;
+      if (dir && fs.existsSync(dir)) {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({
+            error: `File too large. Maximum size is ${Math.round(CONFIG.MAX_FILE_SIZE / (1024 * 1024))}MB per file.`,
+          });
+        }
+        if (err.code === 'LIMIT_FILE_COUNT') {
+          return res.status(400).json({
+            error: `Too many files. Maximum is ${CONFIG.MAX_FILES_PER_TRANSFER} files per transfer.`,
+          });
+        }
+        return res.status(400).json({ error: err.message });
+      }
+      return res.status(400).json({ error: err.message || 'Upload failed.' });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      // Clean up empty directory
+      const dir = req.transferDir;
+      if (dir && fs.existsSync(dir)) {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+      return res.status(400).json({ error: 'No files selected.' });
+    }
+
+    const transferId = req.transferId;
+    const shortCode = generateShortCode();
+    const now = Date.now();
+    const expiresAt = now + CONFIG.TRANSFER_EXPIRY_MINUTES * 60 * 1000;
+
+    const files = req.files.map((f) => {
+      const parts = f.filename.split('__');
+      const fileId = parts[0];
+      const sanitized = parts.slice(1).join('__');
+      return {
+        id: fileId,
+        originalName: sanitized,
+        storageName: f.filename,
+        size: f.size,
+        mimetype: f.mimetype,
+        category: getFileCategory(sanitized),
+      };
+    });
+
+    const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+
+    const transfer = {
+      id: transferId,
+      shortCode,
+      files,
+      createdAt: now,
+      expiresAt,
+      totalSize,
+      downloadCount: 0,
+    };
+
+    transfers.set(transferId, transfer);
+
+    // Generate QR code
+    // Use PUBLIC_URL env var if set, otherwise infer from the request host
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.get('host');
+    const baseUrl = process.env.PUBLIC_URL || `${protocol}://${host}`;
+    const transferUrl = `${baseUrl}/t/${transferId}`;
+
+    try {
+      const qrDataUrl = await QRCode.toDataURL(transferUrl, {
+        width: 400,
+        margin: 2,
+        color: { dark: '#000000', light: '#ffffff' },
+        errorCorrectionLevel: 'M',
+      });
+
+      res.json({
+        transferId,
+        shortCode,
+        url: transferUrl,
+        qrCode: qrDataUrl,
+        files: files.map((f) => ({
+          id: f.id,
+          name: f.originalName,
+          size: f.size,
+          category: f.category,
+        })),
+        totalSize,
+        fileCount: files.length,
+        expiresAt,
+        expiryMinutes: CONFIG.TRANSFER_EXPIRY_MINUTES,
+      });
+    } catch (qrErr) {
+      console.error('QR code generation failed:', qrErr);
+      res.status(500).json({ error: 'Failed to generate QR code.' });
+    }
+  });
+});
+
+// --- Get transfer details (used by mobile page) ---
+app.get('/api/transfer/:id', (req, res) => {
+  const transfer = transfers.get(req.params.id);
+
+  if (!transfer) {
+    return res.status(404).json({ error: 'Transfer not found or has expired.' });
+  }
+
+  if (Date.now() > transfer.expiresAt) {
+    return res.status(410).json({ error: 'This transfer has expired.' });
+  }
+
+  res.json({
+    id: transfer.id,
+    shortCode: transfer.shortCode,
+    files: transfer.files.map((f) => ({
+      id: f.id,
+      name: f.originalName,
+      size: f.size,
+      category: f.category,
+    })),
+    totalSize: transfer.totalSize,
+    fileCount: transfer.files.length,
+    createdAt: transfer.createdAt,
+    expiresAt: transfer.expiresAt,
+  });
+});
+
+// --- Download all files as ZIP ---
+// NOTE: This route MUST be defined before /download/:transferId/:fileId
+// otherwise Express will match "zip" as a :fileId parameter.
+app.get('/download/:transferId/zip', (req, res) => {
+  const transfer = transfers.get(req.params.transferId);
+
+  if (!transfer) {
+    return res.status(404).json({ error: 'Transfer not found or has expired.' });
+  }
+
+  if (Date.now() > transfer.expiresAt) {
+    return res.status(410).json({ error: 'This transfer has expired.' });
+  }
+
+  const zipFilename = `LabDrop-${transfer.shortCode}.zip`;
+
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
+
+  const archive = archiver('zip', { zlib: { level: 5 } });
+
+  archive.on('error', (err) => {
+    console.error('Archive error:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to create ZIP archive.' });
+    }
+  });
+
+  archive.pipe(res);
+
+  for (const file of transfer.files) {
+    const filePath = path.join(CONFIG.UPLOAD_DIR, transfer.id, file.storageName);
+    const resolvedPath = path.resolve(filePath);
+    const uploadsResolved = path.resolve(CONFIG.UPLOAD_DIR);
+
+    if (resolvedPath.startsWith(uploadsResolved) && fs.existsSync(filePath)) {
+      archive.file(filePath, { name: file.originalName });
+    }
+  }
+
+  transfer.downloadCount++;
+  archive.finalize();
+});
+
+// --- Download a single file ---
+app.get('/download/:transferId/:fileId', (req, res) => {
+  const transfer = transfers.get(req.params.transferId);
+
+  if (!transfer) {
+    return res.status(404).json({ error: 'Transfer not found or has expired.' });
+  }
+
+  if (Date.now() > transfer.expiresAt) {
+    return res.status(410).json({ error: 'This transfer has expired.' });
+  }
+
+  const file = transfer.files.find((f) => f.id === req.params.fileId);
+
+  if (!file) {
+    return res.status(404).json({ error: 'File not found.' });
+  }
+
+  const filePath = path.join(CONFIG.UPLOAD_DIR, transfer.id, file.storageName);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'File not found on server.' });
+  }
+
+  // Ensure the resolved path is within the uploads directory (prevent path traversal)
+  const resolvedPath = path.resolve(filePath);
+  const uploadsResolved = path.resolve(CONFIG.UPLOAD_DIR);
+  if (!resolvedPath.startsWith(uploadsResolved)) {
+    return res.status(403).json({ error: 'Access denied.' });
+  }
+
+  transfer.downloadCount++;
+
+  res.download(filePath, file.originalName, (err) => {
+    if (err && !res.headersSent) {
+      res.status(500).json({ error: 'Download failed.' });
+    }
+  });
+});
+
+// --- Cancel/delete a transfer (from desktop UI) ---
+app.delete('/api/transfer/:id', (req, res) => {
+  const transfer = transfers.get(req.params.id);
+
+  if (!transfer) {
+    return res.status(404).json({ error: 'Transfer not found.' });
+  }
+
+  deleteTransfer(transfer.id);
+  res.json({ success: true, message: 'Transfer cancelled and files deleted.' });
+});
+
+// --- Serve transfer page (mobile) ---
+app.get('/t/:id', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'transfer.html'));
+});
+
+// --- Server info endpoint ---
+app.get('/api/info', (req, res) => {
+  res.json({
+    maxFileSize: CONFIG.MAX_FILE_SIZE,
+    maxFiles: CONFIG.MAX_FILES_PER_TRANSFER,
+    expiryMinutes: CONFIG.TRANSFER_EXPIRY_MINUTES,
+    serverIP: getLocalIPv4(),
+    port: CONFIG.PORT,
+  });
+});
+
+// ============================================================
+// Transfer cleanup
+// ============================================================
+
+function deleteTransfer(transferId) {
+  const transfer = transfers.get(transferId);
+  if (!transfer) return;
+
+  const dir = path.join(CONFIG.UPLOAD_DIR, transferId);
+  if (fs.existsSync(dir)) {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch (e) {
+      console.error(`Failed to delete transfer directory ${dir}:`, e.message);
+    }
+  }
+  transfers.delete(transferId);
+}
+
+function cleanupExpiredTransfers() {
+  const now = Date.now();
+  let cleaned = 0;
+  for (const [id, transfer] of transfers) {
+    if (now > transfer.expiresAt) {
+      deleteTransfer(id);
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) {
+    console.log(`[Cleanup] Removed ${cleaned} expired transfer(s).`);
+  }
+}
+
+// Run cleanup every minute
+setInterval(cleanupExpiredTransfers, CONFIG.CLEANUP_INTERVAL_MS);
+
+// ============================================================
+// Error handling middleware
+// ============================================================
+
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  if (!res.headersSent) {
+    res.status(500).json({ error: 'An unexpected error occurred.' });
+  }
+});
+
+// ============================================================
+// Start server
+// ============================================================
+
+app.listen(CONFIG.PORT, '0.0.0.0', () => {
+  const localIP = getLocalIPv4();
+  console.log('');
+  console.log('  ╔═══════════════════════════════════════════════╗');
+  console.log('  ║                                               ║');
+  console.log('  ║              🧪  LabDrop  v1.0                ║');
+  console.log('  ║                                               ║');
+  console.log('  ║   Temporary Lab File Transfer System          ║');
+  console.log('  ║                                               ║');
+  console.log('  ╠═══════════════════════════════════════════════╣');
+  console.log('  ║                                               ║');
+  console.log(`  ║   Local:   http://localhost:${CONFIG.PORT}             ║`);
+  console.log(`  ║   Network: http://${localIP}:${CONFIG.PORT}        ║`);
+  console.log('  ║                                               ║');
+  console.log(`  ║   Max file size:  ${Math.round(CONFIG.MAX_FILE_SIZE / (1024 * 1024))}MB                        ║`);
+  console.log(`  ║   Max files:      ${CONFIG.MAX_FILES_PER_TRANSFER}                          ║`);
+  console.log(`  ║   Expiry:         ${CONFIG.TRANSFER_EXPIRY_MINUTES} minutes                   ║`);
+  console.log('  ║                                               ║');
+  console.log('  ╚═══════════════════════════════════════════════╝');
+  console.log('');
+  console.log('  Open the Local URL on this PC to start transferring files.');
+  console.log('  Make sure your phone is on the same Wi-Fi/LAN network.');
+  console.log('');
+});
