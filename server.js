@@ -175,6 +175,29 @@ if (!fs.existsSync(CONFIG.UPLOAD_DIR)) {
 
 const app = express();
 
+// Trust proxy so req.ip returns the actual client IP instead of Render's load balancer IP
+app.set('trust proxy', true);
+
+// ============================================================
+// State (In-Memory Database & Analytics)
+// ============================================================
+const transfers = new Map();
+
+const analytics = {
+  uniqueVisitors: new Set(),
+  totalTransfersCreated: 0,
+  totalFilesUploaded: 0,
+  totalDownloads: 0
+};
+
+// Middleware to track unique visitors
+app.use((req, res, next) => {
+  if (req.ip) {
+    analytics.uniqueVisitors.add(req.ip);
+  }
+  next();
+});
+
 // Serve static files from public/
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -313,6 +336,10 @@ app.post('/api/upload', (req, res) => {
     };
 
     transfers.set(transferId, transfer);
+    
+    // Update analytics
+    analytics.totalTransfersCreated++;
+    analytics.totalFilesUploaded += files.length;
 
     // Generate QR code
     // Use PUBLIC_URL env var if set, otherwise infer from the request host
@@ -432,6 +459,7 @@ app.get('/download/:transferId/zip', (req, res) => {
   }
 
   transfer.downloadCount++;
+  analytics.totalDownloads++;
   archive.finalize();
 });
 
@@ -469,6 +497,7 @@ app.get('/download/:transferId/:fileId', (req, res) => {
   }
 
   transfer.downloadCount++;
+  analytics.totalDownloads++;
 
   res.download(filePath, file.originalName, (err) => {
     if (err && !res.headersSent) {
@@ -489,6 +518,24 @@ app.get('/api/transfer/code/:code', (req, res) => {
     }
   }
   res.status(404).json({ error: 'Transfer not found.' });
+});
+
+// --- Secret Admin Stats Route ---
+app.get('/admin/stats', (req, res) => {
+  const adminKey = 'super-secret-labdrop-key';
+  
+  if (req.query.key !== adminKey) {
+    return res.status(403).send('Forbidden: Invalid admin key.');
+  }
+
+  res.json({
+    activeTransfersInServer: transfers.size,
+    totalUniqueVisitors: analytics.uniqueVisitors.size,
+    totalTransfersCreated: analytics.totalTransfersCreated,
+    totalFilesUploaded: analytics.totalFilesUploaded,
+    totalDownloads: analytics.totalDownloads,
+    serverUptimeMinutes: Math.round(process.uptime() / 60)
+  });
 });
 
 // --- Cancel/delete a transfer (from desktop UI) ---
