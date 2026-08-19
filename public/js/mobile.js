@@ -10,16 +10,28 @@
   const loadingState = $('#loadingState');
   const errorState = $('#errorState');
   const transferView = $('#transferView');
+  const pinState = $('#pinState');
+  const pinForm = $('#pinForm');
+  const pinInput = $('#pinInput');
+  const pinError = $('#pinError');
+
   const errorIcon = $('#errorIcon');
   const errorTitle = $('#errorTitle');
   const errorMessage = $('#errorMessage');
   const retryBtn = $('#retryBtn');
 
+  const mHeaderTitle = $('#mHeaderTitle');
+  const mHeaderSubtitle = $('#mHeaderSubtitle');
   const mStatFiles = $('#mStatFiles');
   const mStatSize = $('#mStatSize');
   const mStatExpiry = $('#mStatExpiry');
   const downloadAllBtn = $('#downloadAllBtn');
+  const renameZipBtn = $('#renameZipBtn');
   const mFileList = $('#mFileList');
+
+  let currentPin = '';
+  let customZipName = '';
+  let activeTransferData = null;
 
   // ---- File icons ----
   const FILE_ICONS = {
@@ -52,6 +64,7 @@
     loadingState.style.display = state === 'loading' ? 'flex' : 'none';
     errorState.classList.toggle('section--hidden', state !== 'error');
     transferView.classList.toggle('section--hidden', state !== 'transfer');
+    pinState.classList.toggle('section--hidden', state !== 'pin');
   }
 
   // ---- Show error ----
@@ -74,7 +87,7 @@
   }
 
   // ---- Fetch transfer data ----
-  async function loadTransfer() {
+  async function loadTransfer(retryCount = 0) {
     const transferId = getTransferId();
 
     if (!transferId) {
@@ -82,10 +95,13 @@
       return;
     }
 
-    showState('loading');
+    if (retryCount === 0) showState('loading');
 
     try {
-      const res = await fetch(`/api/transfer/${transferId}`);
+      const headers = {};
+      if (currentPin) headers['x-transfer-pin'] = currentPin;
+
+      const res = await fetch(`/api/transfer/${transferId}`, { headers });
 
       if (res.status === 404) {
         showError('🔍', 'Transfer Not Found', 'This transfer does not exist or is no longer available.');
@@ -97,6 +113,19 @@
         return;
       }
 
+      if (res.status === 401) {
+        pinError.style.display = currentPin ? 'block' : 'none';
+        pinError.textContent = 'Incorrect PIN. Please try again.';
+        pinInput.value = '';
+        showState('pin');
+        return;
+      }
+      
+      if (res.status === 429) {
+         showError('🔒', 'Locked', 'Too many incorrect PIN attempts. This transfer is locked.');
+         return;
+      }
+
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         showError('😕', 'Something Went Wrong', errData.error || 'An unexpected error occurred.');
@@ -104,28 +133,58 @@
       }
 
       const data = await res.json();
-      renderTransfer(data);
+      activeTransferData = data;
+      renderTransfer();
     } catch (err) {
-      showError('📡', 'Network Error', 'Could not connect to the server. Make sure you are on the same Wi-Fi/LAN network as the lab computer.');
+      if (retryCount < 2) {
+        // Silent retry for spotty mobile networks
+        setTimeout(() => loadTransfer(retryCount + 1), 1000);
+      } else {
+        showError('📡', 'Network Error', 'Could not connect to the server. Make sure you are on the same Wi-Fi/LAN network as the lab computer.');
+      }
     }
   }
 
   // ---- Render transfer ----
-  function renderTransfer(data) {
+  function renderTransfer() {
+    const data = activeTransferData;
+    if (!data) return;
+
     showState('transfer');
+
+    if (data.transferName) {
+       mHeaderTitle.textContent = data.transferName;
+       mHeaderSubtitle.textContent = 'Your lab files are ready';
+    } else {
+       mHeaderTitle.textContent = '🧪 LabDrop';
+       mHeaderSubtitle.textContent = 'Your lab files are ready';
+    }
 
     mStatFiles.textContent = data.fileCount;
     mStatSize.textContent = formatBytes(data.totalSize);
 
+    // Build URL query params
+    const params = new URLSearchParams();
+    if (currentPin) params.append('pin', currentPin);
+    if (customZipName) params.append('name', customZipName);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+
     // Download All link
-    downloadAllBtn.href = `/download/${data.id}/zip`;
-    downloadAllBtn.textContent = `⬇️ Download All (ZIP) · ${formatBytes(data.totalSize)}`;
+    downloadAllBtn.href = `/download/${data.id}/zip${qs}`;
+    
+    // Rename button state
+    if (customZipName || data.transferName) {
+       downloadAllBtn.textContent = `⬇️ ${customZipName || data.transferName}.zip (${formatBytes(data.totalSize)})`;
+    } else {
+       downloadAllBtn.textContent = `⬇️ Download All (ZIP) · ${formatBytes(data.totalSize)}`;
+    }
 
     // File list
     mFileList.innerHTML = '';
     data.files.forEach((file) => {
       const cat = file.category || 'file';
       const icon = FILE_ICONS[cat] || '📎';
+      const fileQs = currentPin ? `?pin=${currentPin}` : '';
 
       const li = document.createElement('li');
       li.className = 'file-item';
@@ -136,7 +195,7 @@
           <div class="file-item__size">${formatBytes(file.size)}</div>
         </div>
         <div class="file-item__actions">
-          <a class="btn btn--secondary btn--icon" href="/download/${data.id}/${file.id}" title="Download ${escapeHtml(file.name)}" style="font-size: 0.85rem; padding: 6px 12px;">
+          <a class="btn btn--secondary btn--icon" href="/download/${data.id}/${file.id}${fileQs}" title="Download ${escapeHtml(file.name)}" style="font-size: 0.85rem; padding: 6px 12px;">
             ⬇️
           </a>
         </div>
@@ -176,8 +235,28 @@
     tick();
   }
 
+  // ---- Rename ZIP ----
+  renameZipBtn.addEventListener('click', () => {
+    if (!activeTransferData) return;
+    const defaultName = customZipName || activeTransferData.transferName || activeTransferData.shortCode;
+    const newName = prompt('Enter a name for the ZIP file:', defaultName);
+    if (newName !== null && newName.trim() !== '') {
+      customZipName = newName.trim();
+      renderTransfer();
+    }
+  });
+
+  // ---- PIN form submit ----
+  pinForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    currentPin = pinInput.value.trim();
+    if (currentPin.length > 0) {
+      loadTransfer();
+    }
+  });
+
   // ---- Retry button ----
-  retryBtn.addEventListener('click', loadTransfer);
+  retryBtn.addEventListener('click', () => loadTransfer(0));
 
   // ---- Initialize ----
   loadTransfer();

@@ -51,8 +51,22 @@
         </div>
       </div>
 
+      <!-- Transfer Options -->
+      <div id="transferOptions" class="section--hidden" style="margin-top: var(--space-md);">
+        <div class="card" style="padding: var(--space-md);">
+          <div style="margin-bottom: var(--space-sm);">
+            <label for="transferName" style="display: block; font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: 4px;">Transfer Name (Optional)</label>
+            <input type="text" id="transferName" placeholder="e.g. Physics Lab 3" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: rgba(0,0,0,0.2); color: var(--color-text); font-family: var(--font-family); outline: none;" maxlength="50" />
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="requirePin" style="width: 16px; height: 16px; accent-color: var(--color-primary);" />
+            <label for="requirePin" style="font-size: var(--font-size-sm); cursor: pointer; user-select: none;">Protect with 6-digit PIN</label>
+          </div>
+        </div>
+      </div>
+
       <!-- Create Transfer Button -->
-      <div style="margin-top: var(--space-lg); text-align: center;">
+      <div style="margin-top: var(--space-md); text-align: center;">
         <button class="btn btn--primary btn--lg btn--block" id="createTransferBtn" type="button" disabled>
           🚀 Create Transfer
         </button>
@@ -100,10 +114,20 @@
           <button class="copy-btn" id="copyUrlBtn" title="Copy URL">📋 Copy</button>
         </div>
 
+        <!-- PIN Display -->
+        <div id="pinDisplayContainer" class="section--hidden" style="margin-top: var(--space-md); padding: var(--space-sm); background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3); border-radius: var(--radius-md);">
+          <div style="font-size: var(--font-size-xs); color: var(--color-error-light); text-transform: uppercase; letter-spacing: 1px;">Security PIN</div>
+          <div id="pinDisplayCode" style="font-size: var(--font-size-xl); font-weight: 800; color: white; letter-spacing: 4px; margin-top: 4px;"></div>
+          <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 4px;">Share this PIN with the receiver.</div>
+        </div>
+
         <!-- Timer -->
-        <div class="timer" id="timer">
-          <span class="timer__icon">⏱️</span>
-          <span id="timerText">30:00</span>
+        <div style="display: flex; align-items: center; justify-content: center; gap: var(--space-md); margin: var(--space-md) 0;">
+          <div class="timer" id="timer" style="margin: 0;">
+            <span class="timer__icon">⏱️</span>
+            <span id="timerText">30:00</span>
+          </div>
+          <button class="btn btn--secondary btn--icon" id="extendTimerBtn" title="Add 15 Minutes" style="font-size: 0.8rem; padding: 4px 8px;">+15m</button>
         </div>
 
         <!-- Stats -->

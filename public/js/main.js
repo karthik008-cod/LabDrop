@@ -19,6 +19,9 @@
   const fileSummary = $('#fileSummary');
   const clearFilesBtn = $('#clearFilesBtn');
   const createTransferBtn = $('#createTransferBtn');
+  const transferOptions = $('#transferOptions');
+  const transferNameInput = $('#transferName');
+  const requirePinCheck = $('#requirePin');
 
   const progressBarFill = $('#progressBarFill');
   const progressText = $('#progressText');
@@ -27,8 +30,11 @@
   const transferCode = $('#transferCode');
   const transferUrl = $('#transferUrl');
   const copyUrlBtn = $('#copyUrlBtn');
+  const pinDisplayContainer = $('#pinDisplayContainer');
+  const pinDisplayCode = $('#pinDisplayCode');
   const timerEl = $('#timer');
   const timerText = $('#timerText');
+  const extendTimerBtn = $('#extendTimerBtn');
   const statFiles = $('#statFiles');
   const statSize = $('#statSize');
   const qrFileList = $('#qrFileList');
@@ -103,11 +109,13 @@
 
     if (selectedFiles.length === 0) {
       fileListWrapper.classList.add('section--hidden');
+      transferOptions.classList.add('section--hidden');
       createTransferBtn.disabled = true;
       return;
     }
 
     fileListWrapper.classList.remove('section--hidden');
+    transferOptions.classList.remove('section--hidden');
     createTransferBtn.disabled = false;
 
     let totalSize = 0;
@@ -200,6 +208,10 @@
 
     const formData = new FormData();
     selectedFiles.forEach((file) => formData.append('files', file));
+    if (transferNameInput.value.trim()) {
+      formData.append('transferName', transferNameInput.value.trim());
+    }
+    formData.append('requirePin', requirePinCheck.checked ? 'true' : 'false');
 
     try {
       const xhr = new XMLHttpRequest();
@@ -251,6 +263,13 @@
     transferUrl.textContent = data.url;
     statFiles.textContent = data.fileCount;
     statSize.textContent = formatBytes(data.totalSize);
+
+    if (data.pin) {
+      pinDisplayCode.textContent = data.pin;
+      pinDisplayContainer.classList.remove('section--hidden');
+    } else {
+      pinDisplayContainer.classList.add('section--hidden');
+    }
 
     // Render file list in QR view
     qrFileList.innerHTML = '';
@@ -306,6 +325,26 @@
     timerInterval = setInterval(tick, 1000);
   }
 
+  // ---- Extend Timer ----
+  extendTimerBtn.addEventListener('click', async () => {
+    if (!currentTransfer) return;
+    extendTimerBtn.disabled = true;
+    try {
+      const res = await fetch(`/api/transfer/${currentTransfer.transferId}/extend`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        startTimer(data.expiresAt);
+        showAlert('Added 15 minutes to transfer.', 'success');
+      } else {
+        showAlert(data.error || 'Failed to extend.');
+      }
+    } catch (err) {
+      showAlert('Network error extending transfer.');
+    } finally {
+      extendTimerBtn.disabled = false;
+    }
+  });
+
   // ---- Cancel Transfer ----
   cancelTransferBtn.addEventListener('click', async () => {
     if (!currentTransfer) return;
@@ -349,6 +388,8 @@
     if (timerInterval) clearInterval(timerInterval);
     currentTransfer = null;
     selectedFiles = [];
+    transferNameInput.value = '';
+    requirePinCheck.checked = false;
     renderFileList();
     progressBarFill.style.width = '0%';
     progressText.textContent = 'Preparing upload…';

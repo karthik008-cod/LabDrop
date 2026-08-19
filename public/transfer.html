@@ -30,13 +30,27 @@
       </div>
     </div>
 
+    <!-- PIN Entry State -->
+    <div id="pinState" class="section section--hidden">
+      <div class="card" style="margin-top: var(--space-2xl); text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: var(--space-md);">🔒</div>
+        <h2 style="margin-bottom: var(--space-sm);">Protected Transfer</h2>
+        <p style="color: var(--color-text-secondary); margin-bottom: var(--space-lg); font-size: var(--font-size-sm);">Please enter the 6-digit PIN to access these files.</p>
+        <form id="pinForm" style="display: flex; flex-direction: column; gap: var(--space-md);">
+          <input type="text" id="pinInput" placeholder="Enter PIN" maxlength="6" pattern="[0-9]*" inputmode="numeric" style="width: 100%; padding: 12px; font-size: 1.5rem; text-align: center; letter-spacing: 4px; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: rgba(0,0,0,0.3); color: white; outline: none;" required />
+          <button type="submit" class="btn btn--primary btn--lg" id="pinSubmitBtn">Unlock Files</button>
+        </form>
+        <div id="pinError" style="color: var(--color-error); font-size: var(--font-size-sm); margin-top: var(--space-md); display: none;"></div>
+      </div>
+    </div>
+
     <!-- Transfer View -->
     <div id="transferView" class="section section--hidden">
 
       <!-- Header -->
       <header class="mobile-header">
-        <h1 class="mobile-header__title">🧪 LabDrop</h1>
-        <p class="mobile-header__subtitle">Your lab files are ready</p>
+        <h1 class="mobile-header__title" id="mHeaderTitle">🧪 LabDrop</h1>
+        <p class="mobile-header__subtitle" id="mHeaderSubtitle">Your lab files are ready</p>
       </header>
 
       <!-- Stats Card -->
@@ -57,10 +71,11 @@
         </div>
 
         <!-- Download All -->
-        <div class="download-btn-wrapper">
-          <a class="btn btn--success btn--lg btn--block" id="downloadAllBtn" href="#">
+        <div class="download-btn-wrapper" style="display: flex; gap: 8px;">
+          <a class="btn btn--success btn--lg" id="downloadAllBtn" href="#" style="flex: 1; padding: 1rem 1rem;">
             ⬇️ Download All (ZIP)
           </a>
+          <button class="btn btn--secondary btn--icon" id="renameZipBtn" title="Rename ZIP" style="padding: 0 16px;">✏️</button>
         </div>
       </div>
 

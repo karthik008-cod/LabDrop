@@ -22,6 +22,7 @@ const CONFIG = {
   UPLOAD_DIR: path.join(__dirname, 'uploads'),
   MAX_FILE_SIZE: parseInt(process.env.LABDROP_MAX_FILE_SIZE || String(50 * 1024 * 1024), 10), // 50 MB
   MAX_FILES_PER_TRANSFER: parseInt(process.env.LABDROP_MAX_FILES || '20', 10),
+  MAX_TOTAL_SIZE: parseInt(process.env.LABDROP_MAX_TOTAL_SIZE || String(500 * 1024 * 1024), 10), // 500 MB
   TRANSFER_EXPIRY_MINUTES: parseInt(process.env.LABDROP_EXPIRY_MINUTES || '30', 10),
   CLEANUP_INTERVAL_MS: 60 * 1000, // Check every 1 minute
 };
@@ -122,6 +123,42 @@ function getFileCategory(filename) {
   if (dataExts.includes(ext)) return 'data';
   if (archiveExts.includes(ext)) return 'archive';
   return 'file';
+}
+
+// ============================================================
+// Utility: Security & PIN Handling
+// ============================================================
+
+function hashPin(pin) {
+  return crypto.createHash('sha256').update(pin).digest('hex');
+}
+
+function generatePin() {
+  // 6 digit random PIN
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function verifyPin(req, res, transfer) {
+  if (!transfer.pinHash) return true; // No PIN required
+
+  if (transfer.failedPinAttempts >= 5) {
+    res.status(429).json({ error: 'Too many incorrect PIN attempts. This transfer is locked.' });
+    return false;
+  }
+
+  const providedPin = req.headers['x-transfer-pin'] || req.query.pin;
+  if (!providedPin) {
+    res.status(401).json({ error: 'PIN required', requirePin: true });
+    return false;
+  }
+
+  if (hashPin(providedPin) !== transfer.pinHash) {
+    transfer.failedPinAttempts++;
+    res.status(401).json({ error: 'Incorrect PIN', requirePin: true });
+    return false;
+  }
+
+  return true;
 }
 
 // ============================================================
@@ -246,9 +283,28 @@ app.post('/api/upload', (req, res) => {
 
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
 
+    // Enforce total transfer size limit
+    if (totalSize > CONFIG.MAX_TOTAL_SIZE) {
+      const dir = req.transferDir;
+      if (dir && fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+      return res.status(413).json({ error: `Total size exceeds the ${Math.round(CONFIG.MAX_TOTAL_SIZE / (1024*1024))}MB limit.` });
+    }
+
+    const transferName = req.body.transferName ? req.body.transferName.trim().substring(0, 50) : null;
+    let pin = null;
+    let pinHash = null;
+
+    if (req.body.requirePin === 'true') {
+      pin = generatePin();
+      pinHash = hashPin(pin);
+    }
+
     const transfer = {
       id: transferId,
       shortCode,
+      transferName,
+      pinHash,
+      failedPinAttempts: 0,
       files,
       createdAt: now,
       expiresAt,
@@ -276,6 +332,7 @@ app.post('/api/upload', (req, res) => {
       res.json({
         transferId,
         shortCode,
+        transferName: transfer.transferName,
         url: transferUrl,
         qrCode: qrDataUrl,
         files: files.map((f) => ({
@@ -288,6 +345,7 @@ app.post('/api/upload', (req, res) => {
         fileCount: files.length,
         expiresAt,
         expiryMinutes: CONFIG.TRANSFER_EXPIRY_MINUTES,
+        pin: pin // Send PIN back once so desktop UI can display it
       });
     } catch (qrErr) {
       console.error('QR code generation failed:', qrErr);
@@ -308,9 +366,13 @@ app.get('/api/transfer/:id', (req, res) => {
     return res.status(410).json({ error: 'This transfer has expired.' });
   }
 
+  if (!verifyPin(req, res, transfer)) return;
+
   res.json({
     id: transfer.id,
     shortCode: transfer.shortCode,
+    transferName: transfer.transferName,
+    requirePin: !!transfer.pinHash,
     files: transfer.files.map((f) => ({
       id: f.id,
       name: f.originalName,
@@ -338,7 +400,12 @@ app.get('/download/:transferId/zip', (req, res) => {
     return res.status(410).json({ error: 'This transfer has expired.' });
   }
 
-  const zipFilename = `LabDrop-${transfer.shortCode}.zip`;
+  if (!verifyPin(req, res, transfer)) return;
+
+  // Determine ZIP filename (query param > transferName > shortCode)
+  let baseName = req.query.name ? req.query.name : (transfer.transferName || transfer.shortCode);
+  baseName = sanitizeFilename(baseName);
+  const zipFilename = `LabDrop-${baseName}.zip`;
 
   res.setHeader('Content-Type', 'application/zip');
   res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
@@ -380,6 +447,8 @@ app.get('/download/:transferId/:fileId', (req, res) => {
     return res.status(410).json({ error: 'This transfer has expired.' });
   }
 
+  if (!verifyPin(req, res, transfer)) return;
+
   const file = transfer.files.find((f) => f.id === req.params.fileId);
 
   if (!file) {
@@ -420,6 +489,30 @@ app.delete('/api/transfer/:id', (req, res) => {
   res.json({ success: true, message: 'Transfer cancelled and files deleted.' });
 });
 
+// --- Extend transfer expiry ---
+app.post('/api/transfer/:id/extend', (req, res) => {
+  const transfer = transfers.get(req.params.id);
+
+  if (!transfer) {
+    return res.status(404).json({ error: 'Transfer not found.' });
+  }
+  
+  if (Date.now() > transfer.expiresAt) {
+    return res.status(410).json({ error: 'Transfer already expired.' });
+  }
+
+  const ADD_MS = 15 * 60 * 1000;
+  transfer.expiresAt += ADD_MS;
+
+  // Max cap (e.g. 2 hours from now) to prevent infinite extensions
+  const MAX_EXPIRY = Date.now() + (2 * 60 * 60 * 1000);
+  if (transfer.expiresAt > MAX_EXPIRY) {
+    transfer.expiresAt = MAX_EXPIRY;
+  }
+
+  res.json({ success: true, expiresAt: transfer.expiresAt });
+});
+
 // --- Serve transfer page (mobile) ---
 app.get('/t/:id', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'transfer.html'));
@@ -458,12 +551,30 @@ function deleteTransfer(transferId) {
 function cleanupExpiredTransfers() {
   const now = Date.now();
   let cleaned = 0;
+  
+  // 1. Clean up from memory map
   for (const [id, transfer] of transfers) {
     if (now > transfer.expiresAt) {
       deleteTransfer(id);
       cleaned++;
     }
   }
+
+  // 2. Clean up orphaned directories (in case server crashed or upload failed)
+  if (fs.existsSync(CONFIG.UPLOAD_DIR)) {
+    const dirs = fs.readdirSync(CONFIG.UPLOAD_DIR);
+    for (const dirName of dirs) {
+      const fullPath = path.join(CONFIG.UPLOAD_DIR, dirName);
+      if (fs.statSync(fullPath).isDirectory() && !transfers.has(dirName)) {
+        // Only delete if it's been around for more than 1 hour to be safe against in-progress uploads
+        const stats = fs.statSync(fullPath);
+        if (now - stats.birthtimeMs > 60 * 60 * 1000) {
+           fs.rmSync(fullPath, { recursive: true, force: true });
+        }
+      }
+    }
+  }
+
   if (cleaned > 0) {
     console.log(`[Cleanup] Removed ${cleaned} expired transfer(s).`);
   }
