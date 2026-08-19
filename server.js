@@ -477,6 +477,20 @@ app.get('/download/:transferId/:fileId', (req, res) => {
   });
 });
 
+// --- Look up a transfer by short code ---
+app.get('/api/transfer/code/:code', (req, res) => {
+  const shortCode = req.params.code.toUpperCase();
+  for (const [id, transfer] of transfers.entries()) {
+    if (transfer.shortCode === shortCode) {
+      if (Date.now() > transfer.expiresAt) {
+        return res.status(410).json({ error: 'Transfer has expired.' });
+      }
+      return res.json({ id: transfer.id });
+    }
+  }
+  res.status(404).json({ error: 'Transfer not found.' });
+});
+
 // --- Cancel/delete a transfer (from desktop UI) ---
 app.delete('/api/transfer/:id', (req, res) => {
   const transfer = transfers.get(req.params.id);

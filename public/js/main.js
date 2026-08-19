@@ -38,6 +38,11 @@
   const statFiles = $('#statFiles');
   const statSize = $('#statSize');
   const qrFileList = $('#qrFileList');
+
+  const receiveForm = $('#receiveForm');
+  const receiveCodeInput = $('#receiveCodeInput');
+  const receiveError = $('#receiveError');
+
   const cancelTransferBtn = $('#cancelTransferBtn');
   const newTransferBtn = $('#newTransferBtn');
 
@@ -395,6 +400,33 @@
     progressText.textContent = 'Preparing upload…';
     showSection(selectSection);
   }
+
+  // ---- Receive Form Logic ----
+  receiveForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = receiveCodeInput.value.trim().toUpperCase();
+    if (code.length !== 6) return;
+    
+    receiveError.style.display = 'none';
+    const submitBtn = receiveForm.querySelector('button');
+    submitBtn.disabled = true;
+    
+    try {
+      const res = await fetch(`/api/transfer/code/${code}`);
+      const data = await res.json();
+      if (res.ok && data.id) {
+        window.location.href = `/t/${data.id}`;
+      } else {
+        receiveError.textContent = data.error || 'Transfer not found.';
+        receiveError.style.display = 'block';
+      }
+    } catch(err) {
+      receiveError.textContent = 'Network error.';
+      receiveError.style.display = 'block';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
 
   // ---- Initialize ----
   showSection(selectSection);
