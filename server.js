@@ -33,14 +33,6 @@ const BLOCKED_EXTENSIONS = new Set([
   '.vbs', '.vbe', '.js', '.jse', '.wsf', '.wsh', '.ps1',
 ]);
 
-// ============================================================
-// In-memory transfer store
-// ============================================================
-
-// Map<transferId, TransferObject>
-// TransferObject: { id, shortCode, files[], createdAt, expiresAt, totalSize }
-// files[]: { id, originalName, sanitizedName, storagePath, size, mimetype }
-const transfers = new Map();
 
 // ============================================================
 // Utility: Get best local IPv4 address
