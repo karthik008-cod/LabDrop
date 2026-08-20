@@ -459,12 +459,12 @@
       unorgMeta = parts.join(', ');
     }
     unorgItem.innerHTML = `
-      <div class="folder-item__radio"></div>
       <div class="folder-item__icon">📥</div>
       <div class="folder-item__info">
         <div class="folder-item__name">Unorganized</div>
         ${unorgMeta ? `<div class="folder-item__meta">${unorgMeta}</div>` : ''}
       </div>
+      <div class="folder-item__active-dot"></div>
     `;
     unorgItem.addEventListener('click', () => {
       activeFolderId = null;
@@ -486,12 +486,12 @@
         meta = parts.join(', ');
       }
       item.innerHTML = `
-        <div class="folder-item__radio"></div>
         <div class="folder-item__icon">📁</div>
         <div class="folder-item__info">
           <div class="folder-item__name">${escapeHtml(folder.name)}</div>
           ${meta ? `<div class="folder-item__meta">${meta}</div>` : ''}
         </div>
+        <div class="folder-item__active-dot"></div>
         <div class="folder-item__actions">
           <button class="folder-item__action-btn" data-action="rename" title="Rename">✏️</button>
           <button class="folder-item__action-btn folder-item__action-btn--danger" data-action="delete" title="Delete">🗑️</button>

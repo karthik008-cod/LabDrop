@@ -8,245 +8,275 @@
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="icon" href="/icon.svg" />
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#0F0E17" />
+  <meta name="theme-color" content="#FDFBF7" />
 </head>
 <body>
 
-  <div class="app-container">
+  <!-- Background Decorative Objects -->
+  <div class="decorations">
+    <svg class="dec-item dec-compass" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+      <!-- Simple Compass drawing -->
+      <path d="M50 20 L30 90 M50 20 L70 90 M36 70 L64 70" />
+      <circle cx="50" cy="15" r="5" />
+      <path d="M48 10 L52 10 M50 5 L50 10" />
+    </svg>
+    <svg class="dec-item dec-ruler" viewBox="0 0 200 50" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="5" y="10" width="190" height="30" rx="2" />
+      <path d="M15 10 V20 M35 10 V15 M55 10 V20 M75 10 V15 M95 10 V20 M115 10 V15 M135 10 V20 M155 10 V15 M175 10 V20" />
+      <circle cx="185" cy="25" r="3" />
+    </svg>
+    <svg class="dec-item dec-flask" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+      <!-- Erlenmeyer flask -->
+      <path d="M40 20 L40 45 L15 85 A 5 5 0 0 0 20 95 L80 95 A 5 5 0 0 0 85 85 L60 45 L60 20 Z" />
+      <path d="M35 20 L65 20 M30 70 L70 70 M25 80 L40 80 M75 80 L60 80" />
+    </svg>
+    <svg class="dec-item dec-wrench" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+      <!-- Wrench -->
+      <path d="M25 85 L60 50 A 15 15 0 0 0 85 25 A 20 20 0 0 0 65 15 L60 25 C 60 25 55 35 70 35 L75 30 A 15 15 0 0 1 50 40 L15 75 Z" />
+      <circle cx="20" cy="80" r="3" />
+    </svg>
+    <svg class="dec-item dec-caliper" viewBox="0 0 200 60" fill="none" stroke="currentColor" stroke-width="1.5">
+      <!-- Vernier caliper approximation -->
+      <rect x="10" y="25" width="180" height="10" />
+      <path d="M20 25 V5 M20 35 V55 M50 25 V15 M50 35 V45" />
+      <rect x="40" y="20" width="20" height="20" />
+      <path d="M70 25 V20 M90 25 V20 M110 25 V20" />
+    </svg>
 
-    <!-- Auth Navigation -->
-    <nav class="auth-nav" id="authNav">
-      <div id="authLoggedOut" class="auth-nav__group">
-        <button class="btn btn--ghost btn--sm" id="navLoginBtn">Login</button>
-        <button class="btn btn--outline btn--sm" id="navSignupBtn">Sign Up</button>
-      </div>
-      <div id="authLoggedIn" class="auth-nav__group" style="display: none;">
-        <span class="auth-nav__user" id="navUserEmail"></span>
-        <a href="/my-files.html" class="btn btn--ghost btn--sm">📁 My Files</a>
-        <button class="btn btn--ghost btn--sm" id="navLogoutBtn">Logout</button>
-      </div>
-    </nav>
+    <!-- Hand-drawn Text Formulas -->
+    <div class="dec-item dec-formula dec-f1">E = mc²</div>
+    <div class="dec-item dec-formula dec-f2">∫ f(x) dx</div>
+    <div class="dec-item dec-formula dec-f3">F = ma</div>
+    <div class="dec-item dec-formula dec-f4">C₂H₅OH</div>
+    <div class="dec-item dec-formula dec-f5">x² + y² = r²</div>
+  </div>
 
+  <div class="page-wrapper">
     <!-- Header -->
     <header class="header">
-      <div class="header__logo">
-        <div class="header__icon">🧪</div>
-        <h1 class="header__title">LabDrop</h1>
+      <div class="header__brand">
+        <div class="brand__logo">🧪</div>
+        <div class="brand__text">
+          <h1>LabDrop</h1>
+          <p>Move files. Anywhere.</p>
+        </div>
       </div>
-      <p class="header__subtitle">Transfer lab files to your phone instantly</p>
+      
+      <!-- Auth Navigation -->
+      <nav class="header__nav" id="authNav">
+        <div id="authLoggedOut" style="display: flex; gap: var(--space-md);">
+          <button class="nav-link" id="navLoginBtn" style="background:none;border:none;cursor:pointer;">Login</button>
+          <button class="nav-link" id="navSignupBtn" style="background:none;border:none;cursor:pointer;">Sign Up</button>
+        </div>
+        <div id="authLoggedIn" style="display: none; gap: var(--space-md); align-items: center;">
+          <a href="/my-files.html" class="nav-link">
+            <span>🗄️</span> Saved Transfers
+          </a>
+          <div class="nav-icon" title="User Account" style="background: var(--color-bg-secondary); color: var(--color-text);">👤</div>
+          <button class="nav-link" id="navLogoutBtn" style="background:none;border:none;cursor:pointer;color:var(--color-text-secondary);">Logout</button>
+          <span id="navUserEmail" style="display:none;"></span>
+        </div>
+      </nav>
     </header>
 
     <!-- Alert area -->
     <div id="alertArea"></div>
 
-    <!-- ============================================ -->
-    <!-- Section 1: File Selection                    -->
-    <!-- ============================================ -->
-    <div id="selectSection" class="section">
-
-      <!-- Main Upload Card -->
-      <div class="card card--hero">
-        <div class="card__title">
-          <span>📂</span> Select Your Files & Links
-        </div>
-
-        <!-- Drop Zone -->
-        <div class="dropzone" id="dropzone">
-          <input type="file" id="fileInput" multiple />
-          <div class="dropzone__icon-wrapper">
-            <div class="dropzone__icon-bg"></div>
-            <div class="dropzone__icon">📁</div>
-          </div>
-          <div class="dropzone__text">Drag & drop files here</div>
-          <div class="dropzone__hint">or click to browse · Max 50 MB per file · Up to 20 files</div>
-        </div>
-
-
-        <!-- Links Input -->
-        <div style="margin-top: var(--space-md);">
-          <div class="form-group" style="display: flex; gap: var(--space-sm); margin-bottom: 0;">
-            <input class="form-input" type="url" id="linkInput" placeholder="https://example.com/..." />
-            <button class="btn btn--secondary" type="button" id="addLinkBtn" style="white-space: nowrap;">Add Link</button>
-          </div>
-        </div>
-
-        <!-- Selected File & Link List -->
-        <div id="fileListWrapper" class="section--hidden" style="margin-top: var(--space-md);">
-          <ul class="file-list" id="fileList" style="margin-top: 0;"></ul>
-          <ul class="file-list" id="linkList" style="margin-top: 0;"></ul>
-          <div class="summary">
-            <span class="summary__text" id="fileSummary"></span>
-            <div>
-              <button class="btn btn--ghost btn--sm" id="moveAllBtn" type="button" style="margin-right: 4px;">📦 Move All</button>
-              <button class="btn btn--ghost btn--sm" id="clearFilesBtn" type="button">✕ Clear All</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Folder Panel (hidden until folders exist) -->
-        <div id="folderPanel" class="folder-panel">
-          <div class="folder-panel__header">
-            <span class="folder-panel__title">📂 Temporary Folders</span>
-            <button class="btn btn--ghost btn--sm" id="newFolderBtn" type="button">+ New Folder</button>
-          </div>
-          <div id="folderList" class="folder-list"></div>
-          <div id="newFolderRow" class="new-folder-row" style="display: none;">
+    <!-- Main Workspace Two-Column Grid -->
+    <div class="workspace-grid">
+      
+      <!-- Sidebar (Left) -->
+      <aside class="sidebar">
+        <!-- Folder Panel -->
+        <div id="folderPanel">
+          <div class="sidebar__title">WORKSPACE</div>
+          <button class="btn btn--outline btn--sm" id="newFolderBtn" type="button" style="margin-bottom: var(--space-sm); width: 100%; justify-content: flex-start;">+ New Folder</button>
+          
+          <div id="newFolderRow" class="new-folder-row" style="display: none; flex-direction: column;">
             <input class="form-input" type="text" id="newFolderInput" placeholder="Folder name..." maxlength="40" />
-            <button class="btn btn--secondary btn--sm" id="confirmNewFolderBtn" type="button">Create</button>
-            <button class="btn btn--ghost btn--sm" id="cancelNewFolderBtn" type="button">✕</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Transfer Options Card -->
-      <div id="transferOptions" class="section--hidden">
-        <div class="card card--options">
-          <!-- Mode Selector -->
-          <div class="mode-selector">
-            <button class="mode-option active" id="modeQuick" type="button">
-              <div class="mode-option__icon">⚡</div>
-              <div class="mode-option__title">Quick Transfer</div>
-              <div class="mode-option__desc">No login · 30 mins</div>
-            </button>
-            <button class="mode-option" id="modeSave" type="button">
-              <div class="mode-option__icon">🗄️</div>
-              <div class="mode-option__title">Save for Later</div>
-              <div class="mode-option__desc">Login required · 7 days</div>
-            </button>
-          </div>
-
-          <!-- Options Row -->
-          <div class="options-row">
-            <div class="options-row__field">
-              <label class="form-label" for="transferName">Transfer Name (Optional)</label>
-              <input class="form-input" type="text" id="transferName" placeholder="e.g. Physics Lab 3" maxlength="50" />
-            </div>
-            <div class="options-row__check">
-              <label class="checkbox-label" for="requirePin">
-                <input type="checkbox" id="requirePin" class="checkbox-input" />
-                <span class="checkbox-custom"></span>
-                <span>Protect with PIN</span>
-              </label>
+            <div style="display: flex; gap: 4px;">
+              <button class="btn btn--secondary btn--sm" id="confirmNewFolderBtn" type="button" style="flex:1;">Create</button>
+              <button class="btn btn--ghost btn--sm" id="cancelNewFolderBtn" type="button">✕</button>
             </div>
           </div>
+
+          <div id="folderList" class="folder-list"></div>
+        </div>
+        
+        <!-- Receive Files Section (Moved to sidebar for cleaner UI) -->
+        <div class="receive-section" style="margin-top: var(--space-xl);">
+          <div class="sidebar__title">RECEIVE TRANSFER</div>
+          <form id="receiveForm" style="display: flex; gap: 4px;">
+            <input type="text" id="receiveCodeInput" class="form-input" placeholder="4-digit code" maxlength="4" minlength="4" required style="padding: 0.4rem; font-size: 0.8rem;" />
+            <button type="submit" class="btn btn--secondary btn--sm">Go →</button>
+          </form>
+          <div id="receiveError" style="color: var(--color-danger); font-size: 0.75rem; display: none;"></div>
+        </div>
+      </aside>
+
+      <!-- Main Area (Right) -->
+      <main class="main-area">
+
+        <!-- ============================================ -->
+        <!-- Section 1: File Selection                    -->
+        <!-- ============================================ -->
+        <div id="selectSection">
+          
+          <!-- Drop Zone -->
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="fileInput" multiple style="display:none;" />
+            <div class="dropzone__icon">📁</div>
+            <div class="dropzone__title">Drop files here</div>
+            <div class="dropzone__subtitle">
+              or paste with <span class="kbd">Ctrl + V</span>
+            </div>
+            <button class="btn btn--primary btn--sm mt-md" type="button" onclick="document.getElementById('fileInput').click()">Select Files</button>
+          </div>
+
+          <!-- Links Input -->
+          <div style="margin-top: var(--space-md);">
+            <div class="form-group" style="display: flex; gap: var(--space-sm); margin-bottom: 0;">
+              <input class="form-input" type="url" id="linkInput" placeholder="https://example.com/..." />
+              <button class="btn btn--secondary" type="button" id="addLinkBtn" style="white-space: nowrap;">Add Link</button>
+            </div>
+          </div>
+
+          <!-- Selected File & Link List -->
+          <div id="fileListWrapper" class="section--hidden" style="margin-top: var(--space-xl);">
+            
+            <div class="file-list-header">
+              <div class="file-list-title">
+                <h2>Active Files</h2>
+                <span id="fileSummary"></span>
+              </div>
+              <div class="file-list-actions">
+                <button class="btn btn--ghost btn--sm" id="moveAllBtn" type="button">📦 Move All</button>
+                <button class="btn btn--ghost btn--sm" id="clearFilesBtn" type="button">✕ Clear</button>
+              </div>
+            </div>
+
+            <div class="file-list-container" id="fileList"></div>
+            <div class="file-list-container" id="linkList" style="margin-top: var(--space-sm);"></div>
+            
+            <!-- Transfer Options Card -->
+            <div id="transferOptions" class="section--hidden mt-lg">
+              <div class="transfer-options-panel">
+                <!-- Mode Selector -->
+                <div class="mode-selector">
+                  <button class="mode-option active" id="modeQuick" type="button">
+                    <div class="mode-option__title">⚡ Quick Transfer</div>
+                    <div class="mode-option__desc">No login · 30 mins</div>
+                  </button>
+                  <button class="mode-option" id="modeSave" type="button">
+                    <div class="mode-option__title">🗄️ Save for Later</div>
+                    <div class="mode-option__desc">Login required · 7 days</div>
+                  </button>
+                </div>
+
+                <!-- Options Row -->
+                <div class="options-row">
+                  <div class="form-group" style="flex:1; margin-bottom:0;">
+                    <label class="form-label" for="transferName">Transfer Name (Optional)</label>
+                    <input class="form-input" type="text" id="transferName" placeholder="e.g. Physics Lab 3" maxlength="50" />
+                  </div>
+                  <div class="checkbox-label" style="margin-top: 1rem;">
+                    <input type="checkbox" id="requirePin" />
+                    <span>Protect with PIN</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Create Transfer Button -->
+              <button class="btn btn--primary btn--lg btn--block" id="createTransferBtn" type="button" disabled>
+                ➤ Create Transfer
+              </button>
+            </div>
+
+          </div>
         </div>
 
-        <!-- Create Transfer Button -->
-        <button class="btn btn--primary btn--lg btn--block btn--glow" id="createTransferBtn" type="button" disabled>
-          🚀 Create Transfer
-        </button>
-      </div>
+        <!-- ============================================ -->
+        <!-- Section 2: Uploading Progress                -->
+        <!-- ============================================ -->
+        <div id="uploadSection" class="section--hidden">
+          <div class="upload-card">
+            <div style="font-size: 1.5rem; font-weight: 600; margin-bottom: var(--space-md);">
+              <span class="spinner"></span> Uploading Files…
+            </div>
+            <div class="progress-bar">
+              <div class="progress-bar__fill" id="progressBarFill"></div>
+            </div>
+            <p class="text-center" id="progressText" style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">Preparing upload…</p>
+          </div>
+        </div>
 
-      <!-- Divider -->
-      <div class="divider">
-        <span class="divider__line"></span>
-        <span class="divider__text">or receive files</span>
-        <span class="divider__line"></span>
-      </div>
+        <!-- ============================================ -->
+        <!-- Section 3: QR Code / Transfer Active         -->
+        <!-- ============================================ -->
+        <div id="qrSection" class="section--hidden">
+          <div class="qr-card">
+            <div class="qr-card__title">
+              Scan with Your Phone
+            </div>
 
-      <!-- Receive Files Section -->
-      <div class="receive-section">
-        <form id="receiveForm" class="receive-form">
-          <input type="text" id="receiveCodeInput" class="receive-form__input" placeholder="Enter 4-digit code" maxlength="4" minlength="4" required />
-          <button type="submit" class="btn btn--secondary receive-form__btn">Go →</button>
-        </form>
-        <div id="receiveError" class="receive-form__error"></div>
-      </div>
+            <!-- QR Code -->
+            <div class="qr-image-wrapper">
+              <img id="qrImage" src="" alt="QR Code" />
+            </div>
+
+            <!-- Transfer Code -->
+            <div>
+              <div style="font-size: var(--font-size-sm); color: var(--color-text-muted);">Transfer Code</div>
+              <div class="qr-code-text" id="transferCode"></div>
+            </div>
+
+            <!-- PIN Display -->
+            <div id="pinDisplayContainer" class="section--hidden pin-display">
+              <div style="font-size: 0.8rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 600;">🔒 Security PIN</div>
+              <div class="pin-display__code" id="pinDisplayCode"></div>
+              <div style="font-size: 0.8rem; color: var(--color-text-muted);">Share this PIN with the receiver.</div>
+            </div>
+
+            <!-- Timer -->
+            <div style="display: flex; align-items: center; justify-content: center; gap: var(--space-sm); margin: var(--space-md) 0;">
+              <span id="timerText" style="font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums;">30:00</span>
+              <button class="btn btn--outline btn--sm" id="extendTimerBtn" title="Add 15 Minutes">+15m</button>
+            </div>
+
+            <!-- Stats -->
+            <div class="qr-stats">
+              <div class="stat-item">
+                <span class="stat-item__val" id="statFiles">0</span>
+                <span class="stat-item__lbl">Files</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-item__val" id="statSize">0 B</span>
+                <span class="stat-item__lbl">Total Size</span>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: var(--space-sm); justify-content: center; margin-top: var(--space-lg);">
+              <span id="transferUrl" style="display:none;"></span>
+              <button class="btn btn--ghost btn--sm" id="copyUrlBtn">📋 Copy Link</button>
+              <button class="btn btn--ghost btn--sm" id="shareWhatsAppBtn">💬 WhatsApp</button>
+              <button class="btn btn--ghost btn--sm" id="shareNativeBtn" style="display:none;">🔗 Share</button>
+            </div>
+            
+            <div style="margin-top: var(--space-xl); text-align: left; border-top: 1px solid var(--color-border); padding-top: var(--space-md);">
+              <div style="font-weight: 600; margin-bottom: var(--space-sm);">Included Items</div>
+              <div class="file-list-container" id="qrFileList"></div>
+              <div class="file-list-container" id="qrLinkList" style="margin-top: var(--space-sm); display: none;"></div>
+            </div>
+
+            <div style="display: flex; gap: var(--space-md); margin-top: var(--space-xl);">
+              <button class="btn btn--outline" id="cancelTransferBtn" type="button" style="flex:1;">✕ Cancel</button>
+              <button class="btn btn--primary" id="newTransferBtn" type="button" style="flex:1;">＋ New Transfer</button>
+            </div>
+          </div>
+        </div>
+
+      </main>
     </div>
-
-    <!-- ============================================ -->
-    <!-- Section 2: Uploading Progress                -->
-    <!-- ============================================ -->
-    <div id="uploadSection" class="section section--hidden">
-      <div class="card">
-        <div class="card__title">
-          <span class="spinner"></span> Uploading Files…
-        </div>
-        <div class="progress-bar">
-          <div class="progress-bar__fill" id="progressBarFill"></div>
-        </div>
-        <p class="progress-text" id="progressText">Preparing upload…</p>
-      </div>
-    </div>
-
-    <!-- ============================================ -->
-    <!-- Section 3: QR Code / Transfer Active         -->
-    <!-- ============================================ -->
-    <div id="qrSection" class="section section--hidden">
-      <div class="card qr-section">
-        <div class="card__title" style="justify-content: center;">
-          <span>📱</span> Scan with Your Phone
-        </div>
-
-        <!-- QR Code -->
-        <div class="qr-section__image-wrapper">
-          <img class="qr-section__image" id="qrImage" src="" alt="QR Code" />
-        </div>
-
-        <!-- Transfer Code -->
-        <div>
-          <div style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin-bottom: 2px;">Transfer Code</div>
-          <div class="qr-section__code" id="transferCode"></div>
-        </div>
-
-        <!-- URL + Share -->
-        <div class="share-row">
-          <span class="share-row__url" id="transferUrl"></span>
-          <div class="share-row__actions">
-            <button class="btn btn--ghost btn--sm" id="copyUrlBtn" title="Copy URL">📋 Copy</button>
-            <button class="btn btn--ghost btn--sm" id="shareWhatsAppBtn" title="Share via WhatsApp">💬 WhatsApp</button>
-            <button class="btn btn--ghost btn--sm" id="shareNativeBtn" title="Share" style="display:none;">🔗 Share</button>
-          </div>
-        </div>
-
-        <!-- PIN Display -->
-        <div id="pinDisplayContainer" class="section--hidden pin-display">
-          <div class="pin-display__label">🔒 Security PIN</div>
-          <div class="pin-display__code" id="pinDisplayCode"></div>
-          <div class="pin-display__hint">Share this PIN with the receiver.</div>
-        </div>
-
-        <!-- Timer -->
-        <div class="timer-row">
-          <div class="timer" id="timer">
-            <span class="timer__icon">⏱️</span>
-            <span id="timerText">30:00</span>
-          </div>
-          <button class="btn btn--ghost btn--sm" id="extendTimerBtn" title="Add 15 Minutes">+15m</button>
-        </div>
-
-        <!-- Stats -->
-        <div class="stats">
-          <div class="stat">
-            <div class="stat__value" id="statFiles">0</div>
-            <div class="stat__label">Files</div>
-          </div>
-          <div class="stat">
-            <div class="stat__value" id="statSize">0 B</div>
-            <div class="stat__label">Total Size</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- File & Link List in QR View -->
-      <div class="card" style="margin-top: var(--space-lg);">
-        <div class="card__title"><span>📎</span> Included Items</div>
-        <ul class="file-list" id="qrFileList"></ul>
-        <ul class="file-list" id="qrLinkList" style="margin-top: var(--space-md); border-top: 1px solid var(--color-border); padding-top: var(--space-md); display: none;"></ul>
-      </div>
-
-      <!-- Actions -->
-      <div class="qr-actions">
-        <button class="btn btn--danger btn--block" id="cancelTransferBtn" type="button">✕ Cancel Transfer</button>
-        <button class="btn btn--primary btn--block" id="newTransferBtn" type="button">＋ New Transfer</button>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="footer">
-      LabDrop · No login required for Quick Transfers · Select → Scan → Download
-    </footer>
-
   </div>
 
   <!-- Auth Modal -->
@@ -265,12 +295,12 @@
           <label class="form-label" for="authPassword">Password</label>
           <input class="form-input" type="password" id="authPassword" required placeholder="Min. 6 characters" minlength="6">
         </div>
-        <div id="authError" class="form-error"></div>
+        <div id="authError" style="color: var(--color-danger); font-size: 0.8rem; margin-bottom: var(--space-sm); display: none;"></div>
         <button type="submit" class="btn btn--primary btn--block" id="authSubmitBtn">Login</button>
       </form>
       <div class="modal__footer">
         <span id="authToggleText">Don't have an account?</span>
-        <a href="#" id="authToggleLink">Sign Up</a>
+        <a href="#" id="authToggleLink" style="color: var(--color-primary-dark);">Sign Up</a>
       </div>
     </div>
   </div>
