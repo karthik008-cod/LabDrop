@@ -7,11 +7,18 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": ["file-transfer", "qr-code", "lab", "college", "temporary"],
+  "keywords": [
+    "file-transfer",
+    "qr-code",
+    "lab",
+    "college",
+    "temporary"
+  ],
   "license": "MIT",
   "dependencies": {
     "archiver": "^7.0.1",
     "express": "^4.21.2",
+    "localtunnel": "^2.0.2",
     "multer": "^1.4.5-lts.1",
     "qrcode": "^1.5.4",
     "uuid": "^11.1.0"

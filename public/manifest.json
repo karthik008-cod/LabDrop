@@ -1,0 +1,33 @@
+{
+  "name": "LabDrop",
+  "short_name": "LabDrop",
+  "description": "Temporary lab file transfer system",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "share_target": {
+    "action": "/share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "shared_files",
+          "accept": ["*/*", "image/*", "video/*", "audio/*", "text/*", "application/*"]
+        }
+      ]
+    }
+  }
+}

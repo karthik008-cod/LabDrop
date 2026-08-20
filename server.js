@@ -651,8 +651,10 @@ app.use((err, req, res, next) => {
 // Start server
 // ============================================================
 
-app.listen(CONFIG.PORT, '0.0.0.0', () => {
+app.listen(CONFIG.PORT, '0.0.0.0', async () => {
   const localIP = getLocalIPv4();
+  let publicUrl = null;
+
   console.log('');
   console.log('  ╔═══════════════════════════════════════════════╗');
   console.log('  ║                                               ║');
@@ -664,6 +666,31 @@ app.listen(CONFIG.PORT, '0.0.0.0', () => {
   console.log('  ║                                               ║');
   console.log(`  ║   Local:   http://localhost:${CONFIG.PORT}             ║`);
   console.log(`  ║   Network: http://${localIP}:${CONFIG.PORT}        ║`);
+  
+  // Attempt to start localtunnel
+  try {
+    const localtunnel = require('localtunnel');
+    const tunnel = await localtunnel({ port: CONFIG.PORT });
+    publicUrl = tunnel.url;
+    process.env.PUBLIC_URL = publicUrl;
+    
+    // Quick pad helper
+    const padStr = `  ║   Public:  ${publicUrl}`;
+    console.log(padStr + ' '.repeat(Math.max(0, 50 - padStr.length)) + '║');
+    
+    tunnel.on('close', () => {
+      console.log('  [Info] Public tunnel closed.');
+      process.env.PUBLIC_URL = '';
+    });
+
+    tunnel.on('error', (err) => {
+      console.log('  [Error] Tunnel encountered an error:', err.message);
+      // Do not crash the server
+    });
+  } catch (err) {
+    console.log('  ║   Public:  [Unavailable - Tunnel failed]      ║');
+  }
+
   console.log('  ║                                               ║');
   console.log(`  ║   Max file size:  ${Math.round(CONFIG.MAX_FILE_SIZE / (1024 * 1024))}MB                        ║`);
   console.log(`  ║   Max files:      ${CONFIG.MAX_FILES_PER_TRANSFER}                          ║`);
@@ -673,5 +700,9 @@ app.listen(CONFIG.PORT, '0.0.0.0', () => {
   console.log('');
   console.log('  Open the Local URL on this PC to start transferring files.');
   console.log('  Make sure your phone is on the same Wi-Fi/LAN network.');
+  if (publicUrl) {
+    console.log('  To use the WhatsApp "Share to LabDrop" feature, install the web app');
+    console.log('  by visiting the Public URL on your phone.');
+  }
   console.log('');
 });

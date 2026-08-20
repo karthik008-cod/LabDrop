@@ -430,4 +430,58 @@
 
   // ---- Initialize ----
   showSection(selectSection);
+
+  // ---- PWA & Web Share Target Logic ----
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => {
+        console.error('ServiceWorker registration failed: ', err);
+      });
+    });
+  }
+
+  // Check if we arrived via Web Share Target (or check IndexedDB regardless)
+  function checkSharedFiles() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (!urlParams.has('shared')) return;
+    
+    // Clean up the URL so refreshing doesn't trigger it again
+    window.history.replaceState({}, document.title, '/');
+
+    const request = indexedDB.open('LabDropSharedFiles', 1);
+
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('files')) return;
+
+      const transaction = db.transaction('files', 'readwrite');
+      const store = transaction.objectStore('files');
+      const getAllRequest = store.getAll();
+
+      getAllRequest.onsuccess = () => {
+        const files = getAllRequest.result;
+        if (files && files.length > 0) {
+          // Add files to our UI state (they are standard File objects)
+          files.forEach(file => {
+            // Provide a fallback type/name if it's garbled, though Web Share usually passes valid files
+            selectedFiles.push(file);
+          });
+          
+          renderFileList();
+          showAlert(`Received ${files.length} file(s) from share! Please review and click Create Transfer.`, 'success');
+          
+          // Clear IndexedDB after loading to avoid zombie files on next visit
+          store.clear();
+        }
+      };
+    };
+
+    request.onerror = (err) => {
+      console.error('Failed to open IndexedDB for shared files', err);
+    };
+  }
+
+  // Run on load
+  checkSharedFiles();
+
 })();
