@@ -92,7 +92,7 @@
   let activeFolderId = null; // null = root/unorganized
   let currentTransfer = null;
   let timerInterval = null;
-  let authToken = localStorage.getItem('labdrop_token');
+  let authToken = sessionStorage.getItem('labdrop_token');
   let authUser = null;
   let authMode = 'login';
   let transferMode = 'quick';
@@ -216,7 +216,7 @@
       } else {
         authToken = null;
         authUser = null;
-        localStorage.removeItem('labdrop_token');
+        sessionStorage.removeItem('labdrop_token');
       }
     } catch (e) {
       // network error, ignore for now
@@ -276,7 +276,7 @@
     e.preventDefault();
     authToken = null;
     authUser = null;
-    localStorage.removeItem('labdrop_token');
+    sessionStorage.removeItem('labdrop_token');
     updateAuthUI();
     showAlert('Logged out successfully.', 'info');
   });
@@ -298,7 +298,7 @@
       if (res.ok) {
         authToken = data.token;
         authUser = data.user;
-        localStorage.setItem('labdrop_token', authToken);
+        sessionStorage.setItem('labdrop_token', authToken);
         updateAuthUI();
         closeAuthModal();
         showAlert(authMode === 'login' ? 'Logged in successfully.' : 'Registered successfully.', 'success');

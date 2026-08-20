@@ -9,7 +9,7 @@
   const navUserEmail = $('#navUserEmail');
   const navLogoutBtn = $('#navLogoutBtn');
 
-  const authToken = localStorage.getItem('labdrop_token');
+  const authToken = sessionStorage.getItem('labdrop_token');
 
   function showAlert(message, type = 'error') {
     const div = document.createElement('div');
@@ -52,14 +52,14 @@
       const meData = await meRes.json();
       navUserEmail.textContent = meData.user.email;
     } catch (e) {
-      localStorage.removeItem('labdrop_token');
+      sessionStorage.removeItem('labdrop_token');
       window.location.href = '/';
       return;
     }
 
     navLogoutBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      localStorage.removeItem('labdrop_token');
+      sessionStorage.removeItem('labdrop_token');
       window.location.href = '/';
     });
 
