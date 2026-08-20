@@ -424,6 +424,22 @@ app.post('/api/upload', optionalAuth, (req, res) => {
       pin = generatePin();
       pinHash = hashPin(pin);
     }
+    
+    let links = [];
+    if (req.body.links) {
+      try {
+        const parsedLinks = JSON.parse(req.body.links);
+        if (Array.isArray(parsedLinks)) {
+          // Limit to 20 links, validate and truncate
+          links = parsedLinks
+            .filter(link => typeof link === 'string' && (link.startsWith('http://') || link.startsWith('https://')))
+            .slice(0, 20)
+            .map(link => link.substring(0, 1000));
+        }
+      } catch (e) {
+        console.warn('Failed to parse links from request:', req.body.links);
+      }
+    }
 
     const transfer = {
       id: transferId,
@@ -432,6 +448,7 @@ app.post('/api/upload', optionalAuth, (req, res) => {
       pinHash,
       failedPinAttempts: 0,
       files,
+      links,
       createdAt: now,
       expiresAt,
       totalSize,
@@ -450,7 +467,13 @@ app.post('/api/upload', optionalAuth, (req, res) => {
     // Use PUBLIC_URL env var if set, otherwise infer from the request host
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = req.get('host');
-    const baseUrl = process.env.PUBLIC_URL || `${protocol}://${host}`;
+    let baseUrl = `${protocol}://${host}`;
+    if (host.includes('localhost') || host.includes('127.0.0.1')) {
+      const localIP = getLocalIPv4();
+      if (localIP) baseUrl = `http://${localIP}:${CONFIG.PORT}`;
+    } else if (process.env.PUBLIC_URL) {
+      baseUrl = process.env.PUBLIC_URL;
+    }
     const transferUrl = `${baseUrl}/t/${transferId}`;
 
     try {
@@ -473,8 +496,10 @@ app.post('/api/upload', optionalAuth, (req, res) => {
           size: f.size,
           category: f.category,
         })),
+        links,
         totalSize,
         fileCount: files.length,
+        linkCount: links.length,
         expiresAt,
         expiryMinutes: CONFIG.TRANSFER_EXPIRY_MINUTES,
         pin: pin // Send PIN back once so desktop UI can display it
@@ -511,8 +536,10 @@ app.get('/api/transfer/:id', async (req, res) => {
       size: f.size,
       category: f.category,
     })),
+    links: transfer.links || [],
     totalSize: transfer.totalSize,
     fileCount: transfer.files.length,
+    linkCount: (transfer.links || []).length,
     createdAt: transfer.createdAt,
     expiresAt: transfer.expiresAt,
   });

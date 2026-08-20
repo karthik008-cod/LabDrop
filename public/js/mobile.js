@@ -28,6 +28,7 @@
   const downloadAllBtn = $('#downloadAllBtn');
   const renameZipBtn = $('#renameZipBtn');
   const mFileList = $('#mFileList');
+  const mLinkList = $('#mLinkList');
 
   let currentPin = '';
   let customZipName = '';
@@ -160,7 +161,7 @@
        mHeaderSubtitle.textContent = 'Your lab files are ready';
     }
 
-    mStatFiles.textContent = data.fileCount;
+    mStatFiles.textContent = data.fileCount + (data.linkCount > 0 ? ` (+${data.linkCount})` : '');
     mStatSize.textContent = formatBytes(data.totalSize);
 
     // Build URL query params
@@ -202,6 +203,31 @@
       `;
       mFileList.appendChild(li);
     });
+
+    // Link list
+    mLinkList.innerHTML = '';
+    if (data.links && data.links.length > 0) {
+      mLinkList.style.display = 'block';
+      data.links.forEach((link) => {
+        const li = document.createElement('li');
+        li.className = 'file-item';
+        li.innerHTML = `
+          <div class="file-item__icon file-item__icon--data">🔗</div>
+          <div class="file-item__details">
+            <div class="file-item__name" title="${escapeHtml(link)}">${escapeHtml(link)}</div>
+            <div class="file-item__size">Link</div>
+          </div>
+          <div class="file-item__actions">
+            <a class="btn btn--secondary btn--icon" href="${escapeHtml(link)}" target="_blank" title="Open Link" style="font-size: 0.85rem; padding: 6px 12px;">
+              ↗️
+            </a>
+          </div>
+        `;
+        mLinkList.appendChild(li);
+      });
+    } else {
+      mLinkList.style.display = 'none';
+    }
 
     // Expiry countdown
     startExpiryCountdown(data.expiresAt);

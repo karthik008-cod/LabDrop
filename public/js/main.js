@@ -15,9 +15,12 @@
   const dropzone = $('#dropzone');
   const fileInput = $('#fileInput');
   const fileList = $('#fileList');
+  const linkList = $('#linkList');
   const fileListWrapper = $('#fileListWrapper');
   const fileSummary = $('#fileSummary');
   const clearFilesBtn = $('#clearFilesBtn');
+  const linkInput = $('#linkInput');
+  const addLinkBtn = $('#addLinkBtn');
   const createTransferBtn = $('#createTransferBtn');
   const transferOptions = $('#transferOptions');
   const transferNameInput = $('#transferName');
@@ -38,6 +41,7 @@
   const statFiles = $('#statFiles');
   const statSize = $('#statSize');
   const qrFileList = $('#qrFileList');
+  const qrLinkList = $('#qrLinkList');
 
   const receiveForm = $('#receiveForm');
   const receiveCodeInput = $('#receiveCodeInput');
@@ -73,6 +77,7 @@
 
   // ---- State ----
   let selectedFiles = []; // Array of File objects
+  let selectedLinks = []; // Array of string URLs
   let currentTransfer = null; // Active transfer data from server
   let timerInterval = null;
   let authToken = localStorage.getItem('labdrop_token');
@@ -272,18 +277,6 @@
   // ---- Render selected file list ----
   function renderFileList() {
     fileList.innerHTML = '';
-
-    if (selectedFiles.length === 0) {
-      fileListWrapper.classList.add('section--hidden');
-      transferOptions.classList.add('section--hidden');
-      createTransferBtn.disabled = true;
-      return;
-    }
-
-    fileListWrapper.classList.remove('section--hidden');
-    transferOptions.classList.remove('section--hidden');
-    createTransferBtn.disabled = false;
-
     let totalSize = 0;
 
     selectedFiles.forEach((file, index) => {
@@ -306,7 +299,43 @@
       fileList.appendChild(li);
     });
 
-    fileSummary.innerHTML = `<strong>${selectedFiles.length}</strong> file${selectedFiles.length > 1 ? 's' : ''} · ${formatBytes(totalSize)}`;
+    fileSummary.textContent = `${selectedFiles.length} file(s), ${formatBytes(totalSize)}`;
+
+    // Render links
+    linkList.innerHTML = '';
+    selectedLinks.forEach((link, idx) => {
+      const li = document.createElement('li');
+      li.className = 'file-item';
+      li.innerHTML = `
+        <div class="file-item__icon file-item__icon--data">🔗</div>
+        <div class="file-item__details">
+          <div class="file-item__name">${escapeHtml(link)}</div>
+          <div class="file-item__size">Link</div>
+        </div>
+        <div class="file-item__actions">
+          <button type="button" class="file-item__remove" data-index="${idx}" title="Remove">✕</button>
+        </div>
+      `;
+      linkList.appendChild(li);
+    });
+
+    linkList.querySelectorAll('.file-item__remove').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const idx = parseInt(e.currentTarget.getAttribute('data-index'), 10);
+        selectedLinks.splice(idx, 1);
+        renderFileList();
+      });
+    });
+
+    if (selectedFiles.length > 0 || selectedLinks.length > 0) {
+      fileListWrapper.classList.remove('section--hidden');
+      transferOptions.classList.remove('section--hidden');
+      createTransferBtn.disabled = false;
+    } else {
+      fileListWrapper.classList.add('section--hidden');
+      transferOptions.classList.add('section--hidden');
+      createTransferBtn.disabled = true;
+    }
 
     // Bind remove buttons
     fileList.querySelectorAll('.file-item__remove').forEach((btn) => {
@@ -320,6 +349,10 @@
 
   // ---- Add files (deduplication) ----
   function addFiles(newFiles) {
+    if (selectedFiles.length + newFiles.length > 20) {
+      showAlert('Maximum 20 files allowed per transfer.');
+      return;
+    }
     const existingNames = new Set(selectedFiles.map((f) => f.name + '_' + f.size));
     for (const file of newFiles) {
       const key = file.name + '_' + file.size;
@@ -357,16 +390,39 @@
     }
   });
 
-  // ---- Clear files ----
+  // ---- Clear files and links ----
   clearFilesBtn.addEventListener('click', () => {
     selectedFiles = [];
+    selectedLinks = [];
     renderFileList();
+  });
+
+  // ---- Add link ----
+  addLinkBtn.addEventListener('click', () => {
+    let url = linkInput.value.trim();
+    if (!url) return;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    if (selectedLinks.length >= 20) {
+      showAlert('Maximum 20 links allowed per transfer.');
+      return;
+    }
+    selectedLinks.push(url);
+    linkInput.value = '';
+    renderFileList();
+  });
+  linkInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addLinkBtn.click();
+    }
   });
 
   // ---- Create Transfer ----
   createTransferBtn.addEventListener('click', async () => {
-    if (selectedFiles.length === 0) {
-      showAlert('Please select at least one file.');
+    if (selectedFiles.length === 0 && selectedLinks.length === 0) {
+      showAlert('Please select at least one file or link.');
       return;
     }
 
@@ -374,6 +430,9 @@
 
     const formData = new FormData();
     selectedFiles.forEach((file) => formData.append('files', file));
+    if (selectedLinks.length > 0) {
+      formData.append('links', JSON.stringify(selectedLinks));
+    }
     if (transferNameInput.value.trim()) {
       formData.append('transferName', transferNameInput.value.trim());
     }
@@ -434,7 +493,7 @@
     qrImage.src = data.qrCode;
     transferCode.textContent = data.shortCode;
     transferUrl.textContent = data.url;
-    statFiles.textContent = data.fileCount;
+    statFiles.textContent = data.fileCount + (data.linkCount > 0 ? ` (+${data.linkCount} links)` : '');
     statSize.textContent = formatBytes(data.totalSize);
 
     if (data.pin) {
@@ -460,6 +519,29 @@
       `;
       qrFileList.appendChild(li);
     });
+
+    // Render links in QR view
+    qrLinkList.innerHTML = '';
+    if (data.links && data.links.length > 0) {
+      qrLinkList.style.display = 'block';
+      data.links.forEach((link) => {
+        const li = document.createElement('li');
+        li.className = 'file-item';
+        li.innerHTML = `
+          <div class="file-item__icon file-item__icon--data">🔗</div>
+          <div class="file-item__details">
+            <div class="file-item__name">${escapeHtml(link)}</div>
+            <div class="file-item__size">Link</div>
+          </div>
+          <div class="file-item__actions">
+            <a href="${escapeHtml(link)}" target="_blank" class="btn btn--outline btn--sm">Open</a>
+          </div>
+        `;
+        qrLinkList.appendChild(li);
+      });
+    } else {
+      qrLinkList.style.display = 'none';
+    }
 
     // Start countdown timer
     startTimer(data.expiresAt);
@@ -583,6 +665,7 @@
     if (timerInterval) clearInterval(timerInterval);
     currentTransfer = null;
     selectedFiles = [];
+    selectedLinks = [];
     transferNameInput.value = '';
     requirePinCheck.checked = false;
     renderFileList();

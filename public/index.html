@@ -47,7 +47,7 @@
       <!-- Main Upload Card -->
       <div class="card card--hero">
         <div class="card__title">
-          <span>📂</span> Select Your Files
+          <span>📂</span> Select Your Files & Links
         </div>
 
         <!-- Drop Zone -->
@@ -61,9 +61,19 @@
           <div class="dropzone__hint">or click to browse · Max 50 MB per file · Up to 20 files</div>
         </div>
 
-        <!-- Selected File List -->
-        <div id="fileListWrapper" class="section--hidden">
-          <ul class="file-list" id="fileList"></ul>
+
+        <!-- Links Input -->
+        <div style="margin-top: var(--space-md);">
+          <div class="form-group" style="display: flex; gap: var(--space-sm); margin-bottom: 0;">
+            <input class="form-input" type="url" id="linkInput" placeholder="https://example.com/..." />
+            <button class="btn btn--secondary" type="button" id="addLinkBtn" style="white-space: nowrap;">Add Link</button>
+          </div>
+        </div>
+
+        <!-- Selected File & Link List -->
+        <div id="fileListWrapper" class="section--hidden" style="margin-top: var(--space-md);">
+          <ul class="file-list" id="fileList" style="margin-top: 0;"></ul>
+          <ul class="file-list" id="linkList" style="margin-top: 0;"></ul>
           <div class="summary">
             <span class="summary__text" id="fileSummary"></span>
             <button class="btn btn--ghost btn--sm" id="clearFilesBtn" type="button">✕ Clear All</button>
@@ -201,10 +211,11 @@
         </div>
       </div>
 
-      <!-- File List in QR View -->
+      <!-- File & Link List in QR View -->
       <div class="card" style="margin-top: var(--space-lg);">
-        <div class="card__title"><span>📎</span> Included Files</div>
+        <div class="card__title"><span>📎</span> Included Items</div>
         <ul class="file-list" id="qrFileList"></ul>
+        <ul class="file-list" id="qrLinkList" style="margin-top: var(--space-md); border-top: 1px solid var(--color-border); padding-top: var(--space-md); display: none;"></ul>
       </div>
 
       <!-- Actions -->

@@ -29,6 +29,7 @@ const transferSchema = new mongoose.Schema({
   pinHash: String,
   failedPinAttempts: { type: Number, default: 0 },
   files: [fileSchema],
+  links: { type: [String], default: [] },
   createdAt: { type: Number, default: Date.now },
   expiresAt: { type: Number, required: true },
   totalSize: { type: Number, default: 0 },
