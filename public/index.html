@@ -76,7 +76,24 @@
           <ul class="file-list" id="linkList" style="margin-top: 0;"></ul>
           <div class="summary">
             <span class="summary__text" id="fileSummary"></span>
-            <button class="btn btn--ghost btn--sm" id="clearFilesBtn" type="button">✕ Clear All</button>
+            <div>
+              <button class="btn btn--ghost btn--sm" id="moveAllBtn" type="button" style="margin-right: 4px;">📦 Move All</button>
+              <button class="btn btn--ghost btn--sm" id="clearFilesBtn" type="button">✕ Clear All</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Folder Panel (hidden until folders exist) -->
+        <div id="folderPanel" class="folder-panel">
+          <div class="folder-panel__header">
+            <span class="folder-panel__title">📂 Temporary Folders</span>
+            <button class="btn btn--ghost btn--sm" id="newFolderBtn" type="button">+ New Folder</button>
+          </div>
+          <div id="folderList" class="folder-list"></div>
+          <div id="newFolderRow" class="new-folder-row" style="display: none;">
+            <input class="form-input" type="text" id="newFolderInput" placeholder="Folder name..." maxlength="40" />
+            <button class="btn btn--secondary btn--sm" id="confirmNewFolderBtn" type="button">Create</button>
+            <button class="btn btn--ghost btn--sm" id="cancelNewFolderBtn" type="button">✕</button>
           </div>
         </div>
       </div>
@@ -130,7 +147,7 @@
       <!-- Receive Files Section -->
       <div class="receive-section">
         <form id="receiveForm" class="receive-form">
-          <input type="text" id="receiveCodeInput" class="receive-form__input" placeholder="Enter 6-letter code" maxlength="6" required />
+          <input type="text" id="receiveCodeInput" class="receive-form__input" placeholder="Enter 4-digit code" maxlength="4" minlength="4" required />
           <button type="submit" class="btn btn--secondary receive-form__btn">Go →</button>
         </form>
         <div id="receiveError" class="receive-form__error"></div>
@@ -257,6 +274,24 @@
       </div>
     </div>
   </div>
+
+  <!-- Move Modal -->
+  <div class="modal-overlay" id="moveModal">
+    <div class="modal">
+      <div class="modal__header">
+        <div class="modal__title">Move to...</div>
+        <button class="modal__close" id="moveModalClose">✕</button>
+      </div>
+      <div class="modal__body">
+        <div id="moveFolderList" class="folder-list"></div>
+      </div>
+      <div class="modal__footer" style="justify-content: flex-end;">
+        <button class="btn btn--ghost btn--sm" id="moveModalCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
 
   <script src="/js/main.js"></script>
 </body>

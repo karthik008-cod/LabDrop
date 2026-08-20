@@ -75,15 +75,28 @@
   const modeQuick = $('#modeQuick');
   const modeSave = $('#modeSave');
 
+  // ---- Folder DOM ----
+  const folderPanel = $('#folderPanel');
+  const folderListEl = $('#folderList');
+  const newFolderBtn = $('#newFolderBtn');
+  const newFolderRow = $('#newFolderRow');
+  const newFolderInput = $('#newFolderInput');
+  const confirmNewFolderBtn = $('#confirmNewFolderBtn');
+  const cancelNewFolderBtn = $('#cancelNewFolderBtn');
+  const toastContainer = $('#toastContainer');
+
   // ---- State ----
-  let selectedFiles = []; // Array of File objects
-  let selectedLinks = []; // Array of string URLs
-  let currentTransfer = null; // Active transfer data from server
+  let selectedFiles = []; // Root / Unorganized files (Array of File objects)
+  let selectedLinks = []; // Root / Unorganized links (Array of string URLs)
+  let folders = [];       // Array of { id, name, files: [], links: [] }
+  let activeFolderId = null; // null = root/unorganized
+  let currentTransfer = null;
   let timerInterval = null;
   let authToken = localStorage.getItem('labdrop_token');
   let authUser = null;
-  let authMode = 'login'; // 'login' or 'register'
-  let transferMode = 'quick'; // 'quick' or 'save'
+  let authMode = 'login';
+  let transferMode = 'quick';
+  let screenshotCounter = 0;
 
   // ---- File icons by category ----
   const FILE_ICONS = {
@@ -133,6 +146,53 @@
     const d = document.createElement('div');
     d.textContent = str;
     return d.innerHTML;
+  }
+
+  // ---- Toast notifications ----
+  function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast--${type}`;
+    toast.innerHTML = message;
+    toastContainer.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add('toast--leaving');
+      setTimeout(() => toast.remove(), 260);
+    }, 3000);
+  }
+
+  // ---- Folder helpers ----
+  function getActiveFolder() {
+    if (!activeFolderId) return null;
+    return folders.find(f => f.id === activeFolderId) || null;
+  }
+
+  function getActiveName() {
+    const f = getActiveFolder();
+    return f ? f.name : 'Unorganized';
+  }
+
+  function getAllFiles() {
+    let all = [...selectedFiles];
+    folders.forEach(f => { all = all.concat(f.files); });
+    return all;
+  }
+
+  function getAllLinks() {
+    let all = [...selectedLinks];
+    folders.forEach(f => { all = all.concat(f.links); });
+    return all;
+  }
+
+  function getTotalFileCount() {
+    return selectedFiles.length + folders.reduce((sum, f) => sum + f.files.length, 0);
+  }
+
+  function getTotalLinkCount() {
+    return selectedLinks.length + folders.reduce((sum, f) => sum + f.links.length, 0);
+  }
+
+  function hasAnyContent() {
+    return getTotalFileCount() > 0 || getTotalLinkCount() > 0;
   }
 
   // ---- Section visibility ----
@@ -276,10 +336,16 @@
 
   // ---- Render selected file list ----
   function renderFileList() {
+    // Determine which files/links to show based on active folder
+    const activeFolder = getActiveFolder();
+    const currentFiles = activeFolder ? activeFolder.files : selectedFiles;
+    const currentLinks = activeFolder ? activeFolder.links : selectedLinks;
+
+    // --- Render files ---
     fileList.innerHTML = '';
     let totalSize = 0;
 
-    selectedFiles.forEach((file, index) => {
+    currentFiles.forEach((file, index) => {
       totalSize += file.size;
       const cat = getFileCategory(file.name);
       const icon = FILE_ICONS[cat] || '📎';
@@ -293,17 +359,25 @@
           <div class="file-item__size">${formatBytes(file.size)}</div>
         </div>
         <div class="file-item__actions">
+          <button type="button" class="file-item__move" data-index="${index}" data-type="file" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
           <button class="file-item__remove" data-index="${index}" title="Remove file">✕</button>
         </div>
       `;
       fileList.appendChild(li);
     });
 
-    fileSummary.textContent = `${selectedFiles.length} file(s), ${formatBytes(totalSize)}`;
+    // Bind file remove buttons
+    fileList.querySelectorAll('.file-item__remove').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.index, 10);
+        currentFiles.splice(idx, 1);
+        renderFileList();
+      });
+    });
 
-    // Render links
+    // --- Render links ---
     linkList.innerHTML = '';
-    selectedLinks.forEach((link, idx) => {
+    currentLinks.forEach((link, idx) => {
       const li = document.createElement('li');
       li.className = 'file-item';
       li.innerHTML = `
@@ -313,6 +387,7 @@
           <div class="file-item__size">Link</div>
         </div>
         <div class="file-item__actions">
+          <button type="button" class="file-item__move" data-index="${idx}" data-type="link" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
           <button type="button" class="file-item__remove" data-index="${idx}" title="Remove">✕</button>
         </div>
       `;
@@ -322,12 +397,36 @@
     linkList.querySelectorAll('.file-item__remove').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const idx = parseInt(e.currentTarget.getAttribute('data-index'), 10);
-        selectedLinks.splice(idx, 1);
+        currentLinks.splice(idx, 1);
         renderFileList();
       });
     });
 
-    if (selectedFiles.length > 0 || selectedLinks.length > 0) {
+    // Bind move buttons
+    document.querySelectorAll('.file-item__move').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const type = e.currentTarget.getAttribute('data-type');
+        const idx = parseInt(e.currentTarget.getAttribute('data-index'), 10);
+        openMoveModal(false, type, idx);
+      });
+    });
+
+    // --- Summary ---
+    const totalFiles = getTotalFileCount();
+    const totalLinks = getTotalLinkCount();
+    const allFilesTotalSize = getAllFiles().reduce((s, f) => s + f.size, 0);
+    let summaryParts = [];
+    if (totalFiles > 0) summaryParts.push(`${totalFiles} file(s)`);
+    if (totalLinks > 0) summaryParts.push(`${totalLinks} link(s)`);
+    fileSummary.textContent = summaryParts.join(', ') + (totalFiles > 0 ? ` · ${formatBytes(allFilesTotalSize)}` : '');
+    if (activeFolder) {
+      fileSummary.textContent = `📁 ${activeFolder.name}: ${currentFiles.length} file(s)` +
+        (currentLinks.length > 0 ? `, ${currentLinks.length} link(s)` : '') +
+        ` · ${formatBytes(totalSize)}`;
+    }
+
+    // --- Visibility ---
+    if (hasAnyContent()) {
       fileListWrapper.classList.remove('section--hidden');
       transferOptions.classList.remove('section--hidden');
       createTransferBtn.disabled = false;
@@ -337,32 +436,174 @@
       createTransferBtn.disabled = true;
     }
 
-    // Bind remove buttons
-    fileList.querySelectorAll('.file-item__remove').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const idx = parseInt(btn.dataset.index, 10);
-        selectedFiles.splice(idx, 1);
+    // --- Render folder panel ---
+    renderFolderPanel();
+  }
+
+  // ---- Render folder panel ----
+  function renderFolderPanel() {
+    folderPanel.classList.remove('section--hidden');
+
+    folderListEl.innerHTML = '';
+
+    // Unorganized item
+    const unorgItem = document.createElement('div');
+    unorgItem.className = `folder-item${activeFolderId === null ? ' folder-item--active' : ''}`;
+    const unorgFileCount = selectedFiles.length;
+    const unorgLinkCount = selectedLinks.length;
+    let unorgMeta = '';
+    if (unorgFileCount > 0 || unorgLinkCount > 0) {
+      const parts = [];
+      if (unorgFileCount > 0) parts.push(`${unorgFileCount} file(s)`);
+      if (unorgLinkCount > 0) parts.push(`${unorgLinkCount} link(s)`);
+      unorgMeta = parts.join(', ');
+    }
+    unorgItem.innerHTML = `
+      <div class="folder-item__radio"></div>
+      <div class="folder-item__icon">📥</div>
+      <div class="folder-item__info">
+        <div class="folder-item__name">Unorganized</div>
+        ${unorgMeta ? `<div class="folder-item__meta">${unorgMeta}</div>` : ''}
+      </div>
+    `;
+    unorgItem.addEventListener('click', () => {
+      activeFolderId = null;
+      renderFileList();
+    });
+    folderListEl.appendChild(unorgItem);
+
+    // Folder items
+    folders.forEach(folder => {
+      const item = document.createElement('div');
+      item.className = `folder-item${folder.id === activeFolderId ? ' folder-item--active' : ''}`;
+      const fc = folder.files.length;
+      const lc = folder.links.length;
+      let meta = '';
+      if (fc > 0 || lc > 0) {
+        const parts = [];
+        if (fc > 0) parts.push(`${fc} file(s)`);
+        if (lc > 0) parts.push(`${lc} link(s)`);
+        meta = parts.join(', ');
+      }
+      item.innerHTML = `
+        <div class="folder-item__radio"></div>
+        <div class="folder-item__icon">📁</div>
+        <div class="folder-item__info">
+          <div class="folder-item__name">${escapeHtml(folder.name)}</div>
+          ${meta ? `<div class="folder-item__meta">${meta}</div>` : ''}
+        </div>
+        <div class="folder-item__actions">
+          <button class="folder-item__action-btn" data-action="rename" title="Rename">✏️</button>
+          <button class="folder-item__action-btn folder-item__action-btn--danger" data-action="delete" title="Delete">🗑️</button>
+        </div>
+      `;
+
+      // Click to activate (but not on action buttons)
+      item.addEventListener('click', (e) => {
+        if (e.target.closest('.folder-item__actions')) return;
+        activeFolderId = folder.id;
         renderFileList();
       });
+
+      // Rename
+      item.querySelector('[data-action="rename"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newName = prompt('Rename folder:', folder.name);
+        if (newName && newName.trim()) {
+          folder.name = newName.trim().substring(0, 40);
+          renderFileList();
+        }
+      });
+
+      // Delete
+      item.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const totalItems = folder.files.length + folder.links.length;
+        const msg = totalItems > 0
+          ? `Delete "${folder.name}" and its ${totalItems} item(s)?`
+          : `Delete empty folder "${folder.name}"?`;
+        if (confirm(msg)) {
+          folders = folders.filter(f => f.id !== folder.id);
+          if (activeFolderId === folder.id) {
+            activeFolderId = folders.length > 0 ? folders[0].id : null;
+          }
+          renderFileList();
+        }
+      });
+
+      folderListEl.appendChild(item);
     });
   }
 
-  // ---- Add files (deduplication) ----
+  // ---- Add files (folder-aware, with deduplication) ----
   function addFiles(newFiles) {
-    if (selectedFiles.length + newFiles.length > 20) {
-      showAlert('Maximum 20 files allowed per transfer.');
+    const activeFolder = getActiveFolder();
+    const targetFiles = activeFolder ? activeFolder.files : selectedFiles;
+
+    if (targetFiles.length + newFiles.length > 20) {
+      showAlert('Maximum 20 files allowed per folder.');
       return;
     }
-    const existingNames = new Set(selectedFiles.map((f) => f.name + '_' + f.size));
+    const existingNames = new Set(targetFiles.map((f) => f.name + '_' + f.size));
+    let addedCount = 0;
     for (const file of newFiles) {
       const key = file.name + '_' + file.size;
       if (!existingNames.has(key)) {
-        selectedFiles.push(file);
+        targetFiles.push(file);
         existingNames.add(key);
+        addedCount++;
       }
     }
+
+    if (addedCount > 0 && folders.length > 0) {
+      const dest = activeFolder ? activeFolder.name : 'Unorganized';
+      showToast(`✓ ${addedCount} file(s) added to <strong>${escapeHtml(dest)}</strong>`);
+    }
+
     renderFileList();
   }
+
+  // ---- Clipboard Paste (Ctrl+V) ----
+  document.addEventListener('paste', (e) => {
+    // Only handle paste when we're on the select section
+    if (selectSection.classList.contains('section--hidden')) return;
+    // Don't intercept paste inside input/textarea
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+
+    const imageFiles = [];
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const blob = item.getAsFile();
+        if (blob) {
+          screenshotCounter++;
+          const now = new Date();
+          const ts = now.getFullYear() +
+            String(now.getMonth() + 1).padStart(2, '0') +
+            String(now.getDate()).padStart(2, '0') + '-' +
+            String(now.getHours()).padStart(2, '0') +
+            String(now.getMinutes()).padStart(2, '0') +
+            String(now.getSeconds()).padStart(2, '0');
+          const ext = blob.type.split('/')[1] || 'png';
+          const fileName = `Screenshot-${ts}${screenshotCounter > 1 ? `-${screenshotCounter}` : ''}.${ext}`;
+          const file = new File([blob], fileName, { type: blob.type });
+          imageFiles.push(file);
+        }
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      addFiles(imageFiles);
+
+      // Visual feedback on dropzone
+      dropzone.classList.add('dropzone--pasting');
+      setTimeout(() => dropzone.classList.remove('dropzone--pasting'), 600);
+    }
+  });
 
   // ---- Drag & Drop ----
   dropzone.addEventListener('dragover', (e) => {
@@ -386,30 +627,139 @@
   fileInput.addEventListener('change', () => {
     if (fileInput.files.length > 0) {
       addFiles(Array.from(fileInput.files));
-      fileInput.value = ''; // Reset so the same files can be re-selected
+      fileInput.value = '';
     }
   });
 
-  // ---- Clear files and links ----
+  // ---- Clear files (active folder only or all) ----
   clearFilesBtn.addEventListener('click', () => {
-    selectedFiles = [];
-    selectedLinks = [];
+    const activeFolder = getActiveFolder();
+    if (activeFolder) {
+      activeFolder.files = [];
+      activeFolder.links = [];
+    } else {
+      selectedFiles = [];
+      selectedLinks = [];
+    }
     renderFileList();
   });
 
-  // ---- Add link ----
+  // ---- Move Files Logic ----
+  const moveModal = document.getElementById('moveModal');
+  const moveModalClose = document.getElementById('moveModalClose');
+  const moveModalCancel = document.getElementById('moveModalCancel');
+  const moveFolderList = document.getElementById('moveFolderList');
+  const moveAllBtn = document.getElementById('moveAllBtn');
+  
+  let currentMoveState = {
+    isMoveAll: false,
+    itemType: null, // 'file' or 'link'
+    itemIndex: -1
+  };
+
+  moveModalClose.addEventListener('click', () => moveModal.classList.remove('active'));
+  moveModalCancel.addEventListener('click', () => moveModal.classList.remove('active'));
+
+  moveAllBtn.addEventListener('click', () => {
+    const activeFolder = getActiveFolder();
+    const sourceFiles = activeFolder ? activeFolder.files : selectedFiles;
+    const sourceLinks = activeFolder ? activeFolder.links : selectedLinks;
+    if (sourceFiles.length === 0 && sourceLinks.length === 0) {
+      showAlert('No items to move.');
+      return;
+    }
+    openMoveModal(true);
+  });
+
+  function openMoveModal(isMoveAll, itemType = null, itemIndex = -1) {
+    currentMoveState = { isMoveAll, itemType, itemIndex };
+    moveFolderList.innerHTML = '';
+    
+    // Add "Unorganized" as a destination (if we are currently in a folder)
+    if (activeFolderId !== null) {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn--ghost btn--block';
+      btn.style.textAlign = 'left';
+      btn.innerHTML = '📥 Unorganized';
+      btn.addEventListener('click', () => executeMove(null));
+      moveFolderList.appendChild(btn);
+    }
+    
+    // Add folders as destinations (excluding the current one)
+    folders.forEach(folder => {
+      if (folder.id === activeFolderId) return;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn--ghost btn--block';
+      btn.style.textAlign = 'left';
+      btn.innerHTML = `📁 ${escapeHtml(folder.name)}`;
+      btn.addEventListener('click', () => executeMove(folder.id));
+      moveFolderList.appendChild(btn);
+    });
+
+    if (moveFolderList.children.length === 0) {
+      showAlert('No other folders available to move to. Create a new folder first.');
+      return;
+    }
+
+    moveModal.classList.add('active');
+  }
+
+  function executeMove(targetFolderId) {
+    const sourceFiles = activeFolderId ? getActiveFolder().files : selectedFiles;
+    const sourceLinks = activeFolderId ? getActiveFolder().links : selectedLinks;
+    const targetFiles = targetFolderId ? folders.find(f => f.id === targetFolderId).files : selectedFiles;
+    const targetLinks = targetFolderId ? folders.find(f => f.id === targetFolderId).links : selectedLinks;
+    
+    const targetName = targetFolderId ? folders.find(f => f.id === targetFolderId).name : 'Unorganized';
+
+    if (currentMoveState.isMoveAll) {
+      targetFiles.push(...sourceFiles);
+      targetLinks.push(...sourceLinks);
+      if (activeFolderId) {
+        getActiveFolder().files = [];
+        getActiveFolder().links = [];
+      } else {
+        selectedFiles.length = 0;
+        selectedLinks.length = 0;
+      }
+      showToast(`📦 Moved all items to <strong>${escapeHtml(targetName)}</strong>`);
+    } else {
+      if (currentMoveState.itemType === 'file') {
+        const item = sourceFiles.splice(currentMoveState.itemIndex, 1)[0];
+        targetFiles.push(item);
+        showToast(`📦 Moved file to <strong>${escapeHtml(targetName)}</strong>`);
+      } else if (currentMoveState.itemType === 'link') {
+        const item = sourceLinks.splice(currentMoveState.itemIndex, 1)[0];
+        targetLinks.push(item);
+        showToast(`📦 Moved link to <strong>${escapeHtml(targetName)}</strong>`);
+      }
+    }
+    
+    moveModal.classList.remove('active');
+    renderFileList();
+  }
+
+  // ---- Add link (folder-aware) ----
   addLinkBtn.addEventListener('click', () => {
     let url = linkInput.value.trim();
     if (!url) return;
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://' + url;
     }
-    if (selectedLinks.length >= 20) {
-      showAlert('Maximum 20 links allowed per transfer.');
+    const activeFolder = getActiveFolder();
+    const targetLinks = activeFolder ? activeFolder.links : selectedLinks;
+    if (targetLinks.length >= 20) {
+      showAlert('Maximum 20 links allowed per folder.');
       return;
     }
-    selectedLinks.push(url);
+    targetLinks.push(url);
     linkInput.value = '';
+
+    if (folders.length > 0) {
+      const dest = activeFolder ? activeFolder.name : 'Unorganized';
+      showToast(`✓ Link added to <strong>${escapeHtml(dest)}</strong>`);
+    }
+
     renderFileList();
   });
   linkInput.addEventListener('keypress', (e) => {
@@ -419,19 +769,80 @@
     }
   });
 
+  // ---- Folder CRUD ----
+  newFolderBtn.addEventListener('click', () => {
+    newFolderRow.style.display = 'flex';
+    newFolderInput.value = '';
+    newFolderInput.focus();
+  });
+
+  cancelNewFolderBtn.addEventListener('click', () => {
+    newFolderRow.style.display = 'none';
+  });
+
+  confirmNewFolderBtn.addEventListener('click', () => {
+    createFolder();
+  });
+
+  newFolderInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      createFolder();
+    }
+  });
+
+  function createFolder() {
+    const name = newFolderInput.value.trim();
+    if (!name) return;
+    const id = 'folder_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const folder = { id, name: name.substring(0, 40), files: [], links: [] };
+    folders.push(folder);
+    activeFolderId = id; // Auto-activate newly created folder
+    newFolderRow.style.display = 'none';
+    newFolderInput.value = '';
+    showToast(`📁 Folder <strong>${escapeHtml(name)}</strong> created and activated`);
+    renderFileList();
+  }
+
+  // ---- Show folder panel button even when no folders exist (inside hero card) ----
+  // The "+ New Folder" button is always visible inside the folder panel.
+  // But we also need a way to create the FIRST folder. Add it to the dropzone hint.
+  dropzone.addEventListener('click', (e) => {
+    // Let the file input handle the click
+  });
+
   // ---- Create Transfer ----
   createTransferBtn.addEventListener('click', async () => {
-    if (selectedFiles.length === 0 && selectedLinks.length === 0) {
+    if (!hasAnyContent()) {
       showAlert('Please select at least one file or link.');
       return;
     }
 
     showSection(uploadSection);
 
+    // Gather ALL files from root + all folders
+    const allFiles = getAllFiles();
+    const allLinks = getAllLinks();
+
+    // Build folder structure map: { filename -> folderName }
+    const folderStructure = {};
+    folders.forEach(folder => {
+      folder.files.forEach(file => {
+        folderStructure[file.name] = folder.name;
+      });
+      // Also map links to folders
+      folder.links.forEach(link => {
+        folderStructure['link:' + link] = folder.name;
+      });
+    });
+
     const formData = new FormData();
-    selectedFiles.forEach((file) => formData.append('files', file));
-    if (selectedLinks.length > 0) {
-      formData.append('links', JSON.stringify(selectedLinks));
+    allFiles.forEach((file) => formData.append('files', file));
+    if (allLinks.length > 0) {
+      formData.append('links', JSON.stringify(allLinks));
+    }
+    if (Object.keys(folderStructure).length > 0) {
+      formData.append('folderStructure', JSON.stringify(folderStructure));
     }
     if (transferNameInput.value.trim()) {
       formData.append('transferName', transferNameInput.value.trim());
@@ -503,9 +914,36 @@
       pinDisplayContainer.classList.add('section--hidden');
     }
 
+    // Group files and links by folder
+    const fs = data.folderStructure || {};
+    const groups = {}; // folderName -> { files: [], links: [] }
+    const rootFiles = [];
+    const rootLinks = [];
+
+    (data.files || []).forEach((f) => {
+      const folder = fs[f.name];
+      if (folder) {
+        if (!groups[folder]) groups[folder] = { files: [], links: [] };
+        groups[folder].files.push(f);
+      } else {
+        rootFiles.push(f);
+      }
+    });
+
+    (data.links || []).forEach((link) => {
+      const folder = fs['link:' + link];
+      if (folder) {
+        if (!groups[folder]) groups[folder] = { files: [], links: [] };
+        groups[folder].links.push(link);
+      } else {
+        rootLinks.push(link);
+      }
+    });
+
     // Render file list in QR view
     qrFileList.innerHTML = '';
-    data.files.forEach((f) => {
+
+    function renderFileItem(f) {
       const cat = f.category || 'file';
       const icon = FILE_ICONS[cat] || '📎';
       const li = document.createElement('li');
@@ -517,28 +955,49 @@
           <div class="file-item__size">${formatBytes(f.size)}</div>
         </div>
       `;
-      qrFileList.appendChild(li);
+      return li;
+    }
+
+    function renderLinkItem(link) {
+      const li = document.createElement('li');
+      li.className = 'file-item';
+      li.innerHTML = `
+        <div class="file-item__icon file-item__icon--data">🔗</div>
+        <div class="file-item__details">
+          <div class="file-item__name">${escapeHtml(link)}</div>
+          <div class="file-item__size">Link</div>
+        </div>
+        <div class="file-item__actions">
+          <a href="${escapeHtml(link)}" target="_blank" class="btn btn--outline btn--sm">Open</a>
+        </div>
+      `;
+      return li;
+    }
+
+    // Render root files first
+    if (rootFiles.length > 0 && Object.keys(groups).length > 0) {
+      const header = document.createElement('div');
+      header.className = 'folder-group-header';
+      header.innerHTML = '📥 Unorganized';
+      qrFileList.appendChild(header);
+    }
+    rootFiles.forEach(f => qrFileList.appendChild(renderFileItem(f)));
+
+    // Render folder groups
+    Object.keys(groups).forEach(folderName => {
+      const header = document.createElement('div');
+      header.className = 'folder-group-header';
+      header.innerHTML = `📁 ${escapeHtml(folderName)}`;
+      qrFileList.appendChild(header);
+      groups[folderName].files.forEach(f => qrFileList.appendChild(renderFileItem(f)));
+      groups[folderName].links.forEach(link => qrFileList.appendChild(renderLinkItem(link)));
     });
 
-    // Render links in QR view
+    // Root links
     qrLinkList.innerHTML = '';
-    if (data.links && data.links.length > 0) {
+    if (rootLinks.length > 0) {
       qrLinkList.style.display = 'block';
-      data.links.forEach((link) => {
-        const li = document.createElement('li');
-        li.className = 'file-item';
-        li.innerHTML = `
-          <div class="file-item__icon file-item__icon--data">🔗</div>
-          <div class="file-item__details">
-            <div class="file-item__name">${escapeHtml(link)}</div>
-            <div class="file-item__size">Link</div>
-          </div>
-          <div class="file-item__actions">
-            <a href="${escapeHtml(link)}" target="_blank" class="btn btn--outline btn--sm">Open</a>
-          </div>
-        `;
-        qrLinkList.appendChild(li);
-      });
+      rootLinks.forEach(link => qrLinkList.appendChild(renderLinkItem(link)));
     } else {
       qrLinkList.style.display = 'none';
     }
@@ -666,6 +1125,8 @@
     currentTransfer = null;
     selectedFiles = [];
     selectedLinks = [];
+    folders = [];
+    activeFolderId = null;
     transferNameInput.value = '';
     requirePinCheck.checked = false;
     renderFileList();
@@ -678,7 +1139,7 @@
   receiveForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const code = receiveCodeInput.value.trim().toUpperCase();
-    if (code.length !== 6) return;
+    if (code.length !== 4) return;
     
     receiveError.style.display = 'none';
     const submitBtn = receiveForm.querySelector('button');

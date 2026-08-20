@@ -93,14 +93,8 @@ function sanitizeFilename(filename) {
 // ============================================================
 
 function generateShortCode() {
-  // 6-character alphanumeric code (uppercase + digits, no ambiguous chars)
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I,O,0,1
-  let code = '';
-  const bytes = crypto.randomBytes(6);
-  for (let i = 0; i < 6; i++) {
-    code += chars[bytes[i] % chars.length];
-  }
-  return code;
+  // 4-digit random code
+  return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
 // ============================================================
@@ -370,17 +364,47 @@ app.post('/api/upload', optionalAuth, (req, res) => {
       return res.status(400).json({ error: err.message || 'Upload failed.' });
     }
 
-    if (!req.files || req.files.length === 0) {
+    let links = [];
+    if (req.body.links) {
+      try {
+        const parsedLinks = JSON.parse(req.body.links);
+        if (Array.isArray(parsedLinks)) {
+          links = parsedLinks
+            .filter(link => typeof link === 'string' && (link.startsWith('http://') || link.startsWith('https://')))
+            .slice(0, 20)
+            .map(link => link.substring(0, 1000));
+        }
+      } catch (e) {
+        console.warn('Failed to parse links from request:', req.body.links);
+      }
+    }
+
+    if ((!req.files || req.files.length === 0) && links.length === 0) {
       // Clean up empty directory
       const dir = req.transferDir;
       if (dir && fs.existsSync(dir)) {
         fs.rmSync(dir, { recursive: true, force: true });
       }
-      return res.status(400).json({ error: 'No files selected.' });
+      return res.status(400).json({ error: 'No files or links selected.' });
     }
 
     const transferId = req.transferId;
-    const shortCode = generateShortCode();
+    
+    // Generate a unique 4-digit short code
+    let shortCode;
+    let attempts = 0;
+    while (attempts < 50) {
+      shortCode = generateShortCode();
+      const existing = await storage.transfers.getAll();
+      if (!existing.some(t => t.shortCode === shortCode && Date.now() < t.expiresAt)) {
+        break; // Found a unique one
+      }
+      attempts++;
+    }
+    if (attempts >= 50) {
+      // Fallback in case of absolute saturation
+      shortCode = generateShortCode() + '-' + generateShortCode();
+    }
     const now = Date.now();
     let expiresAt = now + CONFIG.TRANSFER_EXPIRY_MINUTES * 60 * 1000;
     
@@ -425,19 +449,21 @@ app.post('/api/upload', optionalAuth, (req, res) => {
       pinHash = hashPin(pin);
     }
     
-    let links = [];
-    if (req.body.links) {
+
+    let folderStructure = {};
+    if (req.body.folderStructure) {
       try {
-        const parsedLinks = JSON.parse(req.body.links);
-        if (Array.isArray(parsedLinks)) {
-          // Limit to 20 links, validate and truncate
-          links = parsedLinks
-            .filter(link => typeof link === 'string' && (link.startsWith('http://') || link.startsWith('https://')))
-            .slice(0, 20)
-            .map(link => link.substring(0, 1000));
+        const parsedFS = JSON.parse(req.body.folderStructure);
+        if (typeof parsedFS === 'object' && parsedFS !== null) {
+          // Limit keys and values to reasonable string lengths for safety
+          for (const [k, v] of Object.entries(parsedFS)) {
+            if (typeof k === 'string' && typeof v === 'string') {
+              folderStructure[k.substring(0, 1000)] = v.substring(0, 100);
+            }
+          }
         }
       } catch (e) {
-        console.warn('Failed to parse links from request:', req.body.links);
+        console.warn('Failed to parse folderStructure from request:', req.body.folderStructure);
       }
     }
 
@@ -449,6 +475,7 @@ app.post('/api/upload', optionalAuth, (req, res) => {
       failedPinAttempts: 0,
       files,
       links,
+      folderStructure,
       createdAt: now,
       expiresAt,
       totalSize,
@@ -537,6 +564,7 @@ app.get('/api/transfer/:id', async (req, res) => {
       category: f.category,
     })),
     links: transfer.links || [],
+    folderStructure: transfer.folderStructure || {},
     totalSize: transfer.totalSize,
     fileCount: transfer.files.length,
     linkCount: (transfer.links || []).length,
@@ -580,13 +608,24 @@ app.get('/download/:transferId/zip', async (req, res) => {
 
   archive.pipe(res);
 
+  const fsMap = transfer.folderStructure || {};
+
   for (const file of transfer.files) {
     const filePath = path.join(CONFIG.UPLOAD_DIR, transfer.id, file.storageName);
     const resolvedPath = path.resolve(filePath);
     const uploadsResolved = path.resolve(CONFIG.UPLOAD_DIR);
 
     if (resolvedPath.startsWith(uploadsResolved) && fs.existsSync(filePath)) {
-      archive.file(filePath, { name: file.originalName });
+      const folderName = fsMap[file.originalName];
+      // Note: we can't easily sanitize folder names comprehensively here without
+      // risk of collisions, but simple path sanitization is good practice.
+      let entryName = file.originalName;
+      if (folderName) {
+         // Prevent directory traversal attacks in the ZIP structure itself
+         const safeFolder = folderName.replace(/^(\.\.(\/|\\|$))+/, '');
+         entryName = path.join(safeFolder, file.originalName).replace(/\\/g, '/');
+      }
+      archive.file(filePath, { name: entryName });
     }
   }
 

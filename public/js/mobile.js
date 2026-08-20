@@ -180,9 +180,36 @@
        downloadAllBtn.textContent = `⬇️ Download All (ZIP) · ${formatBytes(data.totalSize)}`;
     }
 
-    // File list
+    // Group files and links by folder
+    const fs = data.folderStructure || {};
+    const groups = {}; // folderName -> { files: [], links: [] }
+    const rootFiles = [];
+    const rootLinks = [];
+
+    (data.files || []).forEach((f) => {
+      const folder = fs[f.name];
+      if (folder) {
+        if (!groups[folder]) groups[folder] = { files: [], links: [] };
+        groups[folder].files.push(f);
+      } else {
+        rootFiles.push(f);
+      }
+    });
+
+    (data.links || []).forEach((link) => {
+      const folder = fs['link:' + link];
+      if (folder) {
+        if (!groups[folder]) groups[folder] = { files: [], links: [] };
+        groups[folder].links.push(link);
+      } else {
+        rootLinks.push(link);
+      }
+    });
+
+    // File list rendering helper
     mFileList.innerHTML = '';
-    data.files.forEach((file) => {
+    
+    function renderMobileFileItem(file) {
       const cat = file.category || 'file';
       const icon = FILE_ICONS[cat] || '📎';
       const fileQs = currentPin ? `?pin=${currentPin}` : '';
@@ -201,30 +228,51 @@
           </a>
         </div>
       `;
-      mFileList.appendChild(li);
+      return li;
+    }
+
+    function renderMobileLinkItem(link, listEl = mFileList) {
+      const li = document.createElement('li');
+      li.className = 'file-item';
+      li.innerHTML = `
+        <div class="file-item__icon file-item__icon--data">🔗</div>
+        <div class="file-item__details">
+          <div class="file-item__name" title="${escapeHtml(link)}">${escapeHtml(link)}</div>
+          <div class="file-item__size">Link</div>
+        </div>
+        <div class="file-item__actions">
+          <a class="btn btn--secondary btn--icon" href="${escapeHtml(link)}" target="_blank" title="Open Link" style="font-size: 0.85rem; padding: 6px 12px;">
+            ↗️
+          </a>
+        </div>
+      `;
+      listEl.appendChild(li);
+    }
+
+    // Render root files
+    if (rootFiles.length > 0 && Object.keys(groups).length > 0) {
+      const header = document.createElement('div');
+      header.className = 'folder-group-header';
+      header.innerHTML = '📥 Unorganized';
+      mFileList.appendChild(header);
+    }
+    rootFiles.forEach(f => mFileList.appendChild(renderMobileFileItem(f)));
+
+    // Render folder groups (files and links)
+    Object.keys(groups).forEach(folderName => {
+      const header = document.createElement('div');
+      header.className = 'folder-group-header';
+      header.innerHTML = `📁 ${escapeHtml(folderName)}`;
+      mFileList.appendChild(header);
+      groups[folderName].files.forEach(f => mFileList.appendChild(renderMobileFileItem(f)));
+      groups[folderName].links.forEach(link => renderMobileLinkItem(link, mFileList));
     });
 
-    // Link list
+    // Root links
     mLinkList.innerHTML = '';
-    if (data.links && data.links.length > 0) {
+    if (rootLinks.length > 0) {
       mLinkList.style.display = 'block';
-      data.links.forEach((link) => {
-        const li = document.createElement('li');
-        li.className = 'file-item';
-        li.innerHTML = `
-          <div class="file-item__icon file-item__icon--data">🔗</div>
-          <div class="file-item__details">
-            <div class="file-item__name" title="${escapeHtml(link)}">${escapeHtml(link)}</div>
-            <div class="file-item__size">Link</div>
-          </div>
-          <div class="file-item__actions">
-            <a class="btn btn--secondary btn--icon" href="${escapeHtml(link)}" target="_blank" title="Open Link" style="font-size: 0.85rem; padding: 6px 12px;">
-              ↗️
-            </a>
-          </div>
-        `;
-        mLinkList.appendChild(li);
-      });
+      rootLinks.forEach(link => renderMobileLinkItem(link, mLinkList));
     } else {
       mLinkList.style.display = 'none';
     }

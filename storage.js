@@ -30,6 +30,7 @@ const transferSchema = new mongoose.Schema({
   failedPinAttempts: { type: Number, default: 0 },
   files: [fileSchema],
   links: { type: [String], default: [] },
+  folderStructure: { type: mongoose.Schema.Types.Mixed, default: {} },
   createdAt: { type: Number, default: Date.now },
   expiresAt: { type: Number, required: true },
   totalSize: { type: Number, default: 0 },
@@ -57,7 +58,7 @@ module.exports = {
       return await Transfer.findOne({ id }).lean();
     },
     set: async (id, transferData) => {
-      await Transfer.findOneAndUpdate({ id }, transferData, { upsert: true, new: true });
+      await Transfer.findOneAndUpdate({ id }, transferData, { upsert: true, returnDocument: 'after' });
     },
     delete: async (id) => {
       await Transfer.deleteOne({ id });
