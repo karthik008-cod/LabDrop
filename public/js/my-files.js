@@ -99,7 +99,10 @@
       const deleteBtn = `<button class="btn btn--danger btn--block" style="margin-top: var(--space-sm);" onclick="deleteTransfer('${t.id}')">✕ Delete</button>`;
 
       card.innerHTML = `
-        <div class="card__title">${t.transferName || 'Lab Files'}</div>
+        <div class="card__title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>${t.transferName || 'Lab Files'}</span>
+          <span style="background: var(--color-bg-secondary); padding: 4px 8px; border-radius: 4px; font-size: 0.9rem; font-family: monospace; letter-spacing: 2px; color: var(--color-primary);">${t.shortCode}</span>
+        </div>
         <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--space-sm);">
           ${t.fileCount} files · ${formatBytes(t.totalSize)}
         </div>
