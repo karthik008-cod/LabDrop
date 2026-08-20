@@ -6,48 +6,77 @@
   <title>My Lab Files — LabDrop</title>
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="icon" href="/icon.svg" />
+  <meta name="theme-color" content="#FDFBF7" />
 </head>
 <body>
 
-  <div class="app-container">
-    
-    <!-- Auth Navigation -->
-    <div class="auth-nav">
-      <a href="/">← Back to Home</a>
-      <span style="color: var(--color-border); margin: 0 var(--space-sm);">|</span>
-      <span class="auth-nav__user" id="navUserEmail"></span>
-      <a href="#" id="navLogoutBtn" style="margin-left: var(--space-md);">Logout</a>
-    </div>
+  <!-- Background Decorative Objects -->
+  <div class="decorations">
+    <svg class="dec-item dec-compass" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M50 20 L30 90 M50 20 L70 90 M36 70 L64 70" />
+      <circle cx="50" cy="15" r="5" />
+      <path d="M48 10 L52 10 M50 5 L50 10" />
+    </svg>
+    <svg class="dec-item dec-flask" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M40 20 L40 45 L15 85 A 5 5 0 0 0 20 95 L80 95 A 5 5 0 0 0 85 85 L60 45 L60 20 Z" />
+      <path d="M35 20 L65 20 M30 70 L70 70 M25 80 L40 80 M75 80 L60 80" />
+    </svg>
+    <svg class="dec-item dec-ruler" viewBox="0 0 200 50" fill="none" stroke="currentColor" stroke-width="1.5" style="top:auto; bottom: 5%; right: 5%; transform: rotate(-10deg);">
+      <rect x="5" y="10" width="190" height="30" rx="2" />
+      <path d="M15 10 V20 M35 10 V15 M55 10 V20 M75 10 V15 M95 10 V20 M115 10 V15 M135 10 V20 M155 10 V15 M175 10 V20" />
+      <circle cx="185" cy="25" r="3" />
+    </svg>
+    <div class="dec-item dec-formula dec-f1">E = mc²</div>
+  </div>
 
+  <div class="page-wrapper" style="max-width: 900px;">
+    
     <!-- Header -->
     <header class="header">
-      <div class="header__logo">
-        <div class="header__icon">🗄️</div>
-        <h1 class="header__title">My Lab Files</h1>
+      <div class="header__brand">
+        <div class="brand__logo">🗄️</div>
+        <div class="brand__text">
+          <h1>My Lab Files</h1>
+          <p>Your saved transfers for later</p>
+        </div>
       </div>
-      <p class="header__subtitle">Your saved transfers for later</p>
+      
+      <!-- Auth Navigation -->
+      <nav class="header__nav">
+        <a href="/" class="nav-link">← Back to Home</a>
+        <div class="nav-icon" title="User Account" style="background: var(--color-bg-secondary); color: var(--color-text);">👤</div>
+        <span id="navUserEmail" style="font-size: var(--font-size-sm); color: var(--color-text-secondary);"></span>
+        <button class="nav-link" id="navLogoutBtn" style="background:none; border:none; cursor:pointer;">Logout</button>
+      </nav>
     </header>
 
     <div id="alertArea"></div>
 
-    <div id="loadingState" class="loading-state">
-      <div class="spinner"></div>
-      <div class="loading-state__text">Loading your files…</div>
-    </div>
+    <main class="main-area">
+      <!-- Loading State -->
+      <div id="loadingState" class="upload-card">
+        <div style="font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; justify-content: center;">
+          <span class="spinner"></span> Loading your files…
+        </div>
+      </div>
 
-    <div id="emptyState" class="section--hidden" style="text-align: center; padding: var(--space-2xl) 0;">
-      <div style="font-size: 3rem; margin-bottom: var(--space-md);">📂</div>
-      <h3 style="margin-bottom: var(--space-sm);">No saved files found.</h3>
-      <p style="color: var(--color-text-secondary); margin-bottom: var(--space-lg);">You haven't saved any files for later, or they have expired.</p>
-      <a href="/" class="btn btn--primary">Create a Transfer</a>
-    </div>
+      <!-- Empty State -->
+      <div id="emptyState" class="section--hidden upload-card">
+        <div style="font-size: 3rem; margin-bottom: var(--space-md);">📂</div>
+        <h2 style="margin-bottom: var(--space-sm);">No saved files found.</h2>
+        <p style="color: var(--color-text-secondary); margin-bottom: var(--space-lg);">You haven't saved any files for later, or they have expired.</p>
+        <a href="/" class="btn btn--primary">Create a Transfer</a>
+      </div>
 
-    <div id="transfersContainer" class="section--hidden">
-      <!-- Transfers will be injected here -->
-    </div>
+      <!-- Transfers List -->
+      <div id="transfersContainer" class="section--hidden" style="display: flex; flex-direction: column; gap: var(--space-md);">
+        <!-- Transfers injected here -->
+      </div>
+    </main>
 
   </div>
 
+  <div id="toastContainer" class="toast-container"></div>
   <script src="/js/my-files.js"></script>
 </body>
 </html>

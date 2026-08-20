@@ -6,92 +6,116 @@
   <title>LabDrop — Your Files</title>
   <meta name="description" content="Download your lab files transferred via LabDrop." />
   <link rel="stylesheet" href="/css/style.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>" />
+  <link rel="icon" href="/icon.svg" />
+  <meta name="theme-color" content="#FDFBF7" />
 </head>
 <body>
 
-  <div class="app-container">
+  <!-- Background Decorative Objects -->
+  <div class="decorations">
+    <svg class="dec-item dec-compass" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M50 20 L30 90 M50 20 L70 90 M36 70 L64 70" />
+      <circle cx="50" cy="15" r="5" />
+      <path d="M48 10 L52 10 M50 5 L50 10" />
+    </svg>
+    <svg class="dec-item dec-ruler" viewBox="0 0 200 50" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="5" y="10" width="190" height="30" rx="2" />
+      <path d="M15 10 V20 M35 10 V15 M55 10 V20 M75 10 V15 M95 10 V20 M115 10 V15 M135 10 V20 M155 10 V15 M175 10 V20" />
+      <circle cx="185" cy="25" r="3" />
+    </svg>
+    <svg class="dec-item dec-flask" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M40 20 L40 45 L15 85 A 5 5 0 0 0 20 95 L80 95 A 5 5 0 0 0 85 85 L60 45 L60 20 Z" />
+      <path d="M35 20 L65 20 M30 70 L70 70 M25 80 L40 80 M75 80 L60 80" />
+    </svg>
+    <div class="dec-item dec-formula dec-f2">∫ f(x) dx</div>
+    <div class="dec-item dec-formula dec-f3">F = ma</div>
+  </div>
 
-    <!-- Loading State -->
-    <div id="loadingState" class="loading-state">
-      <div class="spinner" style="width: 36px; height: 36px; border-width: 3px;"></div>
-      <div class="loading-state__text">Loading your files…</div>
-    </div>
-
-    <!-- Error State -->
-    <div id="errorState" class="section section--hidden">
-      <div class="error-page">
-        <div class="error-page__icon" id="errorIcon">😕</div>
-        <h1 class="error-page__title" id="errorTitle">Something went wrong</h1>
-        <p class="error-page__message" id="errorMessage">Please try again.</p>
-        <div style="margin-top: var(--space-xl);">
-          <button class="btn btn--secondary" id="retryBtn" type="button">🔄 Retry</button>
+  <div class="page-wrapper" style="max-width: 800px;">
+    
+    <!-- Header -->
+    <header class="header">
+      <div class="header__brand">
+        <div class="brand__logo">🧪</div>
+        <div class="brand__text">
+          <h1 id="mHeaderTitle">LabDrop</h1>
+          <p id="mHeaderSubtitle">Your lab files are ready</p>
         </div>
       </div>
-    </div>
+      <div class="header__nav">
+        <a href="/" class="nav-link">← Go Home</a>
+      </div>
+    </header>
 
-    <!-- PIN Entry State -->
-    <div id="pinState" class="section section--hidden">
-      <div class="card" style="margin-top: var(--space-2xl); text-align: center;">
+    <main class="main-area">
+
+      <!-- Loading State -->
+      <div id="loadingState" class="upload-card">
+        <div style="font-size: 1.5rem; font-weight: 600; margin-bottom: var(--space-md); display: flex; align-items: center; justify-content: center;">
+          <span class="spinner"></span> Loading your files…
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div id="errorState" class="section--hidden upload-card">
+        <div style="font-size: 3rem;" id="errorIcon">😕</div>
+        <h1 style="margin: var(--space-md) 0;" id="errorTitle">Something went wrong</h1>
+        <p style="color: var(--color-text-secondary);" id="errorMessage">Please try again.</p>
+        <button class="btn btn--outline mt-lg" id="retryBtn" type="button">🔄 Retry</button>
+      </div>
+
+      <!-- PIN Entry State -->
+      <div id="pinState" class="section--hidden upload-card">
         <div style="font-size: 3rem; margin-bottom: var(--space-md);">🔒</div>
         <h2 style="margin-bottom: var(--space-sm);">Protected Transfer</h2>
-        <p style="color: var(--color-text-secondary); margin-bottom: var(--space-lg); font-size: var(--font-size-sm);">Please enter the 6-digit PIN to access these files.</p>
-        <form id="pinForm" style="display: flex; flex-direction: column; gap: var(--space-md);">
-          <input type="text" id="pinInput" placeholder="Enter PIN" maxlength="6" pattern="[0-9]*" inputmode="numeric" style="width: 100%; padding: 12px; font-size: 1.5rem; text-align: center; letter-spacing: 4px; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: rgba(0,0,0,0.3); color: white; outline: none;" required />
+        <p style="color: var(--color-text-secondary); margin-bottom: var(--space-lg); font-size: var(--font-size-sm);">Enter the 6-digit PIN to access these files.</p>
+        
+        <form id="pinForm" style="display: flex; flex-direction: column; gap: var(--space-md); max-width: 300px; margin: 0 auto;">
+          <input class="form-input" type="text" id="pinInput" placeholder="Enter PIN" maxlength="6" pattern="[0-9]*" inputmode="numeric" style="font-size: 1.5rem; text-align: center; letter-spacing: 4px;" required />
           <button type="submit" class="btn btn--primary btn--lg" id="pinSubmitBtn">Unlock Files</button>
         </form>
-        <div id="pinError" style="color: var(--color-error); font-size: var(--font-size-sm); margin-top: var(--space-md); display: none;"></div>
+        <div id="pinError" style="color: var(--color-danger); font-size: var(--font-size-sm); margin-top: var(--space-md); display: none;"></div>
       </div>
-    </div>
 
-    <!-- Transfer View -->
-    <div id="transferView" class="section section--hidden">
-
-      <!-- Header -->
-      <header class="mobile-header">
-        <h1 class="mobile-header__title" id="mHeaderTitle">🧪 LabDrop</h1>
-        <p class="mobile-header__subtitle" id="mHeaderSubtitle">Your lab files are ready</p>
-      </header>
-
-      <!-- Stats Card -->
-      <div class="card">
-        <div class="stats">
-          <div class="stat">
-            <div class="stat__value" id="mStatFiles">0</div>
-            <div class="stat__label">Files</div>
+      <!-- Transfer View -->
+      <div id="transferView" class="section--hidden">
+        
+        <!-- Stats Card -->
+        <div class="qr-card">
+          <div class="qr-stats" style="border-top: none; padding-top: 0;">
+            <div class="stat-item">
+              <span class="stat-item__val" id="mStatFiles">0</span>
+              <span class="stat-item__lbl">Files</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-item__val" id="mStatSize">0 B</span>
+              <span class="stat-item__lbl">Total Size</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-item__val" id="mStatExpiry">--:--</span>
+              <span class="stat-item__lbl">Expires In</span>
+            </div>
           </div>
-          <div class="stat">
-            <div class="stat__value" id="mStatSize">0 B</div>
-            <div class="stat__label">Total Size</div>
-          </div>
-          <div class="stat">
-            <div class="stat__value" id="mStatExpiry">--:--</div>
-            <div class="stat__label">Expires In</div>
+
+          <!-- Download All -->
+          <div style="display: flex; gap: 8px; margin-top: var(--space-lg);">
+            <a class="btn btn--primary btn--lg" id="downloadAllBtn" href="#" style="flex: 1;">
+              ⬇️ Download All (ZIP)
+            </a>
+            <button class="btn btn--outline" id="renameZipBtn" title="Rename ZIP" style="padding: 0 16px;">✏️</button>
           </div>
         </div>
 
-        <!-- Download All -->
-        <div class="download-btn-wrapper" style="display: flex; gap: 8px;">
-          <a class="btn btn--success btn--lg" id="downloadAllBtn" href="#" style="flex: 1; padding: 1rem 1rem;">
-            ⬇️ Download All (ZIP)
-          </a>
-          <button class="btn btn--secondary btn--icon" id="renameZipBtn" title="Rename ZIP" style="padding: 0 16px;">✏️</button>
+        <!-- File & Link List -->
+        <div class="qr-card mt-lg" style="text-align: left;">
+          <div style="font-weight: 600; margin-bottom: var(--space-md);">📎 Items</div>
+          <div class="file-list-container" id="mFileList"></div>
+          <div class="file-list-container" id="mLinkList" style="margin-top: var(--space-md); display: none;"></div>
         </div>
+
       </div>
 
-      <!-- File & Link List -->
-      <div class="card" style="margin-top: var(--space-lg);">
-        <div class="card__title"><span>📎</span> Items</div>
-        <ul class="file-list" id="mFileList"></ul>
-        <ul class="file-list" id="mLinkList" style="margin-top: var(--space-md); border-top: 1px solid var(--color-border); padding-top: var(--space-md); display: none;"></ul>
-      </div>
-
-      <!-- Footer -->
-      <footer class="footer">
-        LabDrop · No login. No USB. No hassle.
-      </footer>
-    </div>
-
+    </main>
   </div>
 
   <script src="/js/mobile.js"></script>
