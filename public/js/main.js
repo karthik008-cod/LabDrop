@@ -43,13 +43,42 @@
   const receiveCodeInput = $('#receiveCodeInput');
   const receiveError = $('#receiveError');
 
+  const shareWhatsAppBtn = $('#shareWhatsAppBtn');
+  const shareNativeBtn = $('#shareNativeBtn');
+
   const cancelTransferBtn = $('#cancelTransferBtn');
   const newTransferBtn = $('#newTransferBtn');
+
+  // ---- Auth & Mode DOM ----
+  const authLoggedOut = $('#authLoggedOut');
+  const authLoggedIn = $('#authLoggedIn');
+  const navLoginBtn = $('#navLoginBtn');
+  const navSignupBtn = $('#navSignupBtn');
+  const navLogoutBtn = $('#navLogoutBtn');
+  const navUserEmail = $('#navUserEmail');
+
+  const authModal = $('#authModal');
+  const authModalClose = $('#authModalClose');
+  const authModalTitle = $('#authModalTitle');
+  const authForm = $('#authForm');
+  const authEmail = $('#authEmail');
+  const authPassword = $('#authPassword');
+  const authError = $('#authError');
+  const authSubmitBtn = $('#authSubmitBtn');
+  const authToggleText = $('#authToggleText');
+  const authToggleLink = $('#authToggleLink');
+
+  const modeQuick = $('#modeQuick');
+  const modeSave = $('#modeSave');
 
   // ---- State ----
   let selectedFiles = []; // Array of File objects
   let currentTransfer = null; // Active transfer data from server
   let timerInterval = null;
+  let authToken = localStorage.getItem('labdrop_token');
+  let authUser = null;
+  let authMode = 'login'; // 'login' or 'register'
+  let transferMode = 'quick'; // 'quick' or 'save'
 
   // ---- File icons by category ----
   const FILE_ICONS = {
@@ -107,6 +136,138 @@
       s.classList.toggle('section--hidden', s !== section);
     });
   }
+
+  // ---- Auth Logic ----
+  async function checkAuth() {
+    if (!authToken) {
+      updateAuthUI();
+      return;
+    }
+    try {
+      const res = await fetch('/api/me', { headers: { 'Authorization': `Bearer ${authToken}` }});
+      if (res.ok) {
+        const data = await res.json();
+        authUser = data.user;
+      } else {
+        authToken = null;
+        authUser = null;
+        localStorage.removeItem('labdrop_token');
+      }
+    } catch (e) {
+      // network error, ignore for now
+    }
+    updateAuthUI();
+  }
+
+  function updateAuthUI() {
+    if (authUser) {
+      authLoggedOut.style.display = 'none';
+      authLoggedIn.style.display = 'flex';
+      navUserEmail.textContent = authUser.email;
+    } else {
+      authLoggedOut.style.display = 'inline';
+      authLoggedIn.style.display = 'none';
+      // If they were on "Save for Later" but logged out, switch to Quick
+      if (transferMode === 'save') {
+        setTransferMode('quick');
+      }
+    }
+  }
+
+  function openAuthModal(mode) {
+    authMode = mode;
+    authError.style.display = 'none';
+    authForm.reset();
+    
+    if (mode === 'login') {
+      authModalTitle.textContent = 'Login';
+      authSubmitBtn.textContent = 'Login';
+      authToggleText.textContent = "Don't have an account?";
+      authToggleLink.textContent = 'Sign Up';
+    } else {
+      authModalTitle.textContent = 'Sign Up';
+      authSubmitBtn.textContent = 'Sign Up';
+      authToggleText.textContent = "Already have an account?";
+      authToggleLink.textContent = 'Login';
+    }
+    
+    authModal.classList.add('active');
+  }
+
+  function closeAuthModal() {
+    authModal.classList.remove('active');
+  }
+
+  authToggleLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    openAuthModal(authMode === 'login' ? 'register' : 'login');
+  });
+
+  authModalClose.addEventListener('click', closeAuthModal);
+  navLoginBtn.addEventListener('click', (e) => { e.preventDefault(); openAuthModal('login'); });
+  navSignupBtn.addEventListener('click', (e) => { e.preventDefault(); openAuthModal('register'); });
+  
+  navLogoutBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    authToken = null;
+    authUser = null;
+    localStorage.removeItem('labdrop_token');
+    updateAuthUI();
+    showAlert('Logged out successfully.', 'info');
+  });
+
+  authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const endpoint = authMode === 'login' ? '/api/login' : '/api/register';
+    authSubmitBtn.disabled = true;
+    authError.style.display = 'none';
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: authEmail.value, password: authPassword.value })
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        authToken = data.token;
+        authUser = data.user;
+        localStorage.setItem('labdrop_token', authToken);
+        updateAuthUI();
+        closeAuthModal();
+        showAlert(authMode === 'login' ? 'Logged in successfully.' : 'Registered successfully.', 'success');
+        
+        // If they clicked "Save for Later" before, activate it now
+        if (transferMode === 'save') {
+           setTransferMode('save');
+        }
+      } else {
+        authError.textContent = data.error || 'Authentication failed.';
+        authError.style.display = 'block';
+      }
+    } catch (err) {
+      authError.textContent = 'Network error.';
+      authError.style.display = 'block';
+    } finally {
+      authSubmitBtn.disabled = false;
+    }
+  });
+
+  // ---- Mode Selector ----
+  function setTransferMode(mode) {
+    if (mode === 'save' && !authUser) {
+      transferMode = 'save'; // remember intent
+      openAuthModal('login');
+      return;
+    }
+    transferMode = mode;
+    modeQuick.classList.toggle('active', mode === 'quick');
+    modeSave.classList.toggle('active', mode === 'save');
+  }
+
+  modeQuick.addEventListener('click', () => setTransferMode('quick'));
+  modeSave.addEventListener('click', () => setTransferMode('save'));
 
   // ---- Render selected file list ----
   function renderFileList() {
@@ -217,6 +378,10 @@
       formData.append('transferName', transferNameInput.value.trim());
     }
     formData.append('requirePin', requirePinCheck.checked ? 'true' : 'false');
+    
+    if (transferMode === 'save') {
+      formData.append('saveForLater', 'true');
+    }
 
     try {
       const xhr = new XMLHttpRequest();
@@ -248,6 +413,9 @@
         };
         xhr.onerror = () => reject(new Error('Network error. Make sure the server is running.'));
         xhr.open('POST', '/api/upload');
+        if (authToken) {
+          xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+        }
         xhr.send(formData);
       });
 
@@ -376,7 +544,6 @@
       copyUrlBtn.textContent = '✅ Copied!';
       setTimeout(() => (copyUrlBtn.textContent = '📋 Copy'), 2000);
     }).catch(() => {
-      // Fallback for older browsers
       const textarea = document.createElement('textarea');
       textarea.value = currentTransfer.url;
       document.body.appendChild(textarea);
@@ -387,6 +554,29 @@
       setTimeout(() => (copyUrlBtn.textContent = '📋 Copy'), 2000);
     });
   });
+
+  // ---- Share via WhatsApp ----
+  shareWhatsAppBtn.addEventListener('click', () => {
+    if (!currentTransfer) return;
+    const name = currentTransfer.transferName || 'Lab Files';
+    const msg = `📁 *${name}* — Download from LabDrop:\n${currentTransfer.url}\n\nCode: *${currentTransfer.shortCode}*`;
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, '_blank');
+  });
+
+  // ---- Native Share API ----
+  if (navigator.share) {
+    shareNativeBtn.style.display = 'inline-flex';
+    shareNativeBtn.addEventListener('click', () => {
+      if (!currentTransfer) return;
+      const name = currentTransfer.transferName || 'Lab Files';
+      navigator.share({
+        title: `LabDrop: ${name}`,
+        text: `Download "${name}" from LabDrop. Code: ${currentTransfer.shortCode}`,
+        url: currentTransfer.url
+      }).catch(() => {});
+    });
+  }
 
   // ---- Reset to start state ----
   function resetToStart() {
@@ -482,6 +672,7 @@
   }
 
   // Run on load
+  checkAuth();
   checkSharedFiles();
 
 })();

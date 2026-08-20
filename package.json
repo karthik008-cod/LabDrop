@@ -17,8 +17,12 @@
   "license": "MIT",
   "dependencies": {
     "archiver": "^7.0.1",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
     "localtunnel": "^2.0.2",
+    "mongoose": "^9.9.3",
     "multer": "^1.4.5-lts.1",
     "qrcode": "^1.5.4",
     "uuid": "^11.1.0"

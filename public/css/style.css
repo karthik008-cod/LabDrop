@@ -131,7 +131,7 @@ img {
 .app-container {
   position: relative;
   z-index: 1;
-  max-width: 720px;
+  max-width: 640px;
   margin: 0 auto;
   padding: var(--space-xl) var(--space-lg);
   min-height: 100vh;
@@ -140,11 +140,35 @@ img {
 }
 
 /* ============================================================
+   Auth Navigation
+   ============================================================ */
+.auth-nav {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+  min-height: 36px;
+}
+
+.auth-nav__group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.auth-nav__user {
+  color: var(--color-primary-light);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  margin-right: var(--space-xs);
+}
+
+/* ============================================================
    Header / Branding
    ============================================================ */
 .header {
   text-align: center;
-  margin-bottom: var(--space-2xl);
+  margin-bottom: var(--space-xl);
   animation: fadeInDown 0.6s ease;
 }
 
@@ -206,6 +230,15 @@ img {
   margin-top: var(--space-lg);
 }
 
+.card--hero {
+  animation: fadeIn 0.5s ease;
+}
+
+.card--options {
+  margin-top: var(--space-md);
+  padding: var(--space-lg);
+}
+
 .card__title {
   font-size: var(--font-size-lg);
   font-weight: 700;
@@ -258,11 +291,36 @@ img {
   transform: translateY(-1px);
 }
 
-/* Large button */
+.btn--glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn--glow::after {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.08) 50%, transparent 60%);
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%) rotate(25deg); }
+  100% { transform: translateX(100%) rotate(25deg); }
+}
+
+/* Sizes */
 .btn--lg {
   padding: 1rem 2rem;
   font-size: var(--font-size-lg);
   border-radius: var(--radius-md);
+}
+
+.btn--sm {
+  padding: 0.4rem 0.8rem;
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
 }
 
 /* Full width */
@@ -270,17 +328,43 @@ img {
   width: 100%;
 }
 
-/* Secondary / outline */
-.btn--secondary {
+/* Ghost */
+.btn--ghost {
   background: transparent;
   color: var(--color-text-secondary);
+  padding: 0.4rem 0.75rem;
+}
+
+.btn--ghost:hover:not(:disabled) {
+  color: var(--color-primary-light);
+  background: rgba(108, 92, 231, 0.08);
+}
+
+/* Outline */
+.btn--outline {
+  background: transparent;
+  color: var(--color-primary-light);
+  border: 1px solid rgba(108, 92, 231, 0.4);
+  padding: 0.4rem 0.8rem;
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+}
+
+.btn--outline:hover:not(:disabled) {
+  background: rgba(108, 92, 231, 0.1);
+  border-color: var(--color-primary-light);
+}
+
+/* Secondary */
+.btn--secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
   border: 1px solid var(--color-border);
 }
 
 .btn--secondary:hover:not(:disabled) {
   border-color: var(--color-primary-light);
-  color: var(--color-primary-light);
-  background: rgba(108, 92, 231, 0.08);
+  background: rgba(108, 92, 231, 0.12);
 }
 
 /* Danger */
@@ -307,12 +391,6 @@ img {
   transform: translateY(-1px);
 }
 
-/* Icon-only button */
-.btn--icon {
-  padding: 0.5rem;
-  border-radius: var(--radius-sm);
-}
-
 /* ============================================================
    Drop Zone
    ============================================================ */
@@ -336,10 +414,32 @@ img {
   box-shadow: inset 0 0 30px rgba(108, 92, 231, 0.1);
 }
 
-.dropzone__icon {
-  font-size: 3rem;
+.dropzone__icon-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: var(--space-md);
-  opacity: 0.7;
+}
+
+.dropzone__icon-bg {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.15), rgba(0, 210, 211, 0.1));
+  animation: pulse-soft 3s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.15); opacity: 0.3; }
+}
+
+.dropzone__icon {
+  position: relative;
+  font-size: 2.5rem;
+  z-index: 1;
 }
 
 .dropzone__text {
@@ -449,6 +549,184 @@ img {
 }
 
 /* ============================================================
+   Mode Selector
+   ============================================================ */
+.mode-selector {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.mode-option {
+  flex: 1;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+  font-family: var(--font-family);
+  color: var(--color-text);
+}
+
+.mode-option:hover {
+  border-color: var(--color-primary-light);
+}
+
+.mode-option.active {
+  border-color: var(--color-primary);
+  background: rgba(108, 92, 231, 0.1);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.mode-option__icon {
+  font-size: 1.5rem;
+  margin-bottom: var(--space-xs);
+}
+
+.mode-option__title {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  margin-bottom: 2px;
+}
+
+.mode-option__desc {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* ============================================================
+   Options Row
+   ============================================================ */
+.options-row {
+  display: flex;
+  gap: var(--space-md);
+  align-items: flex-end;
+}
+
+.options-row__field {
+  flex: 1;
+}
+
+.options-row__check {
+  flex-shrink: 0;
+  padding-bottom: 2px;
+}
+
+/* Custom Checkbox */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  user-select: none;
+  color: var(--color-text-secondary);
+}
+
+.checkbox-input {
+  display: none;
+}
+
+.checkbox-custom {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 2px solid var(--color-border);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.checkbox-input:checked + .checkbox-custom {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.checkbox-input:checked + .checkbox-custom::after {
+  content: '✓';
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ============================================================
+   Divider
+   ============================================================ */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin: var(--space-xl) 0;
+}
+
+.divider__line {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.divider__text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* ============================================================
+   Receive Form
+   ============================================================ */
+.receive-section {
+  text-align: center;
+  margin-bottom: var(--space-lg);
+}
+
+.receive-form {
+  display: flex;
+  gap: var(--space-sm);
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.receive-form__input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: rgba(0,0,0,0.25);
+  color: var(--color-text);
+  text-align: center;
+  font-family: 'Courier New', monospace;
+  font-size: var(--font-size-base);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.receive-form__input:focus {
+  border-color: var(--color-primary-light);
+}
+
+.receive-form__input::placeholder {
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.receive-form__btn {
+  padding: 10px 20px !important;
+}
+
+.receive-form__error {
+  color: var(--color-error);
+  font-size: var(--font-size-xs);
+  margin-top: 8px;
+  display: none;
+}
+
+/* ============================================================
    QR Code Section
    ============================================================ */
 .qr-section {
@@ -468,25 +746,8 @@ img {
 
 .qr-section__image {
   display: block;
-  width: 280px;
-  height: 280px;
-}
-
-.qr-section__url {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-sm);
-  background: var(--color-surface);
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  font-family: 'Courier New', monospace;
-  margin-top: var(--space-md);
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  word-break: break-all;
+  width: 240px;
+  height: 240px;
 }
 
 .qr-section__code {
@@ -498,18 +759,83 @@ img {
   margin-top: var(--space-sm);
 }
 
+/* Share Row */
+.share-row {
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  background: rgba(0,0,0,0.2);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.share-row__url {
+  font-family: 'Courier New', monospace;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.share-row__actions {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* PIN Display */
+.pin-display {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background: rgba(255,107,107,0.08);
+  border: 1px solid rgba(255,107,107,0.2);
+  border-radius: var(--radius-md);
+}
+
+.pin-display__label {
+  font-size: var(--font-size-xs);
+  color: var(--color-error-light);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.pin-display__code {
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  color: white;
+  letter-spacing: 4px;
+  margin-top: 4px;
+}
+
+.pin-display__hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+/* Timer Row */
+.timer-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  margin: var(--space-md) 0;
+}
+
 /* ============================================================
    Transfer Timer
    ============================================================ */
 .timer {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: var(--space-sm);
   font-size: var(--font-size-lg);
   font-weight: 700;
   color: var(--color-text);
-  margin: var(--space-md) 0;
   font-variant-numeric: tabular-nums;
 }
 
@@ -526,6 +852,13 @@ img {
   animation: pulse 1s ease-in-out infinite;
 }
 
+/* QR Actions */
+.qr-actions {
+  margin-top: var(--space-lg);
+  display: flex;
+  gap: var(--space-md);
+}
+
 /* ============================================================
    Stats bar
    ============================================================ */
@@ -533,7 +866,7 @@ img {
   display: flex;
   gap: var(--space-lg);
   justify-content: center;
-  margin: var(--space-md) 0;
+  margin: var(--space-sm) 0;
 }
 
 .stat {
@@ -646,6 +979,120 @@ img {
 }
 
 /* ============================================================
+   Form Elements
+   ============================================================ */
+.form-group {
+  margin-bottom: var(--space-md);
+}
+
+.form-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: rgba(0,0,0,0.2);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.form-input:focus {
+  border-color: var(--color-primary-light);
+}
+
+.form-error {
+  color: var(--color-error);
+  font-size: var(--font-size-xs);
+  margin-bottom: var(--space-md);
+  display: none;
+}
+
+/* ============================================================
+   Modal
+   ============================================================ */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(5px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-base);
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  width: 90%;
+  max-width: 400px;
+  transform: translateY(20px);
+  transition: transform var(--transition-base);
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-overlay.active .modal {
+  transform: translateY(0);
+}
+
+.modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+
+.modal__title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+}
+
+.modal__close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.modal__close:hover {
+  color: var(--color-text);
+}
+
+.modal__footer {
+  margin-top: var(--space-lg);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.modal__footer a {
+  font-weight: 600;
+  margin-left: var(--space-xs);
+}
+
+/* ============================================================
    Mobile page styles
    ============================================================ */
 .mobile-header {
@@ -692,25 +1139,6 @@ img {
 .error-page__message {
   color: var(--color-text-secondary);
   font-size: var(--font-size-base);
-}
-
-/* ============================================================
-   Copy button
-   ============================================================ */
-.copy-btn {
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  transition: all var(--transition-fast);
-}
-
-.copy-btn:hover {
-  color: var(--color-primary-light);
-  background: rgba(108, 92, 231, 0.1);
 }
 
 /* ============================================================
@@ -807,8 +1235,8 @@ img {
   }
 
   .qr-section__image {
-    width: 220px;
-    height: 220px;
+    width: 200px;
+    height: 200px;
   }
 
   .dropzone {
@@ -816,7 +1244,7 @@ img {
   }
 
   .dropzone__icon {
-    font-size: 2.5rem;
+    font-size: 2rem;
   }
 
   .stats {
@@ -830,6 +1258,23 @@ img {
   .btn--lg {
     padding: 0.85rem 1.5rem;
     font-size: var(--font-size-base);
+  }
+
+  .mode-selector {
+    flex-direction: column;
+  }
+
+  .options-row {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .qr-actions {
+    flex-direction: column;
+  }
+
+  .share-row__actions {
+    gap: var(--space-xs);
   }
 }
 

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Lab Files — LabDrop</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" href="/icon.svg" />
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- Auth Navigation -->
+    <div class="auth-nav">
+      <a href="/">← Back to Home</a>
+      <span style="color: var(--color-border); margin: 0 var(--space-sm);">|</span>
+      <span class="auth-nav__user" id="navUserEmail"></span>
+      <a href="#" id="navLogoutBtn" style="margin-left: var(--space-md);">Logout</a>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header__logo">
+        <div class="header__icon">🗄️</div>
+        <h1 class="header__title">My Lab Files</h1>
+      </div>
+      <p class="header__subtitle">Your saved transfers for later</p>
+    </header>
+
+    <div id="alertArea"></div>
+
+    <div id="loadingState" class="loading-state">
+      <div class="spinner"></div>
+      <div class="loading-state__text">Loading your files…</div>
+    </div>
+
+    <div id="emptyState" class="section--hidden" style="text-align: center; padding: var(--space-2xl) 0;">
+      <div style="font-size: 3rem; margin-bottom: var(--space-md);">📂</div>
+      <h3 style="margin-bottom: var(--space-sm);">No saved files found.</h3>
+      <p style="color: var(--color-text-secondary); margin-bottom: var(--space-lg);">You haven't saved any files for later, or they have expired.</p>
+      <a href="/" class="btn btn--primary">Create a Transfer</a>
+    </div>
+
+    <div id="transfersContainer" class="section--hidden">
+      <!-- Transfers will be injected here -->
+    </div>
+
+  </div>
+
+  <script src="/js/my-files.js"></script>
+</body>
+</html>

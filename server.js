@@ -1,3 +1,4 @@
+require('dotenv').config();
 // ============================================================
 // LabDrop — Temporary Lab File Transfer System
 // server.js — Main application entry point
@@ -12,6 +13,11 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const storage = require('./storage');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'labdrop-super-secret-jwt-key';
 
 // ============================================================
 // Configuration
@@ -166,14 +172,14 @@ if (!fs.existsSync(CONFIG.UPLOAD_DIR)) {
 // ============================================================
 
 const app = express();
+app.use(express.json());
 
 // Trust proxy so req.ip returns the actual client IP instead of Render's load balancer IP
 app.set('trust proxy', true);
 
 // ============================================================
-// State (In-Memory Database & Analytics)
+// State (Analytics)
 // ============================================================
-const transfers = new Map();
 
 const analytics = {
   uniqueVisitors: new Set(),
@@ -197,7 +203,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Multer configuration for file uploads
 // ============================================================
 
-const storage = multer.diskStorage({
+const diskStorageConfig = multer.diskStorage({
   destination: (req, file, cb) => {
     // Each transfer gets its own subdirectory (created in the route handler)
     cb(null, req.transferDir);
@@ -211,7 +217,7 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({
-  storage,
+  storage: diskStorageConfig,
   limits: {
     fileSize: CONFIG.MAX_FILE_SIZE,
     files: CONFIG.MAX_FILES_PER_TRANSFER,
@@ -240,8 +246,104 @@ app.use('/api/upload', (req, res, next) => {
 // API Routes
 // ============================================================
 
+// --- Authentication ---
+
+// Middleware to get user from token (optional auth)
+function optionalAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      req.user = jwt.verify(token, JWT_SECRET);
+    } catch (e) {
+      // Invalid token, ignore
+    }
+  }
+  next();
+}
+
+app.post('/api/register', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password || password.length < 6) {
+      return res.status(400).json({ error: 'Valid email and a password of at least 6 characters required.' });
+    }
+    
+    // Basic email validation
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format.' });
+    }
+
+    if (await storage.users.findOne({ email })) {
+      return res.status(409).json({ error: 'Email already registered.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await storage.users.insert({
+      id: uuidv4(),
+      email,
+      passwordHash: hashedPassword,
+      createdAt: Date.now()
+    });
+
+    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ success: true, token, user: { id: user.id, email: user.email } });
+  } catch (err) {
+    console.error('Register error:', err);
+    res.status(500).json({ error: 'Registration failed: ' + err.message });
+  }
+});
+
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await storage.users.findOne({ email });
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ success: true, token, user: { id: user.id, email: user.email } });
+  } catch (err) {
+    res.status(500).json({ error: 'Login failed.' });
+  }
+});
+
+app.get('/api/me', optionalAuth, (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  res.json({ user: req.user });
+});
+
+// --- User's Saved Transfers ---
+app.get('/api/my-transfers', optionalAuth, async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+  
+  const userTransfers = (await storage.transfers.find({ userId: req.user.userId }))
+    .map(t => ({
+      id: t.id,
+      shortCode: t.shortCode,
+      transferName: t.transferName,
+      createdAt: t.createdAt,
+      expiresAt: t.expiresAt,
+      fileCount: t.files.length,
+      totalSize: t.totalSize,
+      requirePin: !!t.pinHash
+    }))
+    .sort((a, b) => b.createdAt - a.createdAt); // newest first
+
+  res.json({ transfers: userTransfers });
+});
+
 // --- Upload files and create a transfer ---
-app.post('/api/upload', (req, res) => {
+app.post('/api/upload', optionalAuth, (req, res) => {
   const uploadHandler = upload.array('files', CONFIG.MAX_FILES_PER_TRANSFER);
 
   uploadHandler(req, res, async (err) => {
@@ -280,7 +382,16 @@ app.post('/api/upload', (req, res) => {
     const transferId = req.transferId;
     const shortCode = generateShortCode();
     const now = Date.now();
-    const expiresAt = now + CONFIG.TRANSFER_EXPIRY_MINUTES * 60 * 1000;
+    let expiresAt = now + CONFIG.TRANSFER_EXPIRY_MINUTES * 60 * 1000;
+    
+    let isSavedForLater = false;
+    let userId = null;
+
+    if (req.user && req.body.saveForLater === 'true') {
+      expiresAt = now + (7 * 24 * 60 * 60 * 1000); // exactly 7 days
+      isSavedForLater = true;
+      userId = req.user.userId;
+    }
 
     const files = req.files.map((f) => {
       const parts = f.filename.split('__');
@@ -325,9 +436,11 @@ app.post('/api/upload', (req, res) => {
       expiresAt,
       totalSize,
       downloadCount: 0,
+      isSavedForLater,
+      userId
     };
 
-    transfers.set(transferId, transfer);
+    await storage.transfers.set(transferId, transfer);
     
     // Update analytics
     analytics.totalTransfersCreated++;
@@ -374,8 +487,8 @@ app.post('/api/upload', (req, res) => {
 });
 
 // --- Get transfer details (used by mobile page) ---
-app.get('/api/transfer/:id', (req, res) => {
-  const transfer = transfers.get(req.params.id);
+app.get('/api/transfer/:id', async (req, res) => {
+  const transfer = await storage.transfers.get(req.params.id);
 
   if (!transfer) {
     return res.status(404).json({ error: 'Transfer not found or has expired.' });
@@ -408,8 +521,8 @@ app.get('/api/transfer/:id', (req, res) => {
 // --- Download all files as ZIP ---
 // NOTE: This route MUST be defined before /download/:transferId/:fileId
 // otherwise Express will match "zip" as a :fileId parameter.
-app.get('/download/:transferId/zip', (req, res) => {
-  const transfer = transfers.get(req.params.transferId);
+app.get('/download/:transferId/zip', async (req, res) => {
+  const transfer = await storage.transfers.get(req.params.transferId);
 
   if (!transfer) {
     return res.status(404).json({ error: 'Transfer not found or has expired.' });
@@ -451,13 +564,14 @@ app.get('/download/:transferId/zip', (req, res) => {
   }
 
   transfer.downloadCount++;
+  await storage.transfers.set(transfer.id, transfer);
   analytics.totalDownloads++;
   archive.finalize();
 });
 
 // --- Download a single file ---
-app.get('/download/:transferId/:fileId', (req, res) => {
-  const transfer = transfers.get(req.params.transferId);
+app.get('/download/:transferId/:fileId', async (req, res) => {
+  const transfer = await storage.transfers.get(req.params.transferId);
 
   if (!transfer) {
     return res.status(404).json({ error: 'Transfer not found or has expired.' });
@@ -489,6 +603,7 @@ app.get('/download/:transferId/:fileId', (req, res) => {
   }
 
   transfer.downloadCount++;
+  await storage.transfers.set(transfer.id, transfer);
   analytics.totalDownloads++;
 
   res.download(filePath, file.originalName, (err) => {
@@ -499,9 +614,9 @@ app.get('/download/:transferId/:fileId', (req, res) => {
 });
 
 // --- Look up a transfer by short code ---
-app.get('/api/transfer/code/:code', (req, res) => {
+app.get('/api/transfer/code/:code', async (req, res) => {
   const shortCode = req.params.code.toUpperCase();
-  for (const [id, transfer] of transfers.entries()) {
+  for (const transfer of await storage.transfers.getAll()) {
     if (transfer.shortCode === shortCode) {
       if (Date.now() > transfer.expiresAt) {
         return res.status(410).json({ error: 'Transfer has expired.' });
@@ -513,7 +628,7 @@ app.get('/api/transfer/code/:code', (req, res) => {
 });
 
 // --- Secret Admin Stats Route ---
-app.get('/admin/stats', (req, res) => {
+app.get('/admin/stats', async (req, res) => {
   const adminKey = 'super-secret-labdrop-key';
   
   if (req.query.key !== adminKey) {
@@ -521,7 +636,7 @@ app.get('/admin/stats', (req, res) => {
   }
 
   res.json({
-    activeTransfersInServer: transfers.size,
+    activeTransfersInServer: await storage.transfers.getAll().length,
     totalUniqueVisitors: analytics.uniqueVisitors.size,
     totalTransfersCreated: analytics.totalTransfersCreated,
     totalFilesUploaded: analytics.totalFilesUploaded,
@@ -531,20 +646,31 @@ app.get('/admin/stats', (req, res) => {
 });
 
 // --- Cancel/delete a transfer (from desktop UI) ---
-app.delete('/api/transfer/:id', (req, res) => {
-  const transfer = transfers.get(req.params.id);
+app.get('/api/transfer/:id', optionalAuth, (req, res, next) => {
+  if (req.method === 'DELETE') return next();
+  // ... this is handled by the earlier route anyway, let's keep it safe.
+  next();
+});
+
+app.delete('/api/transfer/:id', optionalAuth, async (req, res) => {
+  const transfer = await storage.transfers.get(req.params.id);
 
   if (!transfer) {
     return res.status(404).json({ error: 'Transfer not found.' });
   }
 
-  deleteTransfer(transfer.id);
+  // Security check: If it's saved for later, only the owner can delete it
+  if (transfer.isSavedForLater && (!req.user || transfer.userId !== req.user.userId)) {
+    return res.status(403).json({ error: 'Unauthorized to delete this transfer.' });
+  }
+
+  await deleteTransfer(transfer.id);
   res.json({ success: true, message: 'Transfer cancelled and files deleted.' });
 });
 
 // --- Extend transfer expiry ---
-app.post('/api/transfer/:id/extend', (req, res) => {
-  const transfer = transfers.get(req.params.id);
+app.post('/api/transfer/:id/extend', async (req, res) => {
+  const transfer = await storage.transfers.get(req.params.id);
 
   if (!transfer) {
     return res.status(404).json({ error: 'Transfer not found.' });
@@ -552,6 +678,10 @@ app.post('/api/transfer/:id/extend', (req, res) => {
   
   if (Date.now() > transfer.expiresAt) {
     return res.status(410).json({ error: 'Transfer already expired.' });
+  }
+
+  if (transfer.isSavedForLater) {
+    return res.status(400).json({ error: 'Saved for later transfers cannot be extended.' });
   }
 
   const ADD_MS = 15 * 60 * 1000;
@@ -562,6 +692,8 @@ app.post('/api/transfer/:id/extend', (req, res) => {
   if (transfer.expiresAt > MAX_EXPIRY) {
     transfer.expiresAt = MAX_EXPIRY;
   }
+
+  await storage.transfers.set(transfer.id, transfer); // Update storage
 
   res.json({ success: true, expiresAt: transfer.expiresAt });
 });
@@ -586,8 +718,8 @@ app.get('/api/info', (req, res) => {
 // Transfer cleanup
 // ============================================================
 
-function deleteTransfer(transferId) {
-  const transfer = transfers.get(transferId);
+async function deleteTransfer(transferId) {
+  const transfer = await storage.transfers.get(transferId);
   if (!transfer) return;
 
   const dir = path.join(CONFIG.UPLOAD_DIR, transferId);
@@ -598,17 +730,17 @@ function deleteTransfer(transferId) {
       console.error(`Failed to delete transfer directory ${dir}:`, e.message);
     }
   }
-  transfers.delete(transferId);
+  await storage.transfers.delete(transferId);
 }
 
-function cleanupExpiredTransfers() {
+async function cleanupExpiredTransfers() {
   const now = Date.now();
   let cleaned = 0;
   
-  // 1. Clean up from memory map
-  for (const [id, transfer] of transfers) {
+  // 1. Clean up from storage
+  for (const transfer of await storage.transfers.getAll()) {
     if (now > transfer.expiresAt) {
-      deleteTransfer(id);
+      deleteTransfer(transfer.id);
       cleaned++;
     }
   }
@@ -618,7 +750,7 @@ function cleanupExpiredTransfers() {
     const dirs = fs.readdirSync(CONFIG.UPLOAD_DIR);
     for (const dirName of dirs) {
       const fullPath = path.join(CONFIG.UPLOAD_DIR, dirName);
-      if (fs.statSync(fullPath).isDirectory() && !transfers.has(dirName)) {
+      if (fs.statSync(fullPath).isDirectory() && !await storage.transfers.get(dirName)) {
         // Only delete if it's been around for more than 1 hour to be safe against in-progress uploads
         const stats = fs.statSync(fullPath);
         if (now - stats.birthtimeMs > 60 * 60 * 1000) {
@@ -633,7 +765,8 @@ function cleanupExpiredTransfers() {
   }
 }
 
-// Run cleanup every minute
+// Run cleanup on startup, then every minute
+cleanupExpiredTransfers();
 setInterval(cleanupExpiredTransfers, CONFIG.CLEANUP_INTERVAL_MS);
 
 // ============================================================
