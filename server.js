@@ -24,7 +24,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'labdrop-super-secret-jwt-key';
 // ============================================================
 
 const CONFIG = {
-  PORT: parseInt(process.env.LABDROP_PORT || '3000', 10),
+  PORT: parseInt(process.env.PORT || process.env.LABDROP_PORT || '3000', 10),
   UPLOAD_DIR: path.join(__dirname, 'uploads'),
   MAX_FILE_SIZE: parseInt(process.env.LABDROP_MAX_FILE_SIZE || String(50 * 1024 * 1024), 10), // 50 MB
   MAX_FILES_PER_TRANSFER: parseInt(process.env.LABDROP_MAX_FILES || '20', 10),
@@ -827,28 +827,36 @@ app.listen(CONFIG.PORT, '0.0.0.0', async () => {
   console.log(`  ║   Local:   http://localhost:${CONFIG.PORT}             ║`);
   console.log(`  ║   Network: http://${localIP}:${CONFIG.PORT}        ║`);
   
-  // Attempt to start localtunnel
-  try {
-    const localtunnel = require('localtunnel');
-    const tunnel = await localtunnel({ port: CONFIG.PORT });
-    publicUrl = tunnel.url;
-    process.env.PUBLIC_URL = publicUrl;
-    
-    // Quick pad helper
-    const padStr = `  ║   Public:  ${publicUrl}`;
-    console.log(padStr + ' '.repeat(Math.max(0, 50 - padStr.length)) + '║');
-    
-    tunnel.on('close', () => {
-      console.log('  [Info] Public tunnel closed.');
-      process.env.PUBLIC_URL = '';
-    });
+  // Attempt to start localtunnel if not running on Render
+  if (!process.env.RENDER) {
+    try {
+      const localtunnel = require('localtunnel');
+      const tunnel = await localtunnel({ port: CONFIG.PORT });
+      publicUrl = tunnel.url;
+      process.env.PUBLIC_URL = publicUrl;
+      
+      // Quick pad helper
+      const padStr = `  ║   Public:  ${publicUrl}`;
+      console.log(padStr + ' '.repeat(Math.max(0, 50 - padStr.length)) + '║');
+      
+      tunnel.on('close', () => {
+        console.log('  [Info] Public tunnel closed.');
+        process.env.PUBLIC_URL = '';
+      });
 
-    tunnel.on('error', (err) => {
-      console.log('  [Error] Tunnel encountered an error:', err.message);
-      // Do not crash the server
-    });
-  } catch (err) {
-    console.log('  ║   Public:  [Unavailable - Tunnel failed]      ║');
+      tunnel.on('error', (err) => {
+        console.log('  [Error] Tunnel encountered an error:', err.message);
+        // Do not crash the server
+      });
+    } catch (err) {
+      console.log('  ║   Public:  [Unavailable - Tunnel failed]      ║');
+    }
+  } else {
+    console.log('  ║   Mode:    Production (Render)               ║');
+    if (process.env.RENDER_EXTERNAL_URL) {
+      process.env.PUBLIC_URL = process.env.RENDER_EXTERNAL_URL;
+      console.log(`  ║   Public:  ${process.env.PUBLIC_URL}`.padEnd(49, ' ') + '║');
+    }
   }
 
   console.log('  ║                                               ║');
