@@ -39,8 +39,17 @@ const transferSchema = new mongoose.Schema({
   userId: String
 });
 
+const analyticsSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true, default: 'global' },
+  totalTransfersCreated: { type: Number, default: 0 },
+  totalFilesUploaded: { type: Number, default: 0 },
+  totalDownloads: { type: Number, default: 0 },
+  uniqueDevices: { type: [String], default: [] }
+});
+
 const User = mongoose.model('User', userSchema);
 const Transfer = mongoose.model('Transfer', transferSchema);
+const Analytics = mongoose.model('Analytics', analyticsSchema);
 
 module.exports = {
   users: {
@@ -70,5 +79,19 @@ module.exports = {
       return await Transfer.find(query).lean();
     },
     saveAll: async () => { /* No-op for MongoDB */ }
+  },
+  analytics: {
+    get: async () => {
+      let stats = await Analytics.findOne({ id: 'global' }).lean();
+      if (!stats) {
+        const newStats = new Analytics({ id: 'global' });
+        await newStats.save();
+        return newStats.toObject();
+      }
+      return stats;
+    },
+    set: async (statsData) => {
+      await Analytics.findOneAndUpdate({ id: 'global' }, statsData, { upsert: true });
+    }
   }
 };

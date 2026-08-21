@@ -175,17 +175,75 @@ app.set('trust proxy', true);
 // State (Analytics)
 // ============================================================
 
-const analytics = {
-  uniqueVisitors: new Set(),
+let analytics = {
+  uniqueDevices: new Set(),
   totalTransfersCreated: 0,
   totalFilesUploaded: 0,
   totalDownloads: 0
 };
 
-// Middleware to track unique visitors
+let analyticsLoaded = false;
+
+// Initialize analytics from DB
+async function initAnalytics() {
+  try {
+    const stats = await storage.analytics.get();
+    analytics.totalTransfersCreated = stats.totalTransfersCreated || 0;
+    analytics.totalFilesUploaded = stats.totalFilesUploaded || 0;
+    analytics.totalDownloads = stats.totalDownloads || 0;
+    analytics.uniqueDevices = new Set(stats.uniqueDevices || []);
+    analyticsLoaded = true;
+  } catch (err) {
+    console.error('Failed to load analytics from DB', err);
+  }
+}
+initAnalytics();
+
+let analyticsSaveTimeout = null;
+function scheduleAnalyticsSave() {
+  if (analyticsSaveTimeout) return;
+  analyticsSaveTimeout = setTimeout(async () => {
+    analyticsSaveTimeout = null;
+    if (!analyticsLoaded) return;
+    try {
+      await storage.analytics.set({
+        totalTransfersCreated: analytics.totalTransfersCreated,
+        totalFilesUploaded: analytics.totalFilesUploaded,
+        totalDownloads: analytics.totalDownloads,
+        uniqueDevices: Array.from(analytics.uniqueDevices)
+      });
+    } catch (err) {
+      console.error('Failed to save analytics', err);
+    }
+  }, 5000); // Debounce save every 5 seconds
+}
+
+function parseCookies(cookieStr) {
+  if (!cookieStr) return {};
+  return cookieStr.split(';').reduce((res, c) => {
+    const [key, val] = c.trim().split('=').map(decodeURIComponent);
+    try {
+      return Object.assign(res, { [key]: JSON.parse(val) });
+    } catch (e) {
+      return Object.assign(res, { [key]: val });
+    }
+  }, {});
+}
+
+// Middleware to track unique visitors using device cookies
 app.use((req, res, next) => {
-  if (req.ip) {
-    analytics.uniqueVisitors.add(req.ip);
+  const cookies = parseCookies(req.headers.cookie);
+  let deviceId = cookies['labdrop_device_id'];
+  
+  if (!deviceId) {
+    deviceId = uuidv4();
+    // Set cookie for 1 year
+    res.cookie('labdrop_device_id', deviceId, { maxAge: 365 * 24 * 60 * 60 * 1000, httpOnly: true });
+  }
+
+  if (analyticsLoaded && !analytics.uniqueDevices.has(deviceId)) {
+    analytics.uniqueDevices.add(deviceId);
+    scheduleAnalyticsSave();
   }
   next();
 });
@@ -489,6 +547,7 @@ app.post('/api/upload', optionalAuth, (req, res) => {
     // Update analytics
     analytics.totalTransfersCreated++;
     analytics.totalFilesUploaded += files.length;
+    scheduleAnalyticsSave();
 
     // Generate QR code
     // Use PUBLIC_URL env var if set, otherwise infer from the request host
@@ -632,6 +691,7 @@ app.get('/download/:transferId/zip', async (req, res) => {
   transfer.downloadCount++;
   await storage.transfers.set(transfer.id, transfer);
   analytics.totalDownloads++;
+  scheduleAnalyticsSave();
   archive.finalize();
 });
 
@@ -671,6 +731,7 @@ app.get('/download/:transferId/:fileId', async (req, res) => {
   transfer.downloadCount++;
   await storage.transfers.set(transfer.id, transfer);
   analytics.totalDownloads++;
+  scheduleAnalyticsSave();
 
   res.download(filePath, file.originalName, (err) => {
     if (err && !res.headersSent) {
@@ -703,7 +764,7 @@ app.get('/admin/stats', async (req, res) => {
 
   res.json({
     activeTransfersInServer: await storage.transfers.getAll().length,
-    totalUniqueVisitors: analytics.uniqueVisitors.size,
+    totalUniqueVisitors: analytics.uniqueDevices.size,
     totalTransfersCreated: analytics.totalTransfersCreated,
     totalFilesUploaded: analytics.totalFilesUploaded,
     totalDownloads: analytics.totalDownloads,
