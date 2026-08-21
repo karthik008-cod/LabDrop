@@ -249,7 +249,7 @@
       authLoggedIn.style.display = 'flex';
       navUserEmail.textContent = authUser.email;
     } else {
-      authLoggedOut.style.display = 'inline';
+      authLoggedOut.style.display = 'flex';
       authLoggedIn.style.display = 'none';
       // If they were on "Save for Later" but logged out, switch to Quick
       if (transferMode === 'save') {
