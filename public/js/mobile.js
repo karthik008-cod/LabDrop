@@ -250,16 +250,16 @@
     function renderMobileLinkItem(link, listEl = mFileList) {
       const li = document.createElement('li');
       li.className = 'file-item';
+      const isUrl = /^https?:\/\/[^\s]+$/.test(link);
+      const openBtnHtml = isUrl ? `<a class="btn btn--secondary btn--icon" href="${escapeHtml(link)}" target="_blank" title="Open Link" style="font-size: 0.85rem; padding: 6px 12px;">🔗</a>` : '';
       li.innerHTML = `
         <div class="file-item__icon file-item__icon--data">🔗</div>
-        <div class="file-item__details">
-          <div class="file-item__name" style="white-space: normal; word-break: break-word; overflow: visible;">${linkify(link)}</div>
-          <div class="file-item__size">Link</div>
+        <div class="file-item__details" style="align-items: flex-start; max-width: 100%; overflow: hidden;">
+          <div class="file-item__name" style="white-space: pre-wrap; word-break: break-word; overflow: visible; font-family: monospace; font-size: 0.9em;">${linkify(link)}</div>
+          ${!isUrl ? '' : '<div class="file-item__size">Link</div>'}
         </div>
         <div class="file-item__actions">
-          <a class="btn btn--secondary btn--icon" href="${escapeHtml(link)}" target="_blank" title="Open Link" style="font-size: 0.85rem; padding: 6px 12px;">
-            ↗️
-          </a>
+          ${openBtnHtml}
         </div>
       `;
       listEl.appendChild(li);
