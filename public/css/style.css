@@ -255,6 +255,15 @@ img, svg {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  position: sticky;
+  top: var(--space-xl);
+  align-self: start;
+  max-height: calc(100vh - var(--space-xl) * 2);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 .sidebar__title {
