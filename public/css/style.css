@@ -83,7 +83,9 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   position: relative;
-}
+
+  display: flex;
+  flex-direction: column;}
 
 a {
   color: var(--color-text);
@@ -1053,4 +1055,10 @@ img, svg {
   color: var(--color-text-secondary);
   font-size: 0.85rem;
   line-height: 1.4;
+}
+
+.footer {
+  width: 100%;
+  padding: var(--space-lg) var(--space-xl);
+  box-sizing: border-box;
 }
