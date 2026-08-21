@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LabDrop — How to Use</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .accordion-container {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+    .accordion-item {
+      border: 1px solid var(--color-border-dark);
+      border-radius: var(--radius-lg);
+      background: #FFF;
+      overflow: hidden;
+      box-shadow: 2px 4px 0 rgba(0, 0, 0, 0.05);
+      transition: box-shadow var(--transition-fast);
+    }
+    .accordion-item:hover {
+      box-shadow: 2px 4px 0 rgba(0, 0, 0, 0.1);
+    }
+    .accordion-header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-lg);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--color-text);
+      text-align: left;
+    }
+    .accordion-title {
+      font-size: var(--font-size-md);
+      font-weight: 600;
+    }
+    .accordion-icon {
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: var(--color-text-secondary);
+      transition: transform 0.3s ease;
+    }
+    .accordion-item.active .accordion-icon {
+      transform: rotate(45deg);
+      color: var(--color-primary-dark);
+    }
+    .accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .accordion-inner {
+      padding: 0 var(--space-lg) var(--space-lg) var(--space-lg);
+      color: var(--color-text-secondary);
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-pattern"></div>
+  <header class="header">
+  <div class="header__container">
+      <div class="header__brand">
+        <div class="brand__logo">🧪</div>
+        <div class="brand__text">
+          <h1 id="mHeaderTitle">LabDrop</h1>
+          <p id="mHeaderSubtitle">Move files. Anywhere.</p>
+        </div>
+      </div>
+      
+      <!-- Auth Navigation -->
+      <nav class="header__nav" id="authNav">
+        <div id="authLoggedOut" style="display: flex; gap: var(--space-md);">
+          <button class="nav-link" id="navLoginBtn" style="background:none;border:none;cursor:pointer;">Login</button>
+          <button class="nav-link" id="navSignupBtn" style="background:none;border:none;cursor:pointer;">Sign Up</button>
+        </div>
+        <div id="authLoggedIn" style="display: none; gap: var(--space-md); align-items: center;">
+          <a href="/my-files.html" class="nav-link">
+            <span>🗄️</span> Saved Transfers
+          </a>
+          <div class="nav-icon" title="User Account" style="background: var(--color-bg-secondary); color: var(--color-text);">👤</div>
+          <button class="nav-link" id="navLogoutBtn" style="background:none;border:none;cursor:pointer;color:var(--color-text-secondary);">Logout</button>
+          <span id="navUserEmail" style="display:none;"></span>
+        </div>
+      </nav>
+      </div>
+</header>
+
+  <div class="page-wrapper" style="padding-top: var(--space-2xl);">
+    <main class="main-area">
+      <h1 style="text-align: center; margin-bottom: var(--space-xl); font-size: 2.5rem;">How to Use LabDrop</h1>
+      <div class="accordion-container">
+  <div class="accordion-item">
+    <button class="accordion-header">
+      <span class="accordion-title">Why should I download LabDrop?</span>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content">
+      <div class="accordion-inner">To share files from WhatsApp (or any other app) on your mobile, you don't need to catch your head searching for the file in the file explorer. You can simply click 'Share' on your phone, tap the LabDrop icon, and instantly transfer it! This is only possible if you install LabDrop. Check out the question below to learn how to download it.</div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <button class="accordion-header">
+      <span class="accordion-title">How to download LabDrop?</span>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content">
+      <div class="accordion-inner">To install LabDrop on your device, open this site in Chrome or Edge, tap the three-dot menu icon in the top right corner of your browser, and select 'Install LabDrop' or 'Add to Home screen'. It will install quickly and run like a native app!</div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <button class="accordion-header">
+      <span class="accordion-title">Got files?</span>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content">
+      <div class="accordion-inner">Drag and drop them directly into the workspace.</div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <button class="accordion-header">
+      <span class="accordion-title">Got a screenshot?</span>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content">
+      <div class="accordion-inner">Just press Ctrl + V anywhere on the page.</div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <button class="accordion-header">
+      <span class="accordion-title">Need it now?</span>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content">
+      <div class="accordion-inner">No login. Scan → Download → Done.</div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <button class="accordion-header">
+      <span class="accordion-title">Phone not allowed?</span>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content">
+      <div class="accordion-inner">Save it today. Get it within 7 days.</div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <button class="accordion-header">
+      <span class="accordion-title">Working on multiple projects?</span>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content">
+      <div class="accordion-inner">Create folders. Paste. Stay organized.</div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <button class="accordion-header">
+      <span class="accordion-title">Need a URL on another device?</span>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content">
+      <div class="accordion-inner">Paste it. Scan it. Done.</div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <button class="accordion-header">
+      <span class="accordion-title">Want extra privacy?</span>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content">
+      <div class="accordion-inner">Add a 4-digit PIN.</div>
+    </div>
+  </div></div>
+    </main>
+  </div>
+
+  <footer class="footer" style="margin-top: auto; padding-top: var(--space-2xl); padding-bottom: var(--space-md); text-align: right; color: var(--color-text-muted); font-size: 0.85rem;">
+      <div style="display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
+        <a href="/how-to-use.html" class="nav-link" style="color: var(--color-primary-dark); text-decoration: none; font-weight: bold;">How to Use</a>
+        <a href="mailto:yuvaankaarthikeyaa.1206@gmail.com" class="nav-link" style="color: var(--color-primary-dark); text-decoration: none;">Email</a>
+        <a href="https://www.linkedin.com/in/yuvaan-kaarthikeyaa-adulapuram-6ba90133b" target="_blank" class="nav-link" style="color: var(--color-primary-dark); text-decoration: none;">LinkedIn</a>
+        <a href="https://github.com/karthik008-cod" target="_blank" class="nav-link" style="color: var(--color-primary-dark); text-decoration: none;">GitHub</a>
+      </div>
+      <div style="margin-top: 6px;">&copy; 2026 Yuvaan Kaarthikeyaa Adulapuram</div>
+    </footer>
+
+  <script>
+    document.querySelectorAll('.accordion-header').forEach(button => {
+      button.addEventListener('click', () => {
+        const accordionItem = button.parentElement;
+        const accordionContent = accordionItem.querySelector('.accordion-content');
+        
+        // Toggle current item
+        if (accordionItem.classList.contains('active')) {
+          accordionItem.classList.remove('active');
+          accordionContent.style.maxHeight = 0;
+        } else {
+          // Optional: close other items
+          document.querySelectorAll('.accordion-item.active').forEach(item => {
+            item.classList.remove('active');
+            item.querySelector('.accordion-content').style.maxHeight = 0;
+          });
+          
+          accordionItem.classList.add('active');
+          accordionContent.style.maxHeight = accordionContent.scrollHeight + 'px';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
