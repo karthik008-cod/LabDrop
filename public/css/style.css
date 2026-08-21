@@ -131,20 +131,23 @@ img, svg {
 .dec-flask { top: 40%; right: 3%; width: 140px; transform: rotate(5deg); }
 .dec-wrench { bottom: 5%; left: 3%; width: 160px; transform: rotate(45deg); }
 .dec-caliper { bottom: 2%; right: 4%; width: 180px; transform: rotate(-20deg); }
+.dec-protractor { top: 60%; right: 12%; width: 150px; transform: rotate(-35deg); }
+.dec-magnet { top: 30%; left: 10%; width: 120px; transform: rotate(110deg); }
+.dec-atom { bottom: 45%; right: 5%; width: 160px; transform: rotate(25deg); }
 
+/* Formulas */
 .dec-f1 { top: 15%; left: 25%; }
 .dec-f2 { top: 30%; right: 20%; }
 .dec-f3 { bottom: 20%; left: 15%; }
 .dec-f4 { bottom: 30%; right: 25%; }
 .dec-f5 { top: 50%; left: 5%; transform: rotate(-90deg); }
 
-/* Hide some on smaller screens */
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
   .dec-f1, .dec-f2, .dec-f3, .dec-f4 { display: none; }
   .dec-item { opacity: 0.08; }
 }
 @media (max-width: 800px) {
-  .dec-flask, .dec-caliper, .dec-compass { display: none; }
+  .dec-flask, .dec-caliper, .dec-compass, .dec-protractor, .dec-magnet, .dec-atom { display: none; }
   .dec-item { width: 100px; }
 }
 
