@@ -67,10 +67,20 @@
   const authForm = $('#authForm');
   const authEmail = $('#authEmail');
   const authPassword = $('#authPassword');
+  const togglePasswordBtn = $('#togglePasswordBtn');
   const authError = $('#authError');
   const authSubmitBtn = $('#authSubmitBtn');
   const authToggleText = $('#authToggleText');
   const authToggleLink = $('#authToggleLink');
+
+  // ---- Password Toggle ----
+  if (togglePasswordBtn && authPassword) {
+    togglePasswordBtn.addEventListener('click', () => {
+      const isPassword = authPassword.type === 'password';
+      authPassword.type = isPassword ? 'text' : 'password';
+      togglePasswordBtn.textContent = isPassword ? '🙈' : '👁️';
+    });
+  }
 
   const modeQuick = $('#modeQuick');
   const modeSave = $('#modeSave');

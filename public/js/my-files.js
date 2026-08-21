@@ -94,13 +94,13 @@
       
       const downloadBtn = t.requirePin ?
         `<a href="/t/${t.id}" class="btn btn--secondary btn--block" style="margin-top: var(--space-md);">View Transfer (PIN Required)</a>` :
-        `<a href="/download/${t.id}/zip" class="btn btn--primary btn--block" style="margin-top: var(--space-md);">⬇️ Download All</a>`;
+        `<a href="/download/${t.id}/zip" class="btn btn--primary btn--block download-zip-btn" data-filename="${escapeHtml(t.transferName || 'LabFiles')}.zip" style="margin-top: var(--space-md);">⬇️ Download All</a>`;
       
       const deleteBtn = `<button class="btn btn--danger btn--block" style="margin-top: var(--space-sm);" onclick="deleteTransfer('${t.id}')">✕ Delete</button>`;
 
       card.innerHTML = `
         <div class="card__title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>${t.transferName || 'Lab Files'}</span>
+          <span>${escapeHtml(t.transferName || 'Lab Files')}</span>
           <span style="background: var(--color-bg-secondary); padding: 4px 8px; border-radius: 4px; font-size: 0.9rem; font-family: monospace; letter-spacing: 2px; color: var(--color-primary);">${t.shortCode}</span>
         </div>
         <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--space-sm);">
@@ -115,6 +115,45 @@
       transfersContainer.appendChild(card);
     });
   }
+
+  // ---- Save As (Browse) for ZIP ----
+  transfersContainer.addEventListener('click', async (e) => {
+    const downloadBtn = e.target.closest('.download-zip-btn');
+    if (downloadBtn && window.showSaveFilePicker) {
+      e.preventDefault();
+      const downloadUrl = downloadBtn.getAttribute('href');
+      const filename = downloadBtn.getAttribute('data-filename');
+      
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{
+            description: 'ZIP Archive',
+            accept: { 'application/zip': ['.zip'] }
+          }]
+        });
+        
+        downloadBtn.style.opacity = '0.5';
+        downloadBtn.style.pointerEvents = 'none';
+
+        const res = await fetch(downloadUrl);
+        if (!res.ok) throw new Error('Download failed');
+        
+        const blob = await res.blob();
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          alert('Save failed: ' + err.message);
+          window.location.href = downloadUrl;
+        }
+      } finally {
+        downloadBtn.style.opacity = '1';
+        downloadBtn.style.pointerEvents = 'auto';
+      }
+    }
+  });
 
   window.deleteTransfer = async (id) => {
     if (!confirm('Are you sure you want to delete this transfer?')) return;

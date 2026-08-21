@@ -213,17 +213,24 @@
       const cat = file.category || 'file';
       const icon = FILE_ICONS[cat] || '📎';
       const fileQs = currentPin ? `?pin=${currentPin}` : '';
+      
+      const customName = file.customName || file.name;
+      const downloadQs = fileQs + (file.customName ? (fileQs ? '&' : '?') + 'name=' + encodeURIComponent(file.customName) : '');
+      const downloadUrl = `/download/${data.id}/${file.id}${downloadQs}`;
 
       const li = document.createElement('li');
       li.className = 'file-item';
       li.innerHTML = `
         <div class="file-item__icon file-item__icon--${cat}">${icon}</div>
         <div class="file-item__details">
-          <div class="file-item__name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
+          <div class="file-item__name" title="${escapeHtml(customName)}">${escapeHtml(customName)}</div>
           <div class="file-item__size">${formatBytes(file.size)}</div>
         </div>
-        <div class="file-item__actions">
-          <a class="btn btn--secondary btn--icon" href="/download/${data.id}/${file.id}${fileQs}" title="Download ${escapeHtml(file.name)}" style="font-size: 0.85rem; padding: 6px 12px;">
+        <div class="file-item__actions" style="display:flex; gap: 4px;">
+          <button class="btn btn--outline btn--icon rename-file-btn" data-file-id="${file.id}" title="Rename ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px;">
+            ✏️
+          </button>
+          <a class="btn btn--secondary btn--icon download-file-btn" href="${downloadUrl}" data-filename="${escapeHtml(customName)}" title="Browse / Download ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 12px;">
             ⬇️
           </a>
         </div>
@@ -317,6 +324,98 @@
     if (newName !== null && newName.trim() !== '') {
       customZipName = newName.trim();
       renderTransfer();
+    }
+  });
+
+  // ---- Save As (Browse) for ZIP ----
+  downloadAllBtn.addEventListener('click', async (e) => {
+    if (window.showSaveFilePicker) {
+      e.preventDefault();
+      const downloadUrl = downloadAllBtn.getAttribute('href');
+      const filename = (customZipName || activeTransferData.transferName || 'LabDrop_Transfer') + '.zip';
+      
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{
+            description: 'ZIP Archive',
+            accept: { 'application/zip': ['.zip'] }
+          }]
+        });
+        
+        downloadAllBtn.style.opacity = '0.5';
+        downloadAllBtn.style.pointerEvents = 'none';
+
+        const res = await fetch(downloadUrl);
+        if (!res.ok) throw new Error('Download failed');
+        
+        const blob = await res.blob();
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          alert('Save failed: ' + err.message);
+          window.location.href = downloadUrl;
+        }
+      } finally {
+        downloadAllBtn.style.opacity = '1';
+        downloadAllBtn.style.pointerEvents = 'auto';
+      }
+    }
+  });
+
+  // ---- Individual File Rename & Save As ----
+  mFileList.addEventListener('click', async (e) => {
+    // Rename File
+    const renameBtn = e.target.closest('.rename-file-btn');
+    if (renameBtn && activeTransferData) {
+      const fileId = renameBtn.getAttribute('data-file-id');
+      const file = (activeTransferData.files || []).find(f => f.id === fileId);
+      if (file) {
+        const defaultName = file.customName || file.name;
+        const newName = prompt('Enter a new name for this file:', defaultName);
+        if (newName !== null && newName.trim() !== '') {
+          file.customName = newName.trim();
+          renderTransfer();
+        }
+      }
+      return;
+    }
+
+    // Save As (Browse) for Individual File
+    const downloadBtn = e.target.closest('.download-file-btn');
+    if (downloadBtn && window.showSaveFilePicker) {
+      e.preventDefault();
+      const filename = downloadBtn.getAttribute('data-filename');
+      const downloadUrl = downloadBtn.getAttribute('href');
+      
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: filename
+        });
+        
+        // Show loading state or toast (simple alert for now)
+        downloadBtn.style.opacity = '0.5';
+        downloadBtn.style.pointerEvents = 'none';
+
+        const res = await fetch(downloadUrl);
+        if (!res.ok) throw new Error('Download failed');
+        
+        const blob = await res.blob();
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          alert('Save failed: ' + err.message);
+          // Fallback to standard download
+          window.location.href = downloadUrl;
+        }
+      } finally {
+        downloadBtn.style.opacity = '1';
+        downloadBtn.style.pointerEvents = 'auto';
+      }
     }
   });
 
