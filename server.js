@@ -755,8 +755,8 @@ app.get('/api/transfer/code/:code', async (req, res) => {
 });
 
 // --- Secret Admin Stats Route ---
-app.get('/admin/stats', async (req, res) => {
-  const adminKey = 'super-secret-labdrop-key';
+app.get('/stats', async (req, res) => {
+  const adminKey = process.env.ADMIN_KEY || 'admin';
   
   if (req.query.key !== adminKey) {
     return res.status(403).send('Forbidden: Invalid admin key.');
