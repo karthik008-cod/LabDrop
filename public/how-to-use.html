@@ -72,21 +72,23 @@
   <div class="bg-pattern"></div>
   <header class="header">
   <div class="header__container">
-      <div class="header__brand">
+      <a href="/" class="header__brand" style="text-decoration: none; color: inherit;">
         <div class="brand__logo">🧪</div>
         <div class="brand__text">
           <h1 id="mHeaderTitle">LabDrop</h1>
           <p id="mHeaderSubtitle">Move files. Anywhere.</p>
         </div>
-      </div>
+      </a>
       
       <!-- Auth Navigation -->
       <nav class="header__nav" id="authNav">
         <div id="authLoggedOut" style="display: flex; gap: var(--space-md);">
+            <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
           <button class="nav-link" id="navLoginBtn" style="background:none;border:none;cursor:pointer;">Login</button>
           <button class="nav-link" id="navSignupBtn" style="background:none;border:none;cursor:pointer;">Sign Up</button>
         </div>
         <div id="authLoggedIn" style="display: none; gap: var(--space-md); align-items: center;">
+            <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
           <a href="/my-files.html" class="nav-link">
             <span>🗄️</span> Saved Transfers
           </a>
@@ -102,85 +104,68 @@
     <main class="main-area">
       <h1 style="text-align: center; margin-bottom: var(--space-xl); font-size: 2.5rem;">How to Use LabDrop</h1>
       <div class="accordion-container">
+
   <div class="accordion-item">
     <button class="accordion-header">
-      <span class="accordion-title">Why should I download LabDrop?</span>
+      <span class="accordion-title">What is LabDrop and why should I use it?</span>
       <span class="accordion-icon">+</span>
     </button>
     <div class="accordion-content">
-      <div class="accordion-inner">To share files from WhatsApp (or any other app) on your mobile, you don't need to catch your head searching for the file in the file explorer. You can simply click 'Share' on your phone, tap the LabDrop icon, and instantly transfer it! This is only possible if you install LabDrop. Check out the question below to learn how to download it.</div>
+      <div class="accordion-inner">LabDrop is a lightning-fast file sharing tool designed to bypass the friction of USB drives or emailing files to yourself. You should use it whenever you need to seamlessly move files or text snippets between devices, such as transferring a document from your phone to your laptop. By installing LabDrop, you can even share directly from apps like WhatsApp straight to your computer without searching through your file explorer.</div>
     </div>
   </div>
   <div class="accordion-item">
     <button class="accordion-header">
-      <span class="accordion-title">How to download LabDrop?</span>
+      <span class="accordion-title">How do I install or download LabDrop on my device?</span>
       <span class="accordion-icon">+</span>
     </button>
     <div class="accordion-content">
-      <div class="accordion-inner">To install LabDrop on your device, open this site in Chrome or Edge, tap the three-dot menu icon in the top right corner of your browser, and select 'Install LabDrop' or 'Add to Home screen'. It will install quickly and run like a native app!</div>
+      <div class="accordion-inner">To install LabDrop, open this website in Google Chrome or Microsoft Edge. Tap the three-dot menu icon located in the top right corner of your browser, and select the 'Install LabDrop' or 'Add to Home screen' option. The app will install instantly and run as a standalone application on your device for quick access.</div>
     </div>
   </div>
   <div class="accordion-item">
     <button class="accordion-header">
-      <span class="accordion-title">Got files?</span>
+      <span class="accordion-title">How do I quickly transfer files between devices without logging in?</span>
       <span class="accordion-icon">+</span>
     </button>
     <div class="accordion-content">
-      <div class="accordion-inner">Drag and drop them directly into the workspace.</div>
+      <div class="accordion-inner">Use the Quick Transfer feature when you're in a rush and need to send files instantly without creating an account. Simply drag and drop your files into the workspace, click the 'Select Files' button, or paste a copied image directly onto the page. Once your files are ready, a QR code and a 4-digit code will appear—scan the code or enter the digits on your other device to download everything immediately.</div>
     </div>
   </div>
   <div class="accordion-item">
     <button class="accordion-header">
-      <span class="accordion-title">Got a screenshot?</span>
+      <span class="accordion-title">When should I use the 'Save for Later' feature?</span>
       <span class="accordion-icon">+</span>
     </button>
     <div class="accordion-content">
-      <div class="accordion-inner">Just press Ctrl + V anywhere on the page.</div>
+      <div class="accordion-inner">The Save for Later feature is perfect for situations where you can't immediately download the files on your second device (for example, if phones aren't allowed in a specific lab or office). By switching to this mode, you can upload your files today and they will be securely held in the cloud for up to 7 days. You can retrieve them later by logging into your account or using the unique code provided.</div>
     </div>
   </div>
   <div class="accordion-item">
     <button class="accordion-header">
-      <span class="accordion-title">Need it now?</span>
+      <span class="accordion-title">How can I organize multiple files for different projects?</span>
       <span class="accordion-icon">+</span>
     </button>
     <div class="accordion-content">
-      <div class="accordion-inner">No login. Scan → Download → Done.</div>
+      <div class="accordion-inner">If you are working on several different projects simultaneously, you can use the Workspace folders to keep your transfers organized. Click on '+ New Folder' in the left sidebar to create dedicated folders for each project. You can then drop files directly into those specific folders, ensuring your workflow remains clean and structured.</div>
     </div>
   </div>
   <div class="accordion-item">
     <button class="accordion-header">
-      <span class="accordion-title">Phone not allowed?</span>
+      <span class="accordion-title">Can I add a password or PIN to my file transfers?</span>
       <span class="accordion-icon">+</span>
     </button>
     <div class="accordion-content">
-      <div class="accordion-inner">Save it today. Get it within 7 days.</div>
+      <div class="accordion-inner">Yes, if you are sharing sensitive or private documents, you can add an extra layer of security using PIN Protection. Before finalizing your transfer, simply toggle the protection option and set a custom 4-digit PIN. The recipient will be required to enter this exact PIN before they are allowed to view or download any of the shared files.</div>
     </div>
   </div>
   <div class="accordion-item">
     <button class="accordion-header">
-      <span class="accordion-title">Working on multiple projects?</span>
+      <span class="accordion-title">How do I transfer a long link or text snippet?</span>
       <span class="accordion-icon">+</span>
     </button>
     <div class="accordion-content">
-      <div class="accordion-inner">Create folders. Paste. Stay organized.</div>
-    </div>
-  </div>
-  <div class="accordion-item">
-    <button class="accordion-header">
-      <span class="accordion-title">Need a URL on another device?</span>
-      <span class="accordion-icon">+</span>
-    </button>
-    <div class="accordion-content">
-      <div class="accordion-inner">Paste it. Scan it. Done.</div>
-    </div>
-  </div>
-  <div class="accordion-item">
-    <button class="accordion-header">
-      <span class="accordion-title">Want extra privacy?</span>
-      <span class="accordion-icon">+</span>
-    </button>
-    <div class="accordion-content">
-      <div class="accordion-inner">Add a 4-digit PIN.</div>
+      <div class="accordion-inner">LabDrop isn't just for files—you can also use it to quickly send URLs or blocks of text across devices. Paste your link or text into the dedicated text box at the bottom of the workspace and hit 'Add Text'. This is extremely useful for sharing long meeting links, code snippets, or notes without having to email yourself.</div>
     </div>
   </div></div>
     </main>

@@ -77,21 +77,23 @@
   <!-- Header -->
     <header class="header">
   <div class="header__container">
-      <div class="header__brand">
+      <a href="/" class="header__brand" style="text-decoration: none; color: inherit;">
         <div class="brand__logo">🧪</div>
         <div class="brand__text">
           <h1 id="mHeaderTitle">LabDrop</h1>
           <p id="mHeaderSubtitle">Move files. Anywhere.</p>
         </div>
-      </div>
+      </a>
       
       <!-- Auth Navigation -->
       <nav class="header__nav" id="authNav">
         <div id="authLoggedOut" style="display: flex; gap: var(--space-md);">
+            <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
           <button class="nav-link" id="navLoginBtn" style="background:none;border:none;cursor:pointer;">Login</button>
           <button class="nav-link" id="navSignupBtn" style="background:none;border:none;cursor:pointer;">Sign Up</button>
         </div>
         <div id="authLoggedIn" style="display: none; gap: var(--space-md); align-items: center;">
+            <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
           <a href="/my-files.html" class="nav-link">
             <span>🗄️</span> Saved Transfers
           </a>
