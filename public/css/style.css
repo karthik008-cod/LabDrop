@@ -169,21 +169,27 @@ img, svg {
 
 .header {
   width: 100%;
-  box-sizing: border-box;
-  padding-left: var(--space-xl);
-  padding-right: var(--space-xl);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-md);
-  flex-wrap: wrap;
-  gap: var(--space-md);
   position: sticky;
   top: 0;
   z-index: 100;
   background: var(--color-bg);
   padding-top: var(--space-md);
-  padding-bottom: var(--space-sm); border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-md);
+}
+
+.header__container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  box-sizing: border-box;
 }
 
 .header__brand {
