@@ -33,23 +33,31 @@
     <header class="header">
   <div class="header__container">
       <div class="header__brand">
-        <div class="brand__logo">🗄️</div>
+        <div class="brand__logo">🧪</div>
         <div class="brand__text">
-          <h1>My Lab Files</h1>
-          <p>Your saved transfers for later</p>
+          <h1 id="mHeaderTitle">LabDrop</h1>
+          <p id="mHeaderSubtitle">Move files. Anywhere.</p>
         </div>
       </div>
       
       <!-- Auth Navigation -->
-      <nav class="header__nav">
-        <a href="/" class="nav-link">← Back to Home</a>
-        <div class="nav-icon" title="User Account" style="background: var(--color-bg-secondary); color: var(--color-text);">👤</div>
-        <span id="navUserEmail" style="font-size: var(--font-size-sm); color: var(--color-text-secondary);"></span>
-        <button class="nav-link" id="navLogoutBtn" style="background:none; border:none; cursor:pointer;">Logout</button>
+      <nav class="header__nav" id="authNav">
+        <div id="authLoggedOut" style="display: flex; gap: var(--space-md);">
+          <button class="nav-link" id="navLoginBtn" style="background:none;border:none;cursor:pointer;">Login</button>
+          <button class="nav-link" id="navSignupBtn" style="background:none;border:none;cursor:pointer;">Sign Up</button>
+        </div>
+        <div id="authLoggedIn" style="display: none; gap: var(--space-md); align-items: center;">
+          <a href="/my-files.html" class="nav-link">
+            <span>🗄️</span> Saved Transfers
+          </a>
+          <div class="nav-icon" title="User Account" style="background: var(--color-bg-secondary); color: var(--color-text);">👤</div>
+          <button class="nav-link" id="navLogoutBtn" style="background:none;border:none;cursor:pointer;color:var(--color-text-secondary);">Logout</button>
+          <span id="navUserEmail" style="display:none;"></span>
+        </div>
       </nav>
       </div>
 </header>
-  <div class="page-wrapper" style="max-width: 900px;">
+  <div class="page-wrapper">
 
     <div id="alertArea"></div>
 
