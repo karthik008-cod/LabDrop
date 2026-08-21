@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LabDrop — Transfer Lab Files to Your Phone</title>
+  <meta name="description" content="LabDrop: Instantly transfer lab files to your phone. Select files, scan QR, download. No login required." />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" href="/icon.svg" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#FDFBF7" />
+</head>
+<body>
+
+  <!-- Background Decorative Objects -->
+  <div class="decorations">
+    <svg class="dec-item dec-compass" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+      <!-- Simple Compass drawing -->
+      <path d="M50 20 L30 90 M50 20 L70 90 M36 70 L64 70" />
+      <circle cx="50" cy="15" r="5" />
+      <path d="M48 10 L52 10 M50 5 L50 10" />
+    </svg>
+    <svg class="dec-item dec-ruler" viewBox="0 0 200 50" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="5" y="10" width="190" height="30" rx="2" />
+      <path d="M15 10 V20 M35 10 V15 M55 10 V20 M75 10 V15 M95 10 V20 M115 10 V15 M135 10 V20 M155 10 V15 M175 10 V20" />
+      <circle cx="185" cy="25" r="3" />
+    </svg>
+    <svg class="dec-item dec-flask" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+      <!-- Erlenmeyer flask -->
+      <path d="M40 20 L40 45 L15 85 A 5 5 0 0 0 20 95 L80 95 A 5 5 0 0 0 85 85 L60 45 L60 20 Z" />
+      <path d="M35 20 L65 20 M30 70 L70 70 M25 80 L40 80 M75 80 L60 80" />
+    </svg>
+    <svg class="dec-item dec-wrench" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+      <!-- Wrench -->
+      <path d="M25 85 L60 50 A 15 15 0 0 0 85 25 A 20 20 0 0 0 65 15 L60 25 C 60 25 55 35 70 35 L75 30 A 15 15 0 0 1 50 40 L15 75 Z" />
+      <circle cx="20" cy="80" r="3" />
+    </svg>
+    <svg class="dec-item dec-caliper" viewBox="0 0 200 60" fill="none" stroke="currentColor" stroke-width="1.5">
+      <!-- Vernier caliper approximation -->
+      <rect x="10" y="25" width="180" height="10" />
+      <path d="M20 25 V5 M20 35 V55 M50 25 V15 M50 35 V45" />
+      <rect x="40" y="20" width="20" height="20" />
+      <path d="M70 25 V20 M90 25 V20 M110 25 V20" />
+    </svg>
+    <svg class="dec-item dec-protractor" viewBox="0 0 100 55" fill="none" stroke="currentColor" stroke-width="1.5">
+      <!-- Protractor -->
+      <path d="M5,50 A45,45 0 0,1 95,50 Z" />
+      <path d="M25,50 A25,25 0 0,1 75,50 Z" />
+      <path d="M50,50 V25 M32,32 L40,40 M68,32 L60,40 M50,5 V15" />
+      <circle cx="50" cy="50" r="2" />
+    </svg>
+    <svg class="dec-item dec-magnet" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+      <!-- Horseshoe Magnet -->
+      <path d="M20,90 V50 A30,30 0 0,1 80,50 V90" />
+      <path d="M35,90 V50 A15,15 0 0,1 65,50 V90" />
+      <line x1="20" y1="90" x2="35" y2="90" />
+      <line x1="65" y1="90" x2="80" y2="90" />
+      <line x1="20" y1="75" x2="35" y2="75" />
+      <line x1="65" y1="75" x2="80" y2="75" />
+    </svg>
+    <svg class="dec-item dec-atom" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+      <!-- Atomic Structure -->
+      <ellipse cx="50" cy="50" rx="40" ry="15" transform="rotate(30 50 50)" />
+      <ellipse cx="50" cy="50" rx="40" ry="15" transform="rotate(90 50 50)" />
+      <ellipse cx="50" cy="50" rx="40" ry="15" transform="rotate(150 50 50)" />
+      <circle cx="50" cy="50" r="4" fill="currentColor" />
+    </svg>
+
+    <!-- Hand-drawn Text Formulas -->
+    <div class="dec-item dec-formula dec-f1">E = mc²</div>
+    <div class="dec-item dec-formula dec-f2">∫ f(x) dx</div>
+    <div class="dec-item dec-formula dec-f3">F = ma</div>
+    <div class="dec-item dec-formula dec-f4">C₂H₅OH</div>
+    <div class="dec-item dec-formula dec-f5">x² + y² = r²</div>
+  </div>
+
+  <div class="page-wrapper">
+    <!-- Header -->
+    <header class="header">
+      <div class="header__brand">
+        <div class="brand__logo">🧪</div>
+        <div class="brand__text">
+          <h1>LabDrop</h1>
+          <p>Move files. Anywhere.</p>
+        </div>
+      </div>
+      
+      <!-- Auth Navigation -->
+      <nav class="header__nav" id="authNav">
+        <div id="authLoggedOut" style="display: flex; gap: var(--space-md);">
+          <button class="nav-link" id="navLoginBtn" style="background:none;border:none;cursor:pointer;">Login</button>
+          <button class="nav-link" id="navSignupBtn" style="background:none;border:none;cursor:pointer;">Sign Up</button>
+        </div>
+        <div id="authLoggedIn" style="display: none; gap: var(--space-md); align-items: center;">
+          <a href="/my-files.html" class="nav-link">
+            <span>🗄️</span> Saved Transfers
+          </a>
+          <div class="nav-icon" title="User Account" style="background: var(--color-bg-secondary); color: var(--color-text);">👤</div>
+          <button class="nav-link" id="navLogoutBtn" style="background:none;border:none;cursor:pointer;color:var(--color-text-secondary);">Logout</button>
+          <span id="navUserEmail" style="display:none;"></span>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Alert area -->
+    <div id="alertArea"></div>
+
+    <!-- Main Workspace Two-Column Grid -->
+    <div class="workspace-grid">
+      
+      <!-- Sidebar (Left) -->
+      <aside class="sidebar">
+        <!-- Folder Panel -->
+        <div id="folderPanel">
+          <div class="sidebar__title">WORKSPACE</div>
+          <button class="btn btn--outline btn--sm" id="newFolderBtn" type="button" style="margin-bottom: var(--space-sm); width: 100%; justify-content: flex-start;">+ New Folder</button>
+          
+          <div id="newFolderRow" class="new-folder-row" style="display: none; flex-direction: column;">
+            <input class="form-input" type="text" id="newFolderInput" placeholder="Folder name..." maxlength="40" />
+            <div style="display: flex; gap: 4px;">
+              <button class="btn btn--secondary btn--sm" id="confirmNewFolderBtn" type="button" style="flex:1;">Create</button>
+              <button class="btn btn--ghost btn--sm" id="cancelNewFolderBtn" type="button">✕</button>
+            </div>
+          </div>
+
+          <div id="folderList" class="folder-list"></div>
+        </div>
+        
+        <!-- Receive Files Section (Moved to sidebar for cleaner UI) -->
+        <div class="receive-section" style="margin-top: var(--space-xl);">
+          <div class="sidebar__title">RECEIVE TRANSFER</div>
+          <form id="receiveForm" style="display: flex; gap: 4px;">
+            <input type="text" id="receiveCodeInput" class="form-input" placeholder="4-digit code" maxlength="4" minlength="4" required style="padding: 0.4rem; font-size: 0.8rem;" />
+            <button type="submit" class="btn btn--secondary btn--sm">Go →</button>
+          </form>
+          <div id="receiveError" style="color: var(--color-danger); font-size: 0.75rem; display: none;"></div>
+        </div>
+      </aside>
+
+      <!-- Main Area (Right) -->
+      
+      <main class="main-area" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 4rem 1rem;">
+        <div style="font-size: 5rem; line-height: 1; margin-bottom: 1rem;">🕳️</div>
+        <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--color-warning);">File Not Found (404)</h1>
+        <p style="font-size: 1.1rem; color: var(--color-text-secondary); max-width: 500px; margin-bottom: 2rem;">
+          We searched the entire lab, but we couldn't find the page you're looking for. It might have been moved or deleted.
+        </p>
+        <a href="/" class="btn btn--primary btn--lg">Return to Workspace</a>
+      </main>
+    </div>
+<!-- Footer -->
+    <footer class="footer" style="margin-top: auto; padding-top: var(--space-2xl); padding-bottom: var(--space-md); text-align: right; color: var(--color-text-muted); font-size: 0.85rem;">
+      <div style="display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
+        <a href="#" class="nav-link open-manual-btn" style="color: var(--color-primary-dark); text-decoration: none; font-weight: bold;">How to Use</a>
+        <a href="mailto:yuvaankaarthikeyaa.1206@gmail.com" class="nav-link" style="color: var(--color-primary-dark); text-decoration: none;">Email</a>
+        <a href="https://www.linkedin.com/in/yuvaan-kaarthikeyaa-adulapuram-6ba90133b" target="_blank" class="nav-link" style="color: var(--color-primary-dark); text-decoration: none;">LinkedIn</a>
+        <a href="https://github.com/karthik008-cod" target="_blank" class="nav-link" style="color: var(--color-primary-dark); text-decoration: none;">GitHub</a>
+      </div>
+      <div style="margin-top: 6px;">&copy; 2026 Yuvaan Kaarthikeyaa Adulapuram</div>
+    </footer>
+  </div>
+
+  <!-- Auth Modal -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal">
+      <div class="modal__header">
+        <div class="modal__title" id="authModalTitle">Login</div>
+        <button class="modal__close" id="authModalClose">✕</button>
+      </div>
+      <form id="authForm">
+        <div class="form-group">
+          <label class="form-label" for="authEmail">Email</label>
+          <input class="form-input" type="email" id="authEmail" required placeholder="you@college.edu">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="authPassword">Password</label>
+          <div style="position: relative;">
+            <input class="form-input" type="password" id="authPassword" required placeholder="Min. 6 characters" minlength="6" style="padding-right: 2.5rem;">
+            <button type="button" id="togglePasswordBtn" class="password-toggle-btn" title="Toggle password visibility">👁️</button>
+          </div>
+        </div>
+        <div id="authError" style="color: var(--color-danger); font-size: 0.8rem; margin-bottom: var(--space-sm); display: none;"></div>
+        <button type="submit" class="btn btn--primary btn--block" id="authSubmitBtn">Login</button>
+      </form>
+      <div class="modal__footer">
+        <span id="authToggleText">Don't have an account?</span>
+        <a href="#" id="authToggleLink" style="color: var(--color-primary-dark);">Sign Up</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Move Modal -->
+  <div class="modal-overlay" id="moveModal">
+    <div class="modal">
+      <div class="modal__header">
+        <div class="modal__title">Move to...</div>
+        <button class="modal__close" id="moveModalClose">✕</button>
+      </div>
+      <div class="modal__body">
+        <div id="moveFolderList" class="folder-list"></div>
+      </div>
+      <div class="modal__footer" style="justify-content: flex-end;">
+        <button class="btn btn--ghost btn--sm" id="moveModalCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- Manual Modal -->
+  <div class="modal-overlay" id="manualModal">
+    <div class="modal manual-modal">
+      <div class="modal__header">
+        <div class="modal__title">How to use LabDrop</div>
+        <button class="modal__close" id="manualModalClose">✕</button>
+      </div>
+      <div class="manual-grid">
+        <!-- 1. Drop / Upload -->
+        <div class="manual-card">
+          <div class="manual-card__icon">📁</div>
+          <div class="manual-card__content">
+            <div class="manual-card__problem">Got files?</div>
+            <div class="manual-card__solution">Drag and drop them directly into the workspace.</div>
+          </div>
+        </div>
+        <!-- 2. Ctrl + V -->
+        <div class="manual-card">
+          <div class="manual-card__icon">📋</div>
+          <div class="manual-card__content">
+            <div class="manual-card__problem">Got a screenshot?</div>
+            <div class="manual-card__solution">Just press Ctrl + V anywhere on the page.</div>
+          </div>
+        </div>
+        <!-- 3. Quick Transfer -->
+        <div class="manual-card">
+          <div class="manual-card__icon">⚡</div>
+          <div class="manual-card__content">
+            <div class="manual-card__problem">Need it now?</div>
+            <div class="manual-card__solution">No login. Scan → Download → Done.</div>
+          </div>
+        </div>
+        <!-- 4. Save for Later -->
+        <div class="manual-card">
+          <div class="manual-card__icon">🗄️</div>
+          <div class="manual-card__content">
+            <div class="manual-card__problem">Phone not allowed?</div>
+            <div class="manual-card__solution">Save it today. Get it within 7 days.</div>
+          </div>
+        </div>
+        <!-- 5. Smart Folders -->
+        <div class="manual-card">
+          <div class="manual-card__icon">📂</div>
+          <div class="manual-card__content">
+            <div class="manual-card__problem">Working on multiple projects?</div>
+            <div class="manual-card__solution">Create folders. Paste. Stay organized.</div>
+          </div>
+        </div>
+        <!-- 6. Share Links -->
+        <div class="manual-card">
+          <div class="manual-card__icon">🔗</div>
+          <div class="manual-card__content">
+            <div class="manual-card__problem">Need a URL on another device?</div>
+            <div class="manual-card__solution">Paste it. Scan it. Done.</div>
+          </div>
+        </div>
+        <!-- 7. PIN Protection -->
+        <div class="manual-card">
+          <div class="manual-card__icon">🔒</div>
+          <div class="manual-card__content">
+            <div class="manual-card__problem">Want extra privacy?</div>
+            <div class="manual-card__solution">Add a 4-digit PIN.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="/js/bg.js"></script>
+  <script src="/js/main.js"></script>
+  <script src="/js/manual.js"></script>
+</body>
+</html>

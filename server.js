@@ -900,12 +900,26 @@ setInterval(cleanupExpiredTransfers, CONFIG.CLEANUP_INTERVAL_MS);
 // Error handling middleware
 // ============================================================
 
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  if (!res.headersSent) {
-    res.status(500).json({ error: 'An unexpected error occurred.' });
-  }
-});
+
+  // 404 Handler
+  app.use((req, res, next) => {
+    if (req.accepts('html')) {
+      res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+    } else {
+      res.status(404).json({ error: 'Not found' });
+    }
+  });
+
+  app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    if (!res.headersSent) {
+      if (req.accepts('html')) {
+        res.status(500).sendFile(path.join(__dirname, 'public', '500.html'));
+      } else {
+        res.status(500).json({ error: 'An unexpected error occurred.' });
+      }
+    }
+  });
 
 // ============================================================
 // Start server
