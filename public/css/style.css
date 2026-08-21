@@ -513,7 +513,7 @@ img, svg {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
   white-space: nowrap;
-  width: 80px;
+  width: 120px;
   text-align: right;
 }
 
@@ -802,7 +802,7 @@ img, svg {
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
   text-align: center;
-  max-width: 500px;
+  max-width: 700px;
   margin: 0 auto;
 }
 
@@ -843,8 +843,8 @@ img, svg {
   display: flex;
   flex-direction: column;
 }
-.stat-item__val { font-weight: 600; }
-.stat-item__lbl { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
+.stat-item__val { font-weight: 700; font-size: 1.5rem; color: var(--color-text); line-height: 1.2; margin-bottom: 4px; }
+.stat-item__lbl { font-size: 0.9rem; color: var(--color-text-secondary); }
 
 /* ============================================================
    Receive Form
@@ -978,7 +978,7 @@ img, svg {
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
   text-align: center;
-  max-width: 500px;
+  max-width: 700px;
   margin: 0 auto;
 }
 
