@@ -332,7 +332,10 @@
     if (window.showSaveFilePicker) {
       e.preventDefault();
       const downloadUrl = downloadAllBtn.getAttribute('href');
-      const filename = (customZipName || activeTransferData.transferName || 'LabDrop_Transfer') + '.zip';
+      let filename = customZipName || activeTransferData.transferName || 'LabDrop_Transfer';
+      if (!filename.toLowerCase().endsWith('.zip')) {
+        filename += '.zip';
+      }
       
       try {
         const handle = await window.showSaveFilePicker({
@@ -373,10 +376,22 @@
       const fileId = renameBtn.getAttribute('data-file-id');
       const file = (activeTransferData.files || []).find(f => f.id === fileId);
       if (file) {
-        const defaultName = file.customName || file.name;
-        const newName = prompt('Enter a new name for this file:', defaultName);
-        if (newName !== null && newName.trim() !== '') {
-          file.customName = newName.trim();
+        let ext = '';
+        const extMatch = file.name.match(/\.[^.]+$/);
+        if (extMatch) ext = extMatch[0];
+        
+        let baseName = file.customName || file.name;
+        if (ext && baseName.endsWith(ext)) {
+           baseName = baseName.slice(0, -ext.length);
+        }
+
+        const newBase = prompt(`Enter a new name for this file (without ${ext}):`, baseName);
+        if (newBase !== null && newBase.trim() !== '') {
+          let finalName = newBase.trim();
+          if (ext && !finalName.toLowerCase().endsWith(ext.toLowerCase())) {
+             finalName += ext;
+          }
+          file.customName = finalName;
           renderTransfer();
         }
       }
