@@ -1002,3 +1002,55 @@ img, svg {
 }
 
 /* folder panel is always visible in the sidebar now */
+
+
+/* ============================================================
+   Manual Modal
+   ============================================================ */
+.manual-modal {
+  max-width: 700px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.manual-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.manual-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.manual-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-text-secondary);
+}
+
+.manual-card__icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.manual-card__problem {
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+  font-size: 0.95rem;
+}
+
+.manual-card__solution {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
