@@ -2,48 +2,58 @@ document.addEventListener('DOMContentLoaded', () => {
   const items = document.querySelectorAll('.dec-item');
   if (!items.length) return;
   
-  // We want to distribute them equally but at random places.
-  // Using a 4x4 grid (16 cells) for up to 13 items.
-  const cols = 4;
-  const rows = 4;
-  const cells = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      cells.push({r, c});
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const margin = 80; // Keep icons away from the very edge
+  
+  const points = [];
+  const numCandidates = 100; // High number of candidates ensures optimal spacing
+
+  items.forEach((item) => {
+    let bestPoint = null;
+    let maxMinDist = -1;
+
+    // Generate multiple random candidate points
+    for (let i = 0; i < numCandidates; i++) {
+      const candidate = {
+        x: margin + Math.random() * (width - 2 * margin),
+        y: margin + Math.random() * (height - 2 * margin)
+      };
+
+      // Find the distance to the closest existing point
+      let minDist = Infinity;
+      for (const p of points) {
+        const dx = candidate.x - p.x;
+        const dy = candidate.y - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < minDist) {
+          minDist = dist;
+        }
+      }
+
+      // If this is the first point, any distance is fine
+      if (points.length === 0) {
+        bestPoint = candidate;
+        break;
+      }
+
+      // Pick the candidate that is furthest away from its closest neighbor
+      if (minDist > maxMinDist) {
+        maxMinDist = minDist;
+        bestPoint = candidate;
+      }
     }
-  }
-  
-  // Shuffle the cells to randomize which cell gets an item
-  for (let i = cells.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [cells[i], cells[j]] = [cells[j], cells[i]];
-  }
-  
-  items.forEach((item, index) => {
-    if (index >= cells.length) return;
-    const cell = cells[index];
-    
-    // Calculate cell dimensions in percentage
-    const cellWidth = 100 / cols;
-    const cellHeight = 100 / rows;
-    
-    // Random position inside the cell, with some padding to avoid overlap near edges
-    const paddingX = cellWidth * 0.15;
-    const paddingY = cellHeight * 0.15;
-    
-    const randomX = paddingX + Math.random() * (cellWidth - 2 * paddingX);
-    const randomY = paddingY + Math.random() * (cellHeight - 2 * paddingY);
-    
-    const left = cell.c * cellWidth + randomX;
-    const top = cell.r * cellHeight + randomY;
+
+    points.push(bestPoint);
     
     // Random rotation for a scattered look
     const rot = Math.floor(Math.random() * 360);
     
     // Apply inline styles to override CSS rules
     item.style.position = 'absolute';
-    item.style.left = `${left}%`;
-    item.style.top = `${top}%`;
+    // Use pixel values for exact placement, converted back to percentages for responsiveness
+    item.style.left = `${(bestPoint.x / width) * 100}%`;
+    item.style.top = `${(bestPoint.y / height) * 100}%`;
     item.style.bottom = 'auto';
     item.style.right = 'auto';
     item.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
