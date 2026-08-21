@@ -169,15 +169,15 @@ img, svg {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-xl);
+  margin-bottom: var(--space-md);
   flex-wrap: wrap;
   gap: var(--space-md);
   position: sticky;
   top: 0;
   z-index: 100;
   background: var(--color-bg);
-  padding-top: calc(var(--space-xl) * 2 + 50px);
-  padding-bottom: var(--space-md);
+  padding-top: var(--space-md);
+  padding-bottom: var(--space-sm); border-bottom: 1px solid var(--color-border);
 }
 
 .header__brand {
@@ -262,7 +262,7 @@ img, svg {
   flex-direction: column;
   gap: var(--space-md);
   position: sticky;
-  top: calc(var(--space-xl) * 2 + 50px);
+  top: 110px;
   align-self: start;
   max-height: calc(100vh - var(--space-xl) * 2);
   overflow-y: auto;
