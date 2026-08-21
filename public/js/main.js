@@ -152,6 +152,15 @@
     setTimeout(() => div.remove(), 6000);
   }
 
+  function linkify(text) {
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
+    return escapeHtml(text).replace(urlRegex, function(url) {
+      let href = url;
+      if (url.startsWith('www.')) href = 'http://' + url;
+      return `<a href="${href}" target="_blank" style="color: var(--color-primary-dark); text-decoration: underline;" onclick="event.stopPropagation()">${url}</a>`;
+    });
+  }
+
   function escapeHtml(str) {
     const d = document.createElement('div');
     d.textContent = str;
@@ -393,7 +402,7 @@
       li.innerHTML = `
         <div class="file-item__icon file-item__icon--data">🔗</div>
         <div class="file-item__details">
-          <div class="file-item__name">${escapeHtml(link)}</div>
+          <div class="file-item__name" style="white-space: normal; word-break: break-word;">${linkify(link)}</div>
           <div class="file-item__size">Link</div>
         </div>
         <div class="file-item__actions">
@@ -753,9 +762,7 @@
   addLinkBtn.addEventListener('click', () => {
     let url = linkInput.value.trim();
     if (!url) return;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://' + url;
-    }
+    // url validation removed
     const activeFolder = getActiveFolder();
     const targetLinks = activeFolder ? activeFolder.links : selectedLinks;
     if (targetLinks.length >= 20) {

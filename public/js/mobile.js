@@ -54,6 +54,15 @@
   }
 
   // ---- Utility: escape HTML ----
+  function linkify(text) {
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
+    return escapeHtml(text).replace(urlRegex, function(url) {
+      let href = url;
+      if (url.startsWith('www.')) href = 'http://' + url;
+      return `<a href="${href}" target="_blank" style="color: var(--color-primary-dark); text-decoration: underline;" onclick="event.stopPropagation()">${url}</a>`;
+    });
+  }
+
   function escapeHtml(str) {
     const d = document.createElement('div');
     d.textContent = str;
@@ -244,7 +253,7 @@
       li.innerHTML = `
         <div class="file-item__icon file-item__icon--data">🔗</div>
         <div class="file-item__details">
-          <div class="file-item__name" title="${escapeHtml(link)}">${escapeHtml(link)}</div>
+          <div class="file-item__name" style="white-space: normal; word-break: break-word; overflow: visible;">${linkify(link)}</div>
           <div class="file-item__size">Link</div>
         </div>
         <div class="file-item__actions">

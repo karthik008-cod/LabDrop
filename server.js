@@ -428,9 +428,9 @@ app.post('/api/upload', optionalAuth, (req, res) => {
         const parsedLinks = JSON.parse(req.body.links);
         if (Array.isArray(parsedLinks)) {
           links = parsedLinks
-            .filter(link => typeof link === 'string' && (link.startsWith('http://') || link.startsWith('https://')))
+            .filter(link => typeof link === 'string' && link.trim() !== '')
             .slice(0, 20)
-            .map(link => link.substring(0, 1000));
+            .map(link => link.substring(0, 5000));
         }
       } catch (e) {
         console.warn('Failed to parse links from request:', req.body.links);
