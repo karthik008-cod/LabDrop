@@ -159,7 +159,7 @@ img, svg {
   z-index: 1;
   max-width: 1200px;
   margin: 0 auto;
-  padding: var(--space-xl) var(--space-lg);
+  padding: 0 var(--space-lg) var(--space-xl) var(--space-lg);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -169,9 +169,15 @@ img, svg {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-2xl);
+  margin-bottom: var(--space-xl);
   flex-wrap: wrap;
   gap: var(--space-md);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--color-bg);
+  padding-top: calc(var(--space-xl) * 2 + 50px);
+  padding-bottom: var(--space-md);
 }
 
 .header__brand {
@@ -256,7 +262,7 @@ img, svg {
   flex-direction: column;
   gap: var(--space-md);
   position: sticky;
-  top: var(--space-xl);
+  top: calc(var(--space-xl) * 2 + 50px);
   align-self: start;
   max-height: calc(100vh - var(--space-xl) * 2);
   overflow-y: auto;
