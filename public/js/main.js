@@ -760,8 +760,8 @@
 
   // ---- Add link (folder-aware) ----
   addLinkBtn.addEventListener('click', () => {
-    let url = linkInput.value.trim();
-    if (!url) return;
+    let url = linkInput.value;
+    if (!url.trim()) return;
     // url validation removed
     const activeFolder = getActiveFolder();
     const targetLinks = activeFolder ? activeFolder.links : selectedLinks;
