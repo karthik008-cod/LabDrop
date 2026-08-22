@@ -27,6 +27,12 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
   function getExpiryText(expiresAt) {
     const remaining = expiresAt - Date.now();
     if (remaining <= 0) return 'Expired';
