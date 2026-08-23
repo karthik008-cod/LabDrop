@@ -232,6 +232,11 @@ function parseCookies(cookieStr) {
 
 // Middleware to track unique visitors using device cookies
 app.use((req, res, next) => {
+  const userAgent = req.headers['user-agent'] || '';
+  if (userAgent.toLowerCase().includes('uptimerobot')) {
+    return next(); // Skip tracking for UptimeRobot
+  }
+
   const cookies = parseCookies(req.headers.cookie);
   let deviceId = cookies['labdrop_device_id'];
   
