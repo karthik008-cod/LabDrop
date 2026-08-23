@@ -1196,6 +1196,13 @@
   // Check if we arrived via Web Share Target (or check IndexedDB regardless)
   function checkSharedFiles() {
     const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.has('share_error')) {
+      window.history.replaceState({}, document.title, '/');
+      showAlert('Failed to process shared files. They might be too large or unsupported.', 'error');
+      return;
+    }
+    
     if (!urlParams.has('shared')) return;
     
     // Clean up the URL so refreshing doesn't trigger it again
@@ -1214,13 +1221,9 @@
       getAllRequest.onsuccess = () => {
         const files = getAllRequest.result;
         if (files && files.length > 0) {
-          // Add files to our UI state (they are standard File objects)
-          files.forEach(file => {
-            // Provide a fallback type/name if it's garbled, though Web Share usually passes valid files
-            selectedFiles.push(file);
-          });
+          // Add files using addFiles to respect limits and deduplication
+          addFiles(files);
           
-          renderFileList();
           showAlert(`Received ${files.length} file(s) from share! Please review and click Create Transfer.`, 'success');
           
           // Clear IndexedDB after loading to avoid zombie files on next visit

@@ -23,11 +23,17 @@ async function handleShareTarget(request) {
       await saveSharedFilesToIndexedDB(files);
     }
     
-    // Redirect to the main page with a query parameter
-    return Response.redirect('/?shared=1', 303);
+    // Redirect to the main page using an HTML redirect instead of 303 to prevent Android Chrome Share Target hangs
+    return new Response(
+      '<html><head><meta http-equiv="refresh" content="0; url=/?shared=1"></head><body>Loading...</body></html>',
+      { headers: { 'Content-Type': 'text/html' } }
+    );
   } catch (error) {
     console.error('Error handling share target:', error);
-    return Response.redirect('/?share_error=1', 303);
+    return new Response(
+      '<html><head><meta http-equiv="refresh" content="0; url=/?share_error=1"></head><body>Error loading.</body></html>',
+      { headers: { 'Content-Type': 'text/html' } }
+    );
   }
 }
 
