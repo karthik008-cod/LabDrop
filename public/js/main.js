@@ -559,10 +559,17 @@
     const activeFolder = getActiveFolder();
     const targetFiles = activeFolder ? activeFolder.files : selectedFiles;
 
-    if (targetFiles.length + newFiles.length > 20) {
+    let availableSlots = 20 - targetFiles.length;
+    if (availableSlots <= 0) {
       showAlert('Maximum 20 files allowed per folder.');
       return;
     }
+
+    if (newFiles.length > availableSlots) {
+      showAlert(`Can only add ${availableSlots} more file(s). Ignored the rest.`, 'error');
+      newFiles = newFiles.slice(0, availableSlots);
+    }
+
     const existingNames = new Set(targetFiles.map((f) => f.name + '_' + f.size));
     let addedCount = 0;
     for (const file of newFiles) {
