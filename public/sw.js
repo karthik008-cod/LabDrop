@@ -10,9 +10,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method === 'POST' && event.request.url.endsWith('/share-target')) {
-    
-    // Process files in the background to prevent splash screen hang
-    event.waitUntil(
+    event.respondWith(
       (async () => {
         try {
           const formData = await event.request.formData();
@@ -21,18 +19,19 @@ self.addEventListener('fetch', (event) => {
           if (files && files.length > 0) {
             await saveSharedFilesToIndexedDB(files);
           }
+          
+          return new Response(
+            '<html><head><meta http-equiv="refresh" content="0; url=/?shared=1"></head><body>Loading...</body></html>',
+            { headers: { 'Content-Type': 'text/html' } }
+          );
         } catch (error) {
-          console.error('Error handling share target background:', error);
+          console.error('Error handling share target:', error);
+          return new Response(
+            '<html><head><meta http-equiv="refresh" content="0; url=/?share_error=1"></head><body>Error loading.</body></html>',
+            { headers: { 'Content-Type': 'text/html' } }
+          );
         }
       })()
-    );
-
-    // Respond immediately to the browser
-    event.respondWith(
-      new Response(
-        '<html><head><meta http-equiv="refresh" content="0; url=/?shared=1"></head><body>Loading...</body></html>',
-        { headers: { 'Content-Type': 'text/html' } }
-      )
     );
   }
 });
