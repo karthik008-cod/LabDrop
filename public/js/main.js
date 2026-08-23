@@ -1194,7 +1194,7 @@
   }
 
   // Check if we arrived via Web Share Target (or check IndexedDB regardless)
-  function checkSharedFiles() {
+  function checkSharedFiles(retries = 0) {
     const urlParams = new URLSearchParams(window.location.search);
     
     if (urlParams.has('share_error')) {
@@ -1204,15 +1204,22 @@
     }
     
     if (!urlParams.has('shared')) return;
-    
-    // Clean up the URL so refreshing doesn't trigger it again
-    window.history.replaceState({}, document.title, '/');
 
     const request = indexedDB.open('LabDropSharedFiles', 1);
 
     request.onsuccess = (event) => {
       const db = event.target.result;
-      if (!db.objectStoreNames.contains('files')) return;
+      
+      // If the store doesn't exist yet, wait for SW to create it
+      if (!db.objectStoreNames.contains('files')) {
+        db.close();
+        if (retries < 20) {
+          setTimeout(() => checkSharedFiles(retries + 1), 500);
+        } else {
+          window.history.replaceState({}, document.title, '/');
+        }
+        return;
+      }
 
       const transaction = db.transaction('files', 'readwrite');
       const store = transaction.objectStore('files');
@@ -1221,19 +1228,27 @@
       getAllRequest.onsuccess = () => {
         const files = getAllRequest.result;
         if (files && files.length > 0) {
-          // Add files using addFiles to respect limits and deduplication
           addFiles(files);
-          
           showAlert(`Received ${files.length} file(s) from share! Please review and click Create Transfer.`, 'success');
-          
-          // Clear IndexedDB after loading to avoid zombie files on next visit
           store.clear();
+          window.history.replaceState({}, document.title, '/');
+        } else {
+          // Store exists but files might not be saved yet, retry
+          db.close();
+          if (retries < 20) {
+            setTimeout(() => checkSharedFiles(retries + 1), 500);
+          } else {
+            window.history.replaceState({}, document.title, '/');
+          }
         }
       };
     };
 
     request.onerror = (err) => {
       console.error('Failed to open IndexedDB for shared files', err);
+      if (retries < 20) {
+        setTimeout(() => checkSharedFiles(retries + 1), 500);
+      }
     };
   }
 

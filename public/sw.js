@@ -10,32 +10,32 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method === 'POST' && event.request.url.endsWith('/share-target')) {
-    event.respondWith(handleShareTarget(event.request));
+    
+    // Process files in the background to prevent splash screen hang
+    event.waitUntil(
+      (async () => {
+        try {
+          const formData = await event.request.formData();
+          const files = formData.getAll('shared_files');
+
+          if (files && files.length > 0) {
+            await saveSharedFilesToIndexedDB(files);
+          }
+        } catch (error) {
+          console.error('Error handling share target background:', error);
+        }
+      })()
+    );
+
+    // Respond immediately to the browser
+    event.respondWith(
+      new Response(
+        '<html><head><meta http-equiv="refresh" content="0; url=/?shared=1"></head><body>Loading...</body></html>',
+        { headers: { 'Content-Type': 'text/html' } }
+      )
+    );
   }
 });
-
-async function handleShareTarget(request) {
-  try {
-    const formData = await request.formData();
-    const files = formData.getAll('shared_files');
-
-    if (files && files.length > 0) {
-      await saveSharedFilesToIndexedDB(files);
-    }
-    
-    // Redirect to the main page using an HTML redirect instead of 303 to prevent Android Chrome Share Target hangs
-    return new Response(
-      '<html><head><meta http-equiv="refresh" content="0; url=/?shared=1"></head><body>Loading...</body></html>',
-      { headers: { 'Content-Type': 'text/html' } }
-    );
-  } catch (error) {
-    console.error('Error handling share target:', error);
-    return new Response(
-      '<html><head><meta http-equiv="refresh" content="0; url=/?share_error=1"></head><body>Error loading.</body></html>',
-      { headers: { 'Content-Type': 'text/html' } }
-    );
-  }
-}
 
 function saveSharedFilesToIndexedDB(files) {
   return new Promise((resolve, reject) => {
