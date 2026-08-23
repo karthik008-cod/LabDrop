@@ -10,28 +10,45 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method === 'POST' && event.request.url.endsWith('/share-target')) {
-    event.respondWith(
-      (async () => {
-        try {
-          const formData = await event.request.formData();
-          const files = formData.getAll('shared_files');
+    
+    const stream = new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder();
+        // Send initial HTML to hide splash screen and show a loading message
+        controller.enqueue(encoder.encode(
+          '<html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>' +
+          '<body style="background:#121212;color:white;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">' +
+          '<h2>Processing shared files... Please wait.</h2>\n'
+        ));
 
-          if (files && files.length > 0) {
-            await saveSharedFilesToIndexedDB(files);
-          }
-          
-          return new Response(
-            '<html><head><meta http-equiv="refresh" content="0; url=/?shared=1"></head><body>Loading...</body></html>',
-            { headers: { 'Content-Type': 'text/html' } }
-          );
-        } catch (error) {
-          console.error('Error handling share target:', error);
-          return new Response(
-            '<html><head><meta http-equiv="refresh" content="0; url=/?share_error=1"></head><body>Error loading.</body></html>',
-            { headers: { 'Content-Type': 'text/html' } }
-          );
-        }
-      })()
+        // Process files asynchronously
+        event.waitUntil(
+          (async () => {
+            try {
+              const formData = await event.request.formData();
+              const files = formData.getAll('shared_files');
+
+              if (files && files.length > 0) {
+                await saveSharedFilesToIndexedDB(files);
+              }
+              
+              // Finish the HTML and redirect
+              controller.enqueue(encoder.encode('<script>window.location.href = "/?shared=1";</script></body></html>'));
+            } catch (error) {
+              console.error('Error handling share target:', error);
+              controller.enqueue(encoder.encode('<script>window.location.href = "/?share_error=1";</script></body></html>'));
+            } finally {
+              controller.close();
+            }
+          })()
+        );
+      }
+    });
+
+    event.respondWith(
+      new Response(stream, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      })
     );
   }
 });
