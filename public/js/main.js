@@ -1207,19 +1207,15 @@
 
     const request = indexedDB.open('LabDropSharedFiles', 1);
 
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('files')) {
+        db.createObjectStore('files', { autoIncrement: true });
+      }
+    };
+
     request.onsuccess = (event) => {
       const db = event.target.result;
-      
-      // If the store doesn't exist yet, wait for SW to create it
-      if (!db.objectStoreNames.contains('files')) {
-        db.close();
-        if (retries < 20) {
-          setTimeout(() => checkSharedFiles(retries + 1), 500);
-        } else {
-          window.history.replaceState({}, document.title, '/');
-        }
-        return;
-      }
 
       const transaction = db.transaction('files', 'readwrite');
       const store = transaction.objectStore('files');
