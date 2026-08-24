@@ -114,6 +114,10 @@
       const res = await fetch(`/api/transfer/${transferId}`, { headers });
 
       if (res.status === 404) {
+        if (retryCount < 3) {
+          setTimeout(() => loadTransfer(retryCount + 1), 1000);
+          return;
+        }
         showError('🔍', 'Transfer Not Found', 'This transfer does not exist or is no longer available.');
         return;
       }
