@@ -95,6 +95,23 @@
   const cancelNewFolderBtn = $('#cancelNewFolderBtn');
   const toastContainer = $('#toastContainer');
 
+  // ---- Mobile Menu DOM ----
+  const mobileMenuBtn = $('#mobileMenuBtn');
+  const sidebarOverlay = $('#sidebarOverlay');
+  const sidebar = $('.sidebar');
+
+  if (mobileMenuBtn && sidebarOverlay && sidebar) {
+    mobileMenuBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('sidebar--open');
+      sidebarOverlay.classList.toggle('active');
+    });
+
+    sidebarOverlay.addEventListener('click', () => {
+      sidebar.classList.remove('sidebar--open');
+      sidebarOverlay.classList.remove('active');
+    });
+  }
+
   // ---- State ----
   let selectedFiles = []; // Root / Unorganized files (Array of File objects)
   let selectedLinks = []; // Root / Unorganized links (Array of string URLs)
