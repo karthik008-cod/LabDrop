@@ -832,7 +832,9 @@
   // The "+ New Folder" button is always visible inside the folder panel.
   // But we also need a way to create the FIRST folder. Add it to the dropzone hint.
   dropzone.addEventListener('click', (e) => {
-    // Let the file input handle the click
+    if (e.target !== fileInput && e.target.tagName !== 'BUTTON') {
+      fileInput.click();
+    }
   });
 
   // ---- Create Transfer ----
