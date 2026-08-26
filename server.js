@@ -7,7 +7,7 @@ require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const multerS3 = require('multer-s3');
-const { S3Client, GetObjectCommand, DeleteObjectsCommand } = require('@aws-sdk/client-s3');
+const { S3Client, GetObjectCommand, DeleteObjectsCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const archiver = require('archiver');
 const QRCode = require('qrcode');
@@ -480,22 +480,37 @@ app.post('/api/upload', optionalAuth, (req, res) => {
       userId = req.user.userId;
     }
 
-    const files = req.files.map((f) => {
+    const files = await Promise.all(req.files.map(async (f) => {
       // multer-s3 puts the final path in f.key: transferId/fileId__sanitized
       const keyParts = f.key.split('/');
       const filename = keyParts[keyParts.length - 1]; // fileId__sanitized
       const parts = filename.split('__');
       const fileId = parts[0];
       const sanitized = parts.slice(1).join('__');
+      
+      let size = f.size;
+      if (size === undefined || size === 0) {
+        try {
+          const headData = await s3Client.send(new HeadObjectCommand({
+            Bucket: S3_BUCKET_NAME,
+            Key: f.key
+          }));
+          size = headData.ContentLength || 0;
+        } catch (err) {
+          console.error(`Failed to fetch file size for ${f.key}:`, err);
+          size = 0;
+        }
+      }
+
       return {
         id: fileId,
         originalName: sanitized,
         storageName: filename,
-        size: f.size,
+        size: size,
         mimetype: f.mimetype,
         category: getFileCategory(sanitized),
       };
-    });
+    }));
 
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
 
