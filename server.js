@@ -6,6 +6,9 @@ require('dotenv').config();
 
 const express = require('express');
 const multer = require('multer');
+const multerS3 = require('multer-s3');
+const { S3Client, GetObjectCommand, DeleteObjectsCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const archiver = require('archiver');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
@@ -18,6 +21,17 @@ const jwt = require('jsonwebtoken');
 const storage = require('./storage');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'labdrop-super-secret-jwt-key';
+
+// Initialize S3 Client
+const s3Client = new S3Client({
+  endpoint: process.env.S3_ENDPOINT,
+  region: process.env.S3_REGION,
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY,
+    secretAccessKey: process.env.S3_SECRET_KEY,
+  },
+});
+const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
 // ============================================================
 // Configuration
@@ -260,21 +274,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Multer configuration for file uploads
 // ============================================================
 
-const diskStorageConfig = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // Each transfer gets its own subdirectory (created in the route handler)
-    cb(null, req.transferDir);
+const s3StorageConfig = multerS3({
+  s3: s3Client,
+  bucket: S3_BUCKET_NAME,
+  metadata: function (req, file, cb) {
+    cb(null, { fieldName: file.fieldname });
   },
-  filename: (req, file, cb) => {
+  key: function (req, file, cb) {
     const fileId = uuidv4();
     const sanitized = sanitizeFilename(file.originalname);
-    // Prefix with fileId to prevent collisions
-    cb(null, `${fileId}__${sanitized}`);
-  },
+    // Prefix with transferId
+    cb(null, `${req.transferId}/${fileId}__${sanitized}`);
+  }
 });
 
 const upload = multer({
-  storage: diskStorageConfig,
+  storage: s3StorageConfig,
   limits: {
     fileSize: CONFIG.MAX_FILE_SIZE,
     files: CONFIG.MAX_FILES_PER_TRANSFER,
@@ -289,13 +304,9 @@ const upload = multer({
   },
 });
 
-// Middleware: create transfer directory before multer processes files
+// Middleware: set transferId for this upload session
 app.use('/api/upload', (req, res, next) => {
-  const transferId = uuidv4();
-  const transferDir = path.join(CONFIG.UPLOAD_DIR, transferId);
-  fs.mkdirSync(transferDir, { recursive: true });
-  req.transferId = transferId;
-  req.transferDir = transferDir;
+  req.transferId = uuidv4();
   next();
 });
 
@@ -405,12 +416,6 @@ app.post('/api/upload', optionalAuth, (req, res) => {
 
   uploadHandler(req, res, async (err) => {
     if (err) {
-      // Clean up the created directory on error
-      const dir = req.transferDir;
-      if (dir && fs.existsSync(dir)) {
-        fs.rmSync(dir, { recursive: true, force: true });
-      }
-
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(413).json({
@@ -443,11 +448,6 @@ app.post('/api/upload', optionalAuth, (req, res) => {
     }
 
     if ((!req.files || req.files.length === 0) && links.length === 0) {
-      // Clean up empty directory
-      const dir = req.transferDir;
-      if (dir && fs.existsSync(dir)) {
-        fs.rmSync(dir, { recursive: true, force: true });
-      }
       return res.status(400).json({ error: 'No files or links selected.' });
     }
 
@@ -481,13 +481,16 @@ app.post('/api/upload', optionalAuth, (req, res) => {
     }
 
     const files = req.files.map((f) => {
-      const parts = f.filename.split('__');
+      // multer-s3 puts the final path in f.key: transferId/fileId__sanitized
+      const keyParts = f.key.split('/');
+      const filename = keyParts[keyParts.length - 1]; // fileId__sanitized
+      const parts = filename.split('__');
       const fileId = parts[0];
       const sanitized = parts.slice(1).join('__');
       return {
         id: fileId,
         originalName: sanitized,
-        storageName: f.filename,
+        storageName: filename,
         size: f.size,
         mimetype: f.mimetype,
         category: getFileCategory(sanitized),
@@ -498,8 +501,6 @@ app.post('/api/upload', optionalAuth, (req, res) => {
 
     // Enforce total transfer size limit
     if (totalSize > CONFIG.MAX_TOTAL_SIZE) {
-      const dir = req.transferDir;
-      if (dir && fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
       return res.status(413).json({ error: `Total size exceeds the ${Math.round(CONFIG.MAX_TOTAL_SIZE / (1024*1024))}MB limit.` });
     }
 
@@ -675,21 +676,24 @@ app.get('/download/:transferId/zip', async (req, res) => {
   const fsMap = transfer.folderStructure || {};
 
   for (const file of transfer.files) {
-    const filePath = path.join(CONFIG.UPLOAD_DIR, transfer.id, file.storageName);
-    const resolvedPath = path.resolve(filePath);
-    const uploadsResolved = path.resolve(CONFIG.UPLOAD_DIR);
+    const s3Key = `${transfer.id}/${file.storageName}`;
+    const command = new GetObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: s3Key,
+    });
 
-    if (resolvedPath.startsWith(uploadsResolved) && fs.existsSync(filePath)) {
+    try {
+      const response = await s3Client.send(command);
       const folderName = fsMap[file.originalName];
-      // Note: we can't easily sanitize folder names comprehensively here without
-      // risk of collisions, but simple path sanitization is good practice.
       let entryName = file.originalName;
       if (folderName) {
          // Prevent directory traversal attacks in the ZIP structure itself
          const safeFolder = folderName.replace(/^(\.\.(\/|\\|$))+/, '');
          entryName = path.join(safeFolder, file.originalName).replace(/\\/g, '/');
       }
-      archive.file(filePath, { name: entryName });
+      archive.append(response.Body, { name: entryName });
+    } catch (err) {
+      console.error(`Failed to fetch file from S3 for ZIP: ${s3Key}`, err);
     }
   }
 
@@ -720,29 +724,27 @@ app.get('/download/:transferId/:fileId', async (req, res) => {
     return res.status(404).json({ error: 'File not found.' });
   }
 
-  const filePath = path.join(CONFIG.UPLOAD_DIR, transfer.id, file.storageName);
-
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: 'File not found on server.' });
-  }
-
-  // Ensure the resolved path is within the uploads directory (prevent path traversal)
-  const resolvedPath = path.resolve(filePath);
-  const uploadsResolved = path.resolve(CONFIG.UPLOAD_DIR);
-  if (!resolvedPath.startsWith(uploadsResolved)) {
-    return res.status(403).json({ error: 'Access denied.' });
-  }
-
-  transfer.downloadCount++;
-  await storage.transfers.set(transfer.id, transfer);
-  analytics.totalDownloads++;
-  scheduleAnalyticsSave();
-
-  res.download(filePath, file.originalName, (err) => {
-    if (err && !res.headersSent) {
-      res.status(500).json({ error: 'Download failed.' });
-    }
+  const s3Key = `${transfer.id}/${file.storageName}`;
+  const command = new GetObjectCommand({
+    Bucket: S3_BUCKET_NAME,
+    Key: s3Key,
+    ResponseContentDisposition: `attachment; filename="${file.originalName}"`
   });
+
+  try {
+    // Generate a presigned URL valid for 1 hour (3600 seconds)
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    
+    transfer.downloadCount++;
+    await storage.transfers.set(transfer.id, transfer);
+    analytics.totalDownloads++;
+    scheduleAnalyticsSave();
+
+    return res.redirect(signedUrl);
+  } catch (err) {
+    console.error('S3 Download Error:', err);
+    return res.status(500).json({ error: 'Download failed.' });
+  }
 });
 
 // --- Look up a transfer by short code ---
@@ -854,14 +856,22 @@ async function deleteTransfer(transferId) {
   const transfer = await storage.transfers.get(transferId);
   if (!transfer) return;
 
-  const dir = path.join(CONFIG.UPLOAD_DIR, transferId);
-  if (fs.existsSync(dir)) {
+  if (transfer.files && transfer.files.length > 0) {
+    const objectsToDelete = transfer.files.map(f => ({
+      Key: `${transferId}/${f.storageName}`
+    }));
+    
     try {
-      fs.rmSync(dir, { recursive: true, force: true });
-    } catch (e) {
-      console.error(`Failed to delete transfer directory ${dir}:`, e.message);
+      const command = new DeleteObjectsCommand({
+        Bucket: S3_BUCKET_NAME,
+        Delete: { Objects: objectsToDelete }
+      });
+      await s3Client.send(command);
+    } catch (err) {
+      console.error(`Failed to delete S3 files for transfer ${transferId}:`, err);
     }
   }
+
   await storage.transfers.delete(transferId);
 }
 
@@ -872,25 +882,12 @@ async function cleanupExpiredTransfers() {
   // 1. Clean up from storage
   for (const transfer of await storage.transfers.getAll()) {
     if (now > transfer.expiresAt) {
-      deleteTransfer(transfer.id);
+      await deleteTransfer(transfer.id);
       cleaned++;
     }
   }
 
-  // 2. Clean up orphaned directories (in case server crashed or upload failed)
-  if (fs.existsSync(CONFIG.UPLOAD_DIR)) {
-    const dirs = fs.readdirSync(CONFIG.UPLOAD_DIR);
-    for (const dirName of dirs) {
-      const fullPath = path.join(CONFIG.UPLOAD_DIR, dirName);
-      if (fs.statSync(fullPath).isDirectory() && !await storage.transfers.get(dirName)) {
-        // Only delete if it's been around for more than 1 hour to be safe against in-progress uploads
-        const stats = fs.statSync(fullPath);
-        if (now - stats.birthtimeMs > 60 * 60 * 1000) {
-           fs.rmSync(fullPath, { recursive: true, force: true });
-        }
-      }
-    }
-  }
+  // Note: Orphaned file cleanup is typically handled by Cloud Storage lifecycle rules in a production S3 setup.
 
   if (cleaned > 0) {
     console.log(`[Cleanup] Removed ${cleaned} expired transfer(s).`);

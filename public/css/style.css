@@ -265,6 +265,13 @@ img, svg {
     grid-template-columns: 1fr;
     gap: var(--space-xl);
   }
+  
+  .sidebar {
+    position: relative;
+    top: auto;
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 
 /* ============================================================
