@@ -135,6 +135,23 @@
 
     </div>
 
+  <!-- Download Options Modal -->
+  <div class="modal-overlay" id="downloadModal">
+    <div class="modal">
+      <div class="modal__header">
+        <div class="modal__title">Download Options</div>
+        <button class="modal__close" id="downloadModalClose">✕</button>
+      </div>
+      <div class="modal__body" style="text-align: center;">
+        <p style="margin-bottom: var(--space-lg); color: var(--color-text-secondary);">How would you like to save this file?</p>
+        <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+          <button class="btn btn--primary btn--block btn--lg" id="btnDownloadDefault">⬇️ Direct Download</button>
+          <button class="btn btn--secondary btn--block btn--lg" id="btnDownloadBrowse">📁 Browse Location (Save As...)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Footer -->
     <footer class="footer" style="margin-top: auto; padding-top: var(--space-2xl); padding-bottom: var(--space-md); text-align: right; color: var(--color-text-muted); font-size: 0.85rem;">
       <div style="display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">

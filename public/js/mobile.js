@@ -340,8 +340,8 @@
     }
   });
 
-  // ---- Save As (Browse) for ZIP ----
-  downloadAllBtn.addEventListener('click', async (e) => {
+  // ---- Save As (Browse) vs Direct for ZIP ----
+  downloadAllBtn.addEventListener('click', (e) => {
     if (window.showSaveFilePicker) {
       e.preventDefault();
       const downloadUrl = downloadAllBtn.getAttribute('href');
@@ -349,35 +349,7 @@
       if (!filename.toLowerCase().endsWith('.zip')) {
         filename += '.zip';
       }
-      
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: filename,
-          types: [{
-            description: 'ZIP Archive',
-            accept: { 'application/zip': ['.zip'] }
-          }]
-        });
-        
-        downloadAllBtn.style.opacity = '0.5';
-        downloadAllBtn.style.pointerEvents = 'none';
-
-        const res = await fetch(downloadUrl);
-        if (!res.ok) throw new Error('Download failed');
-        
-        const blob = await res.blob();
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          alert('Save failed: ' + err.message);
-          window.location.href = downloadUrl;
-        }
-      } finally {
-        downloadAllBtn.style.opacity = '1';
-        downloadAllBtn.style.pointerEvents = 'auto';
-      }
+      openDownloadModal(downloadUrl, filename, downloadAllBtn);
     }
   });
 
@@ -411,39 +383,14 @@
       return;
     }
 
-    // Save As (Browse) for Individual File
+    // Save As (Browse) vs Direct for Individual File
     const downloadBtn = e.target.closest('.download-file-btn');
     if (downloadBtn && window.showSaveFilePicker) {
       e.preventDefault();
       const filename = downloadBtn.getAttribute('data-filename');
       const downloadUrl = downloadBtn.getAttribute('href');
-      
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: filename
-        });
-        
-        // Show loading state or toast (simple alert for now)
-        downloadBtn.style.opacity = '0.5';
-        downloadBtn.style.pointerEvents = 'none';
-
-        const res = await fetch(downloadUrl);
-        if (!res.ok) throw new Error('Download failed');
-        
-        const blob = await res.blob();
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          alert('Save failed: ' + err.message);
-          // Fallback to standard download
-          window.location.href = downloadUrl;
-        }
-      } finally {
-        downloadBtn.style.opacity = '1';
-        downloadBtn.style.pointerEvents = 'auto';
-      }
+      openDownloadModal(downloadUrl, filename, downloadBtn);
+      return;
     }
   });
 
@@ -458,6 +405,77 @@
 
   // ---- Retry button ----
   retryBtn.addEventListener('click', () => loadTransfer(0));
+
+  // ---- Download Options Modal Logic ----
+  const downloadModal = document.getElementById('downloadModal');
+  const downloadModalClose = document.getElementById('downloadModalClose');
+  const btnDownloadDefault = document.getElementById('btnDownloadDefault');
+  const btnDownloadBrowse = document.getElementById('btnDownloadBrowse');
+  
+  let pendingDownload = null;
+
+  function openDownloadModal(url, filename, btnEl) {
+    pendingDownload = { url, filename, btnEl };
+    downloadModal.classList.add('active');
+  }
+
+  function closeDownloadModal() {
+    downloadModal.classList.remove('active');
+    pendingDownload = null;
+  }
+
+  if (downloadModalClose) downloadModalClose.addEventListener('click', closeDownloadModal);
+
+  if (btnDownloadDefault) {
+    btnDownloadDefault.addEventListener('click', () => {
+      if (pendingDownload) {
+        window.location.href = pendingDownload.url;
+      }
+      closeDownloadModal();
+    });
+  }
+
+  if (btnDownloadBrowse) {
+    btnDownloadBrowse.addEventListener('click', async () => {
+      if (!pendingDownload) return;
+      const { url, filename, btnEl } = pendingDownload;
+      closeDownloadModal();
+      
+      try {
+        const ext = filename.split('.').pop();
+        const types = [];
+        if (ext === 'zip') {
+          types.push({ description: 'ZIP Archive', accept: { 'application/zip': ['.zip'] } });
+        }
+        
+        const handle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: types.length > 0 ? types : undefined
+        });
+        
+        btnEl.style.opacity = '0.5';
+        btnEl.style.pointerEvents = 'none';
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Download failed');
+        
+        const blob = await res.blob();
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          alert('Save failed: ' + err.message);
+          window.location.href = url; // Fallback to direct download
+        }
+      } finally {
+        if (btnEl) {
+          btnEl.style.opacity = '1';
+          btnEl.style.pointerEvents = 'auto';
+        }
+      }
+    });
+  }
 
   // ---- Initialize ----
   loadTransfer();
