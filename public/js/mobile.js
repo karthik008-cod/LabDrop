@@ -341,45 +341,8 @@
   });
 
   // ---- Save As (Browse) for ZIP ----
-  downloadAllBtn.addEventListener('click', async (e) => {
-    if (window.showSaveFilePicker) {
-      e.preventDefault();
-      const downloadUrl = downloadAllBtn.getAttribute('href');
-      let filename = customZipName || activeTransferData.transferName || 'LabDrop_Transfer';
-      if (!filename.toLowerCase().endsWith('.zip')) {
-        filename += '.zip';
-      }
-      
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: filename,
-          types: [{
-            description: 'ZIP Archive',
-            accept: { 'application/zip': ['.zip'] }
-          }]
-        });
-        
-        downloadAllBtn.style.opacity = '0.5';
-        downloadAllBtn.style.pointerEvents = 'none';
-
-        const res = await fetch(downloadUrl);
-        if (!res.ok) throw new Error('Download failed');
-        
-        const blob = await res.blob();
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          alert('Save failed: ' + err.message);
-          window.location.href = downloadUrl;
-        }
-      } finally {
-        downloadAllBtn.style.opacity = '1';
-        downloadAllBtn.style.pointerEvents = 'auto';
-      }
-    }
-  });
+  // (Removed showSaveFilePicker fetch logic to avoid S3 CORS issues. 
+  // Native <a> tag downloading handles this perfectly without CORS errors.)
 
   // ---- Individual File Rename & Save As ----
   mFileList.addEventListener('click', async (e) => {
@@ -411,40 +374,6 @@
       return;
     }
 
-    // Save As (Browse) for Individual File
-    const downloadBtn = e.target.closest('.download-file-btn');
-    if (downloadBtn && window.showSaveFilePicker) {
-      e.preventDefault();
-      const filename = downloadBtn.getAttribute('data-filename');
-      const downloadUrl = downloadBtn.getAttribute('href');
-      
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: filename
-        });
-        
-        // Show loading state or toast (simple alert for now)
-        downloadBtn.style.opacity = '0.5';
-        downloadBtn.style.pointerEvents = 'none';
-
-        const res = await fetch(downloadUrl);
-        if (!res.ok) throw new Error('Download failed');
-        
-        const blob = await res.blob();
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          alert('Save failed: ' + err.message);
-          // Fallback to standard download
-          window.location.href = downloadUrl;
-        }
-      } finally {
-        downloadBtn.style.opacity = '1';
-        downloadBtn.style.pointerEvents = 'auto';
-      }
-    }
   });
 
   // ---- PIN form submit ----
