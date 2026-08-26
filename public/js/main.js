@@ -1232,14 +1232,9 @@
         const files = getAllRequest.result;
         if (files && files.length > 0) {
           addFiles(files);
-          showAlert(`Received ${files.length} file(s) from share! Creating transfer...`, 'success');
+          showAlert(`Received ${files.length} file(s) from share! Please review and click Create Transfer.`, 'success');
           store.clear();
           window.history.replaceState({}, document.title, '/');
-          
-          // Automatically trigger transfer creation
-          setTimeout(() => {
-            createTransferBtn.click();
-          }, 300);
         } else {
           // Store exists but files might not be saved yet, retry
           db.close();
