@@ -743,19 +743,23 @@ app.get('/download/:transferId/:fileId', async (req, res) => {
   const command = new GetObjectCommand({
     Bucket: S3_BUCKET_NAME,
     Key: s3Key,
-    ResponseContentDisposition: `attachment; filename="${file.originalName}"`
   });
 
   try {
-    // Generate a presigned URL valid for 1 hour (3600 seconds)
-    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    const response = await s3Client.send(command);
+    
+    res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
+    if (file.size) {
+      res.setHeader('Content-Length', file.size);
+    }
+    
+    response.Body.pipe(res);
     
     transfer.downloadCount++;
     await storage.transfers.set(transfer.id, transfer);
     analytics.totalDownloads++;
     scheduleAnalyticsSave();
-
-    return res.redirect(signedUrl);
   } catch (err) {
     console.error('S3 Download Error:', err);
     return res.status(500).json({ error: 'Download failed.' });
