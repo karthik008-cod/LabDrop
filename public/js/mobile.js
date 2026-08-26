@@ -24,6 +24,7 @@
   const mHeaderSubtitle = $('#mHeaderSubtitle');
   const mStatFiles = $('#mStatFiles');
   const mStatSize = $('#mStatSize');
+  const mStatCode = $('#mStatCode');
   const mStatExpiry = $('#mStatExpiry');
   const downloadAllBtn = $('#downloadAllBtn');
   const renameZipBtn = $('#renameZipBtn');
@@ -176,6 +177,9 @@
 
     mStatFiles.textContent = data.fileCount + (data.linkCount > 0 ? ` (+${data.linkCount})` : '');
     mStatSize.textContent = formatBytes(data.totalSize);
+    if (mStatCode) {
+      mStatCode.textContent = data.shortCode || '----';
+    }
 
     // Build URL query params
     const params = new URLSearchParams();
