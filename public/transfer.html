@@ -98,6 +98,10 @@
         
         <!-- Stats Card -->
         <div class="qr-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
+            <h2 id="mTransferName" style="margin: 0; font-size: 1.25rem;">Lab Files</h2>
+            <span id="mStatCodeBadge" style="background: var(--color-bg-secondary); padding: 4px 8px; border-radius: 4px; font-size: 0.9rem; font-family: monospace; letter-spacing: 2px; color: var(--color-primary);">----</span>
+          </div>
           <div class="qr-stats" style="border-top: none; padding-top: 0;">
             <div class="stat-item">
               <span class="stat-item__val" id="mStatFiles">0</span>
@@ -106,10 +110,6 @@
             <div class="stat-item">
               <span class="stat-item__val" id="mStatSize">0 B</span>
               <span class="stat-item__lbl">Total Size</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-item__val" id="mStatCode" style="font-family: monospace; letter-spacing: 2px;">----</span>
-              <span class="stat-item__lbl">Code</span>
             </div>
             <div class="stat-item">
               <span class="stat-item__val" id="mStatExpiry">--:--</span>

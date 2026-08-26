@@ -24,8 +24,9 @@
   const mHeaderSubtitle = $('#mHeaderSubtitle');
   const mStatFiles = $('#mStatFiles');
   const mStatSize = $('#mStatSize');
-  const mStatCode = $('#mStatCode');
   const mStatExpiry = $('#mStatExpiry');
+  const mTransferName = $('#mTransferName');
+  const mStatCodeBadge = $('#mStatCodeBadge');
   const downloadAllBtn = $('#downloadAllBtn');
   const renameZipBtn = $('#renameZipBtn');
   const mFileList = $('#mFileList');
@@ -177,9 +178,9 @@
 
     mStatFiles.textContent = data.fileCount + (data.linkCount > 0 ? ` (+${data.linkCount})` : '');
     mStatSize.textContent = formatBytes(data.totalSize);
-    if (mStatCode) {
-      mStatCode.textContent = data.shortCode || '----';
-    }
+    
+    if (mTransferName) mTransferName.textContent = data.transferName || 'Lab Files';
+    if (mStatCodeBadge) mStatCodeBadge.textContent = data.shortCode || '----';
 
     // Build URL query params
     const params = new URLSearchParams();
