@@ -1187,6 +1187,7 @@
     progressBarFill.style.width = '0%';
     progressText.textContent = 'Preparing upload…';
     showSection(selectSection);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   // ---- Receive Form Logic ----
