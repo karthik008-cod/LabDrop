@@ -449,14 +449,17 @@ app.post('/api/upload', optionalAuth, (req, res) => {
     
     const now = Date.now();
     const d = new Date(now);
-    const dayOfMonth = d.getDate();
+    const daysSinceEpoch = Math.floor(now / (1000 * 60 * 60 * 24));
+    const dayCycle = (daysSinceEpoch % 9) + 1; // 1 to 9
+    
     const startOfDay = new Date(d).setHours(0,0,0,0);
     const secondsOfDay = Math.floor((now - startOfDay) / 1000);
     const timeBlock = Math.floor(secondsOfDay / 900);
     
-    const timeBlockId = `${d.getFullYear()}-${d.getMonth() + 1}-${dayOfMonth}-block-${timeBlock}`;
+    // timeBlockId uses full date so the sequence resets to 1 every day for that time block
+    const timeBlockId = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}-block-${timeBlock}`;
     const sequence = await storage.transfers.getNextSequence(timeBlockId);
-    const shortCode = `${dayOfMonth}${timeBlock}${sequence}`;
+    const shortCode = `${dayCycle}${timeBlock}${sequence}`;
 
     let expiresAt = now + CONFIG.TRANSFER_EXPIRY_MINUTES * 60 * 1000;
     
