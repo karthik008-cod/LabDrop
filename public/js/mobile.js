@@ -485,3 +485,134 @@
   // ---- Initialize ----
   loadTransfer();
 })();
+
+  // ---- Auth Logic for Receiver Screen ----
+  const authModal = document.getElementById('authModal');
+  if (authModal) {
+    const authModalClose = document.getElementById('authModalClose');
+    const authForm = document.getElementById('authForm');
+    const authEmail = document.getElementById('authEmail');
+    const authPassword = document.getElementById('authPassword');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const authError = document.getElementById('authError');
+    const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+    const authModalTitle = document.getElementById('authModalTitle');
+    const authToggleText = document.getElementById('authToggleText');
+    const authToggleLink = document.getElementById('authToggleLink');
+    
+    const authLoggedOut = document.getElementById('authLoggedOut');
+    const authLoggedIn = document.getElementById('authLoggedIn');
+    const navLoginBtn = document.getElementById('navLoginBtn');
+    const navSignupBtn = document.getElementById('navSignupBtn');
+    const navLogoutBtn = document.getElementById('navLogoutBtn');
+    const navUserEmail = document.getElementById('navUserEmail');
+
+    let authToken = sessionStorage.getItem('labdrop_token');
+    let authMode = 'login'; 
+
+    function updateAuthUI() {
+      if (authToken) {
+        if (authLoggedOut) authLoggedOut.style.display = 'none';
+        if (authLoggedIn) authLoggedIn.style.display = 'flex';
+        fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + authToken } })
+          .then(res => res.ok ? res.json() : Promise.reject())
+          .then(data => {
+            if (navUserEmail) navUserEmail.textContent = data.user.email;
+          })
+          .catch(() => {
+            authToken = null;
+            sessionStorage.removeItem('labdrop_token');
+            updateAuthUI();
+          });
+      } else {
+        if (authLoggedOut) authLoggedOut.style.display = 'flex';
+        if (authLoggedIn) authLoggedIn.style.display = 'none';
+      }
+    }
+
+    if (togglePasswordBtn) {
+      togglePasswordBtn.addEventListener('click', () => {
+        const type = authPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+        authPassword.setAttribute('type', type);
+        togglePasswordBtn.textContent = type === 'password' ? '???' : '??';
+      });
+    }
+
+    function openAuthModal(mode) {
+      authMode = mode;
+      authError.style.display = 'none';
+      authForm.reset();
+      if (mode === 'login') {
+        authModalTitle.textContent = 'Login';
+        authSubmitBtn.textContent = 'Login';
+        authToggleText.textContent = 'Don\'t have an account?';
+        authToggleLink.textContent = 'Sign Up';
+      } else {
+        authModalTitle.textContent = 'Create Account';
+        authSubmitBtn.textContent = 'Sign Up';
+        authToggleText.textContent = 'Already have an account?';
+        authToggleLink.textContent = 'Login';
+      }
+      authModal.classList.add('active');
+    }
+
+    function closeAuthModal() {
+      authModal.classList.remove('active');
+    }
+
+    if (authToggleLink) {
+      authToggleLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        openAuthModal(authMode === 'login' ? 'register' : 'login');
+      });
+    }
+
+    if (authModalClose) authModalClose.addEventListener('click', closeAuthModal);
+    if (navLoginBtn) navLoginBtn.addEventListener('click', (e) => { e.preventDefault(); openAuthModal('login'); });
+    if (navSignupBtn) navSignupBtn.addEventListener('click', (e) => { e.preventDefault(); openAuthModal('register'); });
+    
+    if (navLogoutBtn) {
+      navLogoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        authToken = null;
+        sessionStorage.removeItem('labdrop_token');
+        updateAuthUI();
+      });
+    }
+
+    if (authForm) {
+      authForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const endpoint = authMode === 'login' ? '/api/login' : '/api/register';
+        authSubmitBtn.disabled = true;
+        authError.style.display = 'none';
+
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: authEmail.value, password: authPassword.value })
+          });
+          const data = await res.json();
+          
+          if (res.ok) {
+            authToken = data.token;
+            sessionStorage.setItem('labdrop_token', authToken);
+            updateAuthUI();
+            closeAuthModal();
+          } else {
+            authError.textContent = data.error || 'Authentication failed.';
+            authError.style.display = 'block';
+          }
+        } catch (err) {
+          authError.textContent = 'Network error.';
+          authError.style.display = 'block';
+        } finally {
+          authSubmitBtn.disabled = false;
+        }
+      });
+    }
+
+    updateAuthUI();
+  }
+

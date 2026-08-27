@@ -87,14 +87,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (navLoginBtn) {
+    const hasModal = !!document.getElementById('authModal');
+    if (navLoginBtn && !hasModal) {
       navLoginBtn.addEventListener('click', (e) => {
         e.preventDefault();
         window.location.href = '/?action=login';
       });
     }
     
-    if (navSignupBtn) {
+    if (navSignupBtn && !hasModal) {
       navSignupBtn.addEventListener('click', (e) => {
         e.preventDefault();
         window.location.href = '/?action=signup';
