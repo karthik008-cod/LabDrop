@@ -890,6 +890,18 @@
       return;
     }
 
+    if (requirePinCheck.checked) {
+      const customPinValue = customPinInput.value.trim();
+      if (customPinValue.length > 0) {
+        if (customPinValue.length !== 6 || !/^\d+$/.test(customPinValue)) {
+          customPinInput.classList.add('shake');
+          setTimeout(() => customPinInput.classList.remove('shake'), 300);
+          showAlert('Custom PIN must be exactly 6 digits.');
+          return;
+        }
+      }
+    }
+
     showSection(uploadSection);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -922,13 +934,7 @@
     
     if (requirePinCheck.checked) {
       const customPinValue = customPinInput.value.trim();
-      if (customPinValue.length > 0) {
-        if (customPinValue.length !== 6 || !/^\d+$/.test(customPinValue)) {
-          customPinInput.classList.add('shake');
-          setTimeout(() => customPinInput.classList.remove('shake'), 300);
-          showAlert('Custom PIN must be exactly 6 digits.');
-          return;
-        }
+      if (customPinValue.length === 6 && /^\d+$/.test(customPinValue)) {
         formData.append('customPin', customPinValue);
       }
     }
