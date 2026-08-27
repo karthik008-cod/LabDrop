@@ -1303,6 +1303,20 @@
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 
+  // Analytics Tracking
+  setTimeout(() => {
+    let deviceId = localStorage.getItem('deviceId');
+    if (!deviceId) {
+      deviceId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      localStorage.setItem('deviceId', deviceId);
+      fetch('/api/analytics/visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId })
+      }).catch(() => {});
+    }
+  }, 1000);
+
   checkSharedFiles();
 
 })();

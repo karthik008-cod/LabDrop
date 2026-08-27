@@ -308,6 +308,66 @@ app.use('/api/upload', (req, res, next) => {
 // API Routes
 // ============================================================
 
+// --- Analytics & Admin ---
+app.post('/api/analytics/visit', express.json(), async (req, res) => {
+  try {
+    const { deviceId } = req.body;
+    if (deviceId) {
+      const Analytics = require('mongoose').model('Analytics');
+      await Analytics.findOneAndUpdate(
+        { id: 'global' },
+        { $addToSet: { uniqueDevices: String(deviceId) } },
+        { upsert: true }
+      );
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+app.get('/admin/stats', async (req, res) => {
+  const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+  if (req.query.pass !== adminPass) {
+    return res.status(403).send('Forbidden');
+  }
+
+  try {
+    const stats = await storage.analytics.get();
+    const allTransfers = await storage.transfers.getAll();
+    const activeTransfers = allTransfers.filter(t => Date.now() < t.expiresAt);
+    const activeFilesCount = activeTransfers.reduce((acc, t) => acc + (t.files ? t.files.length : 0), 0);
+
+    const html = `
+      <html>
+        <head>
+          <title>LabDrop Admin</title>
+          <style>
+            body { font-family: sans-serif; background: #1a1a1a; color: #fff; padding: 2rem; }
+            .card { background: #2a2a2a; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; max-width: 400px;}
+            h2 { margin-top: 0; color: #FFD166; }
+            .stat { font-size: 1.2rem; margin: 0.5rem 0; display: flex; justify-content: space-between; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h2>LabDrop Admin Stats</h2>
+            <div class="stat"><span>Unique Users:</span> <strong>${(stats.uniqueDevices || []).length}</strong></div>
+            <div class="stat"><span>Total Transfers:</span> <strong>${stats.totalTransfersCreated || 0}</strong></div>
+            <div class="stat"><span>Total Files:</span> <strong>${stats.totalFilesUploaded || 0}</strong></div>
+            <div class="stat"><span>Total Downloads:</span> <strong>${stats.totalDownloads || 0}</strong></div>
+            <div class="stat"><span>Active Transfers:</span> <strong>${activeTransfers.length}</strong></div>
+            <div class="stat"><span>Active Files:</span> <strong>${activeFilesCount}</strong></div>
+          </div>
+        </body>
+      </html>
+    `;
+    res.send(html);
+  } catch (err) {
+    res.status(500).send('Error loading stats');
+  }
+});
+
 // --- Authentication ---
 
 // Middleware to get user from token (optional auth)
