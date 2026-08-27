@@ -578,8 +578,8 @@ app.post('/api/upload', optionalAuth, (req, res) => {
     if (host.includes('localhost') || host.includes('127.0.0.1')) {
       const localIP = getLocalIPv4();
       if (localIP) baseUrl = `http://${localIP}:${CONFIG.PORT}`;
-    } else if (process.env.PUBLIC_URL) {
-      baseUrl = process.env.PUBLIC_URL;
+    } else {
+      baseUrl = process.env.PUBLIC_URL || 'https://labdrop.online';
     }
     const transferUrl = `${baseUrl}/t/${transferId}`;
 
