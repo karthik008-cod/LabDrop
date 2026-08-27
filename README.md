@@ -103,7 +103,7 @@ LabDrop works out of the box with sensible defaults. You can customize behavior 
 | Variable | Default | Description |
 |---|---|---|
 | `LABDROP_PORT` | `3000` | Server port |
-| `LABDROP_MAX_FILE_SIZE` | `52428800` (50 MB) | Max file size in bytes |
+| `LABDROP_MAX_FILE_SIZE` | `104857600` (100 MB) | Max file size in bytes |
 | `LABDROP_MAX_FILES` | `20` | Max files per transfer |
 | `LABDROP_EXPIRY_MINUTES` | `30` | Transfer expiry time in minutes |
 
@@ -212,7 +212,7 @@ LabDrop/
 |---|---|
 | Phone can't connect | Ensure phone and PC are on the same Wi-Fi/LAN. Check Windows Firewall (see above). |
 | QR code shows `localhost` | This shouldn't happen — LabDrop auto-detects your LAN IP. If it does, check your network connection. |
-| Upload fails | Check file size (max 50MB) and file count (max 20). |
+| Upload fails | Check file size (max 100MB) and file count (max 20). |
 | Files expired | Create a new transfer. Default expiry is 30 minutes. |
 | Port already in use | Change the port: `set LABDROP_PORT=8080` then `npm start` |
 

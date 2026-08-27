@@ -172,7 +172,7 @@
        mHeaderTitle.textContent = data.transferName;
        mHeaderSubtitle.textContent = 'Your lab files are ready';
     } else {
-       mHeaderTitle.textContent = '🧪 LabDrop';
+       mHeaderTitle.textContent = 'LabDrop';
        mHeaderSubtitle.textContent = 'Your lab files are ready';
     }
 

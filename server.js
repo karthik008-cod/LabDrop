@@ -40,7 +40,7 @@ const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 const CONFIG = {
   PORT: parseInt(process.env.PORT || process.env.LABDROP_PORT || '3000', 10),
   UPLOAD_DIR: path.join(__dirname, 'uploads'),
-  MAX_FILE_SIZE: parseInt(process.env.LABDROP_MAX_FILE_SIZE || String(50 * 1024 * 1024), 10), // 50 MB
+  MAX_FILE_SIZE: parseInt(process.env.LABDROP_MAX_FILE_SIZE || String(100 * 1024 * 1024), 10), // 100 MB
   MAX_FILES_PER_TRANSFER: parseInt(process.env.LABDROP_MAX_FILES || '20', 10),
   MAX_TOTAL_SIZE: parseInt(process.env.LABDROP_MAX_TOTAL_SIZE || String(500 * 1024 * 1024), 10), // 500 MB
   TRANSFER_EXPIRY_MINUTES: parseInt(process.env.LABDROP_EXPIRY_MINUTES || '30', 10),
@@ -660,10 +660,12 @@ app.get('/download/:transferId/zip', async (req, res) => {
   const transfer = await storage.transfers.get(req.params.transferId);
 
   if (!transfer) {
+    if (req.accepts('html')) return res.status(404).sendFile(path.join(__dirname, 'public', 'expired.html'));
     return res.status(404).json({ error: 'Transfer not found or has expired.' });
   }
 
   if (Date.now() > transfer.expiresAt) {
+    if (req.accepts('html')) return res.status(410).sendFile(path.join(__dirname, 'public', 'expired.html'));
     return res.status(410).json({ error: 'This transfer has expired.' });
   }
 
@@ -724,10 +726,12 @@ app.get('/download/:transferId/:fileId', async (req, res) => {
   const transfer = await storage.transfers.get(req.params.transferId);
 
   if (!transfer) {
+    if (req.accepts('html')) return res.status(404).sendFile(path.join(__dirname, 'public', 'expired.html'));
     return res.status(404).json({ error: 'Transfer not found or has expired.' });
   }
 
   if (Date.now() > transfer.expiresAt) {
+    if (req.accepts('html')) return res.status(410).sendFile(path.join(__dirname, 'public', 'expired.html'));
     return res.status(410).json({ error: 'This transfer has expired.' });
   }
 
@@ -736,6 +740,7 @@ app.get('/download/:transferId/:fileId', async (req, res) => {
   const file = transfer.files.find((f) => f.id === req.params.fileId);
 
   if (!file) {
+    if (req.accepts('html')) return res.status(404).sendFile(path.join(__dirname, 'public', 'expired.html'));
     return res.status(404).json({ error: 'File not found.' });
   }
 
