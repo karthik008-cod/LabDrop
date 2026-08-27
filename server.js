@@ -746,7 +746,8 @@ app.get('/download/:transferId/:fileId', async (req, res) => {
     const response = await s3Client.send(command);
     
     res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
+    let downloadFilename = req.query.name ? String(req.query.name) : file.originalName;
+    res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
     if (file.size) {
       res.setHeader('Content-Length', file.size);
     }
