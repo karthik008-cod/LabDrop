@@ -1192,7 +1192,7 @@
   receiveForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const code = receiveCodeInput.value.trim().toUpperCase();
-    if (code.length !== 4) return;
+    if (code.length < 3) return;
     
     receiveError.style.display = 'none';
     const submitBtn = receiveForm.querySelector('button');
