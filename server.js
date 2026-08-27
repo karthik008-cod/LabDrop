@@ -103,13 +103,7 @@ function sanitizeFilename(filename) {
 }
 
 // ============================================================
-// Utility: Generate short code (human-readable transfer code)
-// ============================================================
-
-function generateShortCode() {
-  // 4-digit random code
-  return Math.floor(1000 + Math.random() * 9000).toString();
-}
+// Removed generateShortCode in favor of deterministic atomic short codes
 
 // ============================================================
 // Utility: Get file icon category
@@ -453,22 +447,17 @@ app.post('/api/upload', optionalAuth, (req, res) => {
 
     const transferId = req.transferId;
     
-    // Generate a unique 4-digit short code
-    let shortCode;
-    let attempts = 0;
-    while (attempts < 50) {
-      shortCode = generateShortCode();
-      const existing = await storage.transfers.getAll();
-      if (!existing.some(t => t.shortCode === shortCode && Date.now() < t.expiresAt)) {
-        break; // Found a unique one
-      }
-      attempts++;
-    }
-    if (attempts >= 50) {
-      // Fallback in case of absolute saturation
-      shortCode = generateShortCode() + '-' + generateShortCode();
-    }
     const now = Date.now();
+    const d = new Date(now);
+    const dayOfMonth = d.getDate();
+    const startOfDay = new Date(d).setHours(0,0,0,0);
+    const secondsOfDay = Math.floor((now - startOfDay) / 1000);
+    const timeBlock = Math.floor(secondsOfDay / 900);
+    
+    const timeBlockId = `${d.getFullYear()}-${d.getMonth() + 1}-${dayOfMonth}-block-${timeBlock}`;
+    const sequence = await storage.transfers.getNextSequence(timeBlockId);
+    const shortCode = `${dayOfMonth}${timeBlock}${sequence}`;
+
     let expiresAt = now + CONFIG.TRANSFER_EXPIRY_MINUTES * 60 * 1000;
     
     let isSavedForLater = false;

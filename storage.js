@@ -51,6 +51,12 @@ const User = mongoose.model('User', userSchema);
 const Transfer = mongoose.model('Transfer', transferSchema);
 const Analytics = mongoose.model('Analytics', analyticsSchema);
 
+const counterSchema = new mongoose.Schema({
+  _id: { type: String, required: true },
+  seq: { type: Number, default: 0 }
+});
+const Counter = mongoose.model('Counter', counterSchema);
+
 module.exports = {
   users: {
     findOne: async (query) => {
@@ -78,7 +84,15 @@ module.exports = {
     find: async (query) => {
       return await Transfer.find(query).lean();
     },
-    saveAll: async () => { /* No-op for MongoDB */ }
+    saveAll: async () => { /* No-op for MongoDB */ },
+    getNextSequence: async (timeBlockId) => {
+      const counter = await Counter.findByIdAndUpdate(
+        timeBlockId,
+        { $inc: { seq: 1 } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+      return counter.seq;
+    }
   },
   analytics: {
     get: async () => {
