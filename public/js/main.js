@@ -1276,6 +1276,17 @@
 
   // Run on load
   checkAuth();
+  
+  const urlParams = new URLSearchParams(window.location.search);
+  const action = urlParams.get('action');
+  if (action === 'login') {
+    openAuthModal('login');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  } else if (action === 'signup') {
+    openAuthModal('signup');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
   checkSharedFiles();
 
 })();

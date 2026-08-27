@@ -59,3 +59,54 @@ document.addEventListener('DOMContentLoaded', () => {
     item.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
   });
 });
+
+  // Handle Auth UI for non-index pages
+  const navLoginBtn = document.getElementById('navLoginBtn');
+  const navSignupBtn = document.getElementById('navSignupBtn');
+  const navLogoutBtn = document.getElementById('navLogoutBtn');
+  const authLoggedOut = document.getElementById('authLoggedOut');
+  const authLoggedIn = document.getElementById('authLoggedIn');
+  const navUserEmail = document.getElementById('navUserEmail');
+
+  if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
+    const token = sessionStorage.getItem('labdrop_token');
+    
+    if (token && authLoggedOut && authLoggedIn) {
+      authLoggedOut.style.display = 'none';
+      authLoggedIn.style.display = 'flex';
+      
+      fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(res => res.ok ? res.json() : Promise.reject())
+        .then(data => {
+          if (navUserEmail) navUserEmail.textContent = data.user.email;
+        })
+        .catch(() => {
+          sessionStorage.removeItem('labdrop_token');
+          authLoggedOut.style.display = 'flex';
+          authLoggedIn.style.display = 'none';
+        });
+    }
+
+    if (navLoginBtn) {
+      navLoginBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = '/?action=login';
+      });
+    }
+    
+    if (navSignupBtn) {
+      navSignupBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = '/?action=signup';
+      });
+    }
+
+    if (navLogoutBtn) {
+      navLogoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        sessionStorage.removeItem('labdrop_token');
+        window.location.reload();
+      });
+    }
+  }
+
