@@ -576,7 +576,11 @@ app.post('/api/upload', optionalAuth, (req, res) => {
     let pinHash = null;
 
     if (req.body.requirePin === 'true') {
-      pin = generatePin();
+      if (req.body.customPin && req.body.customPin.length === 6) {
+        pin = req.body.customPin;
+      } else {
+        pin = generatePin();
+      }
       pinHash = hashPin(pin);
     }
     

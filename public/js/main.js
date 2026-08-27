@@ -31,6 +31,19 @@
   const transferOptions = $('#transferOptions');
   const transferNameInput = $('#transferName');
   const requirePinCheck = $('#requirePin');
+  const customPinContainer = $('#customPinContainer');
+  const customPinInput = $('#customPin');
+
+  requirePinCheck.addEventListener('change', () => {
+    if (requirePinCheck.checked) {
+      customPinContainer.style.maxHeight = '60px';
+      customPinContainer.style.opacity = '1';
+    } else {
+      customPinContainer.style.maxHeight = '0';
+      customPinContainer.style.opacity = '0';
+      customPinInput.value = '';
+    }
+  });
 
   const progressBarFill = $('#progressBarFill');
   const progressText = $('#progressText');
@@ -906,6 +919,19 @@
       formData.append('transferName', transferNameInput.value.trim());
     }
     formData.append('requirePin', requirePinCheck.checked ? 'true' : 'false');
+    
+    if (requirePinCheck.checked) {
+      const customPinValue = customPinInput.value.trim();
+      if (customPinValue.length > 0) {
+        if (customPinValue.length !== 6 || !/^\d+$/.test(customPinValue)) {
+          customPinInput.classList.add('shake');
+          setTimeout(() => customPinInput.classList.remove('shake'), 300);
+          showAlert('Custom PIN must be exactly 6 digits.');
+          return;
+        }
+        formData.append('customPin', customPinValue);
+      }
+    }
     
     if (transferMode === 'save') {
       formData.append('saveForLater', 'true');

@@ -210,9 +210,13 @@
                     <label class="form-label" for="transferName">Transfer Name (Optional)</label>
                     <input class="form-input" type="text" id="transferName" placeholder="e.g. Physics Lab 3" maxlength="50" />
                   </div>
-                  <div class="checkbox-label" style="margin-top: 1rem;">
+                  <label class="checkbox-label" style="margin-top: 1rem; cursor: pointer; display: flex; align-items: center; gap: 8px;">
                     <input type="checkbox" id="requirePin" />
                     <span>Protect with PIN</span>
+                  </label>
+                  <div id="customPinContainer" style="overflow: hidden; max-height: 0; opacity: 0; transition: all 0.3s ease; margin-top: 0.5rem; display: flex; flex-direction: column;">
+                    <input class="form-input" type="text" id="customPin" placeholder="Set PIN (Optional)" maxlength="6" pattern="\d*" style="letter-spacing: 2px;" />
+                    <div style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 4px;">Leave empty for auto-generated 6-digit PIN.</div>
                   </div>
                 </div>
               </div>
