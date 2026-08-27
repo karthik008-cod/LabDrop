@@ -985,10 +985,8 @@ app.listen(CONFIG.PORT, '0.0.0.0', async () => {
     }
   } else {
     console.log('  ║   Mode:    Production (Render)               ║');
-    if (process.env.RENDER_EXTERNAL_URL) {
-      process.env.PUBLIC_URL = process.env.RENDER_EXTERNAL_URL;
-      console.log(`  ║   Public:  ${process.env.PUBLIC_URL}`.padEnd(49, ' ') + '║');
-    }
+    process.env.PUBLIC_URL = 'https://labdrop.online';
+    console.log(`  ║   Public:  ${process.env.PUBLIC_URL}`.padEnd(49, ' ') + '║');
   }
 
   console.log('  ║                                               ║');
