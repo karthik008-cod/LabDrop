@@ -861,10 +861,18 @@
       return;
     }
 
-    showSection(uploadSection);
-
     // Gather ALL files from root + all folders
     const allFiles = getAllFiles();
+    
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+    const oversizedFile = allFiles.find(f => f.size > MAX_FILE_SIZE);
+    if (oversizedFile) {
+      showAlert(`File too large: "${oversizedFile.name}" exceeds the 100MB limit.`);
+      return;
+    }
+
+    showSection(uploadSection);
+
     const allLinks = getAllLinks();
 
     // Build folder structure map: { filename -> folderName }
