@@ -872,6 +872,7 @@
     }
 
     showSection(uploadSection);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
     const allLinks = getAllLinks();
 
