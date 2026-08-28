@@ -1145,3 +1145,24 @@ img, svg {
 /* Fix centered nav */
 .mobile-header-actions { display: none !important; }
 @media (max-width: 768px) { .mobile-header-actions { display: flex !important; } }
+
+
+/* Fix mobile layout gaps and scroll */
+@media (max-width: 800px) {
+  .page-wrapper {
+    justify-content: flex-start !important;
+    min-height: auto !important;
+  }
+  .workspace-grid {
+    align-items: flex-start !important;
+    align-content: flex-start !important;
+    flex: none !important;
+  }
+  .main-area {
+    justify-content: flex-start !important;
+    margin-top: 0 !important;
+  }
+  #selectSection {
+    margin-top: 0 !important;
+  }
+}
