@@ -387,7 +387,7 @@ function optionalAuth(req, res, next) {
 app.post('/api/register', async (req, res) => {
   try {
     let { email, password } = req.body;
-    if (email) email = email.toLowerCase();
+    if (email) email = email.trim().toLowerCase();
     if (!email || !password || password.length < 6) {
       return res.status(400).json({ error: 'Valid email and a password of at least 6 characters required.' });
     }
@@ -420,7 +420,7 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   try {
     let { email, password } = req.body;
-    if (email) email = email.toLowerCase();
+    if (email) email = email.trim().toLowerCase();
     const user = await storage.users.findOne({ email });
     
     if (!user) {
