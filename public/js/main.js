@@ -1381,3 +1381,63 @@
   checkSharedFiles();
 
 })();
+
+// QR Scanner Logic
+(function() {
+  const mobileScanBtn = document.getElementById('mobileScanBtn');
+  const qrScannerModalOverlay = document.getElementById('qrScannerModalOverlay');
+  const closeQrScannerBtn = document.getElementById('closeQrScannerBtn');
+  let html5QrcodeScanner = null;
+
+  if (mobileScanBtn && qrScannerModalOverlay) {
+    // Hide overlay by default
+    qrScannerModalOverlay.style.display = 'none';
+
+    mobileScanBtn.addEventListener('click', () => {
+      qrScannerModalOverlay.style.display = 'flex';
+      qrScannerModalOverlay.classList.add('active'); 
+      
+      html5QrcodeScanner = new Html5Qrcode("qr-reader");
+      html5QrcodeScanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 }
+        },
+        (decodedText, decodedResult) => {
+          // Handle successful scan
+          if (decodedText.includes('/t/') || decodedText.includes('/r/')) {
+            html5QrcodeScanner.stop().then(() => {
+              qrScannerModalOverlay.style.display = 'none';
+              qrScannerModalOverlay.classList.remove('active');
+              window.location.href = decodedText;
+            }).catch(err => {
+              console.error("Failed to stop scanner", err);
+              window.location.href = decodedText;
+            });
+          } else {
+              alert("Invalid QR Code. Please scan a LabDrop transfer QR code.");
+              // wait a bit before allowing next scan to prevent spam
+          }
+        },
+        (errorMessage) => {
+          // parse errors are ignored (it just keeps scanning)
+        }
+      ).catch(err => {
+        alert("Camera access denied or unavailable.");
+        qrScannerModalOverlay.style.display = 'none';
+        qrScannerModalOverlay.classList.remove('active');
+      });
+    });
+
+    closeQrScannerBtn.addEventListener('click', () => {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop().then(() => {
+          html5QrcodeScanner.clear();
+        }).catch(err => console.error(err));
+      }
+      qrScannerModalOverlay.style.display = 'none';
+      qrScannerModalOverlay.classList.remove('active');
+    });
+  }
+})();

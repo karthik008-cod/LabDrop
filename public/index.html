@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="icon" href="/labdroplogo.png" />
   <link rel="manifest" href="/manifest.json" />
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <meta name="theme-color" content="#FDFBF7" />
 </head>
 <body>
@@ -102,9 +103,14 @@
           <span id="navUserEmail" style="display:none;"></span>
         </div>
       </nav>
-      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle Menu">
-        ☰
-      </button>
+      <div class="mobile-header-actions" style="display: flex; align-items: center;">
+        <button class="mobile-scan-btn" id="mobileScanBtn" aria-label="Scan QR Code" title="Scan QR Code" style="background:none;border:none;cursor:pointer;font-size:1.5rem;padding:0 8px;">
+          📷
+        </button>
+        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle Menu">
+          ☰
+        </button>
+      </div>
       </div>
 </header>
   <div class="page-wrapper">
@@ -385,7 +391,19 @@
 
   <div id="toastContainer" class="toast-container"></div>
 
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="/js/bg.js"></script>
+  <!-- QR Scanner Modal -->
+  <div class="modal-overlay" id="qrScannerModalOverlay" style="z-index: 10000; align-items: stretch; justify-content: stretch; padding: 0;">
+    <div class="modal" id="qrScannerModal" style="max-width: 100%; border-radius: 0; display: flex; flex-direction: column; padding: 0; background: #000; height: 100vh;">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md); background: rgba(0,0,0,0.8); color: white; z-index: 2; position: absolute; width: 100%; top: 0; left: 0; box-sizing: border-box;">
+        <h3 style="margin: 0; font-size: 1.2rem;">Scan QR Code</h3>
+        <button id="closeQrScannerBtn" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">✕</button>
+      </div>
+      <div id="qr-reader" style="width: 100%; flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000;"></div>
+    </div>
+  </div>
+
   <script src="/js/main.js"></script>
   
 </body>
