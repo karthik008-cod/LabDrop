@@ -748,7 +748,13 @@ app.get('/download/:transferId/zip', async (req, res) => {
 
   const fsMap = transfer.folderStructure || {};
 
-  for (const file of transfer.files) {
+  let filesToZip = transfer.files;
+  if (req.query.files) {
+    const selectedIds = new Set(req.query.files.split(','));
+    filesToZip = transfer.files.filter(f => selectedIds.has(f.id));
+  }
+
+  for (const file of filesToZip) {
     const s3Key = `${transfer.id}/${file.storageName}`;
     const command = new GetObjectCommand({
       Bucket: S3_BUCKET_NAME,

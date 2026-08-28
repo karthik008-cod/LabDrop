@@ -150,16 +150,30 @@
 
           <!-- Download All -->
           <div style="display: flex; gap: 8px; margin-top: var(--space-lg);">
-            <a class="btn btn--primary btn--lg" id="downloadAllBtn" href="#" style="flex: 1;">
-              ⬇️ Download All (ZIP)
-            </a>
+            <button class="btn btn--primary btn--lg" id="downloadAllBtn" style="flex: 1;">
+              ⬇️ Download All
+            </button>
+            <button class="btn btn--primary btn--lg" id="shareAllBtn" style="flex: 1;">
+              📤 Share All
+            </button>
             <button class="btn btn--outline" id="renameZipBtn" title="Rename ZIP" style="padding: 0 16px;">✏️</button>
           </div>
         </div>
 
         <!-- File & Link List -->
         <div class="qr-card mt-lg" style="text-align: left;">
-          <div style="font-weight: 600; margin-bottom: var(--space-md);">📎 Items</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+            <div style="font-weight: 600;">
+              <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="selectAllCheckbox" />
+                <span>📎 Items</span>
+              </label>
+            </div>
+            <div id="multiSelectActions" style="display: none; gap: 8px;">
+              <button class="btn btn--secondary btn--sm" id="downloadSelectedBtn">⬇️ Download</button>
+              <button class="btn btn--secondary btn--sm" id="shareSelectedBtn">📤 Share</button>
+            </div>
+          </div>
           <div class="file-list-container" id="mFileList"></div>
           <div class="file-list-container" id="mLinkList" style="margin-top: var(--space-md); display: none;"></div>
         </div>
@@ -183,6 +197,21 @@
           <button class="btn btn--primary btn--block btn--lg" id="btnDownloadDefault">⬇️ Direct Download</button>
           <button class="btn btn--secondary btn--block btn--lg" id="btnDownloadBrowse">📁 Browse Location (Save As...)</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Share ZIP Naming Modal -->
+  <div class="modal-overlay" id="shareNameModal">
+    <div class="modal">
+      <div class="modal__header">
+        <div class="modal__title">Name your ZIP file</div>
+        <button class="modal__close" id="shareNameModalClose">✕</button>
+      </div>
+      <div class="modal__body" style="text-align: center;">
+        <p style="margin-bottom: var(--space-md); color: var(--color-text-secondary);">Enter a name for the shared ZIP file:</p>
+        <input type="text" id="shareZipNameInput" class="form-input" placeholder="e.g. Shared_Files" style="margin-bottom: var(--space-lg);" />
+        <button class="btn btn--primary btn--block btn--lg" id="confirmShareZipBtn">Share Now</button>
       </div>
     </div>
   </div>

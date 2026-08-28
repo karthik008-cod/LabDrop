@@ -54,6 +54,9 @@
   const copyUrlBtn = $('#copyUrlBtn');
   const pinDisplayContainer = $('#pinDisplayContainer');
   const pinDisplayCode = $('#pinDisplayCode');
+  const togglePinVisBtn = $('#togglePinVisBtn');
+  const eyeIcon = $('#eyeIcon');
+  const eyeOffIcon = $('#eyeOffIcon');
   const timerEl = $('#timer');
   const timerText = $('#timerText');
   const extendTimerBtn = $('#extendTimerBtn');
@@ -137,6 +140,8 @@
   let folders = [];       // Array of { id, name, files: [], links: [] }
   let activeFolderId = null; // null = root/unorganized
   let currentTransfer = null;
+  let currentTransferPin = null;
+  let isPinVisible = false;
   let timerInterval = null;
   let authToken = sessionStorage.getItem('labdrop_token');
   let authUser = null;
@@ -998,9 +1003,16 @@
     statSize.textContent = formatBytes(data.totalSize);
 
     if (data.pin) {
-      pinDisplayCode.textContent = data.pin;
+      currentTransferPin = data.pin;
+      isPinVisible = false;
+      pinDisplayCode.textContent = '******';
+      if (eyeIcon && eyeOffIcon) {
+        eyeIcon.style.display = 'none';
+        eyeOffIcon.style.display = 'block';
+      }
       pinDisplayContainer.classList.remove('section--hidden');
     } else {
+      currentTransferPin = null;
       pinDisplayContainer.classList.add('section--hidden');
     }
 
@@ -1150,6 +1162,23 @@
       extendTimerBtn.disabled = false;
     }
   });
+
+  // ---- Toggle PIN Visibility ----
+  if (togglePinVisBtn) {
+    togglePinVisBtn.addEventListener('click', () => {
+      if (!currentTransferPin) return;
+      isPinVisible = !isPinVisible;
+      if (isPinVisible) {
+        pinDisplayCode.textContent = currentTransferPin;
+        eyeIcon.style.display = 'block';
+        eyeOffIcon.style.display = 'none';
+      } else {
+        pinDisplayCode.textContent = '******';
+        eyeIcon.style.display = 'none';
+        eyeOffIcon.style.display = 'block';
+      }
+    });
+  }
 
   // ---- Cancel Transfer ----
   cancelTransferBtn.addEventListener('click', async () => {
