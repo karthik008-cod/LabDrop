@@ -533,7 +533,35 @@
     
     if (filesArray.length === 0) return;
 
-    // Create overlay
+    // Perform a pre-flight check using empty files to see if the OS accepts these file types natively
+    const testFiles = filesArray.map(f => {
+        const originalName = f.customName || f.originalName || f.name;
+        let type = 'application/octet-stream';
+        const ext = originalName.split('.').pop().toLowerCase();
+        if (ext === 'pdf') type = 'application/pdf';
+        else if (['jpg','jpeg','png','gif','webp'].includes(ext)) type = 'image/' + ext.replace('jpg','jpeg');
+        else if (ext === 'zip') type = 'application/zip';
+        return new File([''], originalName, { type });
+    });
+
+    if (!navigator.canShare || !navigator.canShare({ files: testFiles })) {
+        // OS rejects sharing this combination of native files natively (common for PDFs on mobile).
+        // Instantly fallback to sharing the link, which preserves the user gesture and works 100% of the time!
+        const zipUrl = getZipDownloadUrl(filesArray.map(f => f.id));
+        const absoluteUrl = new URL(zipUrl, window.location.origin).href;
+        try {
+            await navigator.share({
+                title: 'LabDrop Shared Files',
+                text: 'Download LabDrop Shared Files',
+                url: absoluteUrl
+            });
+        } catch(err) {
+            if (err.name !== 'AbortError') window.location.href = zipUrl;
+        }
+        return;
+    }
+
+    // OS accepted the pre-flight check! We can safely fetch and share natively.
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;backdrop-filter:blur(4px);';
     
@@ -616,6 +644,7 @@
         };
         card.insertBefore(shareBtn, cancelBtn);
     } else {
+        // Fallback if final check fails despite pre-flight
         document.body.removeChild(overlay);
         const zipUrl = getZipDownloadUrl(filesArray.map(f => f.id));
         const absoluteUrl = new URL(zipUrl, window.location.origin).href;
