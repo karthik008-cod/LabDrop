@@ -557,19 +557,74 @@
     
     try {
       if (navigator.canShare && navigator.canShare({ files: [testFile] })) {
-        // Browser supports sharing this file type. Fetch it!
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Failed to fetch file for sharing");
+        // Browser supports sharing this file type.
+        // Fetching might take too long and cause the user gesture to expire (especially on iOS).
+        // To prevent this, we fetch first, then ask the user to click a "Share Now" button.
+        
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;backdrop-filter:blur(4px);';
+        
+        const card = document.createElement('div');
+        card.style.cssText = 'background:var(--color-surface);padding:24px;border-radius:12px;text-align:center;max-width:300px;width:90%;box-shadow:0 10px 25px rgba(0,0,0,0.2);border:1px solid var(--color-border);';
+        
+        const text = document.createElement('p');
+        text.innerHTML = '<span class="spinner"></span> Preparing file...';
+        text.style.marginBottom = '16px';
+        text.style.color = 'var(--color-text)';
+        text.style.fontWeight = '500';
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn--outline btn--sm';
+        cancelBtn.style.width = '100%';
+        cancelBtn.innerText = 'Cancel';
+        cancelBtn.onclick = () => document.body.removeChild(overlay);
+        
+        card.appendChild(text);
+        card.appendChild(cancelBtn);
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+
+        let res;
+        try {
+            res = await fetch(url);
+            if (!res.ok) throw new Error("Failed to fetch");
+        } catch(e) {
+            if (document.body.contains(overlay)) document.body.removeChild(overlay);
+            throw e;
+        }
+
         const blob = await res.blob();
         const file = new File([blob], filename, { type: blob.type || type });
         
-        await navigator.share({
-          title: filename,
-          files: [file]
-        });
+        // Ready to share!
+        text.innerHTML = '✅ Ready to share!';
+        
+        const shareBtn = document.createElement('button');
+        shareBtn.className = 'btn btn--primary btn--lg';
+        shareBtn.style.width = '100%';
+        shareBtn.style.marginBottom = '8px';
+        shareBtn.innerText = '📤 Share Now';
+        
+        shareBtn.onclick = async () => {
+            document.body.removeChild(overlay);
+            try {
+                await navigator.share({
+                    title: filename,
+                    files: [file]
+                });
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error("Share error:", err);
+                    window.location.href = url; // Fallback to download
+                }
+            }
+        };
+        
+        card.insertBefore(shareBtn, cancelBtn);
+
       } else {
-        // Browser does not support sharing this file type as a file.
-        // Fallback: Share the direct download link instantly to preserve user gesture
+        // Browser does not support sharing this file type as a file natively.
+        // Share the direct download link instantly.
         await navigator.share({
           title: filename,
           text: `Download ${filename}`,
@@ -579,8 +634,7 @@
     } catch (err) {
       if (err.name !== 'AbortError') {
         console.error("Share error:", err);
-        // If native share fails (e.g. user gesture expired), fallback to direct download
-        window.location.href = url;
+        window.location.href = url; // Fallback to download
       }
     }
   }
