@@ -630,8 +630,15 @@
         shareBtn.onclick = async () => {
             document.body.removeChild(overlay);
             try {
+                // Construct a fallback URL just in case the target app (like WhatsApp on iOS) 
+                // silently drops the files due to strict MIME type policies (like mixing PDFs and JPGs).
+                // This ensures the app still receives text so it doesn't fail with "Empty message".
+                const zipUrl = getZipDownloadUrl(filesArray.map(f => f.id));
+                const absoluteUrl = new URL(zipUrl, window.location.origin).href;
+                
                 await navigator.share({
                     title: 'LabDrop Files',
+                    text: `LabDrop Files:\n${absoluteUrl}`,
                     files: shareFiles
                 });
             } catch (err) {
