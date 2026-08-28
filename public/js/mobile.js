@@ -28,13 +28,26 @@
   const mTransferName = $('#mTransferName');
   const mStatCodeBadge = $('#mStatCodeBadge');
   const downloadAllBtn = $('#downloadAllBtn');
+  const shareAllBtn = $('#shareAllBtn');
   const renameZipBtn = $('#renameZipBtn');
   const mFileList = $('#mFileList');
   const mLinkList = $('#mLinkList');
+  
+  const selectAllCheckbox = $('#selectAllCheckbox');
+  const multiSelectActions = $('#multiSelectActions');
+  const downloadSelectedBtn = $('#downloadSelectedBtn');
+  const shareSelectedBtn = $('#shareSelectedBtn');
+  
+  const shareNameModal = $('#shareNameModal');
+  const shareNameModalClose = $('#shareNameModalClose');
+  const shareZipNameInput = $('#shareZipNameInput');
+  const confirmShareZipBtn = $('#confirmShareZipBtn');
 
   let currentPin = '';
   let customZipName = '';
   let activeTransferData = null;
+  let selectedFileIds = new Set();
+  let pendingShareZipUrl = null;
 
   // ---- File icons ----
   const FILE_ICONS = {
@@ -193,10 +206,15 @@
     
     // Rename button state
     if (customZipName || data.transferName) {
-       downloadAllBtn.textContent = `⬇️ ${customZipName || data.transferName}.zip (${formatBytes(data.totalSize)})`;
+       downloadAllBtn.textContent = `⬇️ Download`;
+       if(shareAllBtn) shareAllBtn.textContent = `📤 Share`;
     } else {
-       downloadAllBtn.textContent = `⬇️ Download All (ZIP) · ${formatBytes(data.totalSize)}`;
+       downloadAllBtn.textContent = `⬇️ Download All`;
+       if(shareAllBtn) shareAllBtn.textContent = `📤 Share All`;
     }
+
+    selectedFileIds.clear();
+    if(typeof updateSelectionState === 'function') updateSelectionState();
 
     // Group files and links by folder
     const fs = data.folderStructure || {};
@@ -244,13 +262,17 @@
           <div class="file-item__name" title="${escapeHtml(customName)}">${escapeHtml(customName)}</div>
           <div class="file-item__size">${formatBytes(file.size)}</div>
         </div>
-        <div class="file-item__actions" style="display:flex; gap: 4px;">
+        <div class="file-item__actions" style="display:flex; gap: 4px; align-items: center;">
+          <input type="checkbox" class="file-checkbox" data-file-id="${file.id}" style="margin-right: 8px; transform: scale(1.2);" />
           <button class="btn btn--outline btn--icon rename-file-btn" data-file-id="${file.id}" title="Rename ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px;">
             ✏️
           </button>
           <a class="btn btn--secondary btn--icon download-file-btn" href="${downloadUrl}" data-filename="${escapeHtml(customName)}" title="Browse / Download ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 12px;">
             ⬇️
           </a>
+          <button class="btn btn--secondary btn--icon share-file-btn" data-filename="${escapeHtml(customName)}" data-href="${downloadUrl}" title="Share ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 12px;">
+            📤
+          </button>
         </div>
       `;
       return li;
@@ -390,14 +412,162 @@
 
     // Save As (Browse) vs Direct for Individual File
     const downloadBtn = e.target.closest('.download-file-btn');
-    if (downloadBtn && window.showSaveFilePicker) {
+    if (downloadBtn) {
       e.preventDefault();
       const filename = downloadBtn.getAttribute('data-filename');
       const downloadUrl = downloadBtn.getAttribute('href');
-      openDownloadModal(downloadUrl, filename, downloadBtn);
+      if (typeof openDownloadModal === 'function') {
+        openDownloadModal(downloadUrl, filename, downloadBtn);
+      } else {
+        window.location.href = downloadUrl;
+      }
       return;
     }
+    
+    // Direct Share Individual File
+    const shareBtn = e.target.closest('.share-file-btn');
+    if (shareBtn) {
+      const filename = shareBtn.getAttribute('data-filename');
+      const downloadUrl = shareBtn.getAttribute('data-href');
+      
+      const prevHtml = shareBtn.innerHTML;
+      shareBtn.innerHTML = '<span class="spinner"></span>';
+      shareBtn.disabled = true;
+      
+      await shareItem(downloadUrl, filename);
+      
+      shareBtn.innerHTML = prevHtml;
+      shareBtn.disabled = false;
+      return;
+    }
+    
+    // Checkbox Toggle
+    if (e.target.classList.contains('file-checkbox')) {
+      const fileId = e.target.getAttribute('data-file-id');
+      if (e.target.checked) {
+        selectedFileIds.add(fileId);
+      } else {
+        selectedFileIds.delete(fileId);
+      }
+      updateSelectionState();
+    }
   });
+
+  // ---- Multi-select logic ----
+  function updateSelectionState() {
+    if (!activeTransferData) return;
+    const allFiles = activeTransferData.files || [];
+    const allCheckboxes = document.querySelectorAll('.file-checkbox');
+    
+    if (selectedFileIds.size > 0) {
+      multiSelectActions.style.display = 'flex';
+      selectAllCheckbox.checked = selectedFileIds.size === allFiles.length;
+    } else {
+      multiSelectActions.style.display = 'none';
+      selectAllCheckbox.checked = false;
+    }
+    
+    allCheckboxes.forEach(cb => {
+      cb.checked = selectedFileIds.has(cb.getAttribute('data-file-id'));
+    });
+  }
+
+  if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', (e) => {
+      const allFiles = activeTransferData.files || [];
+      if (e.target.checked) {
+        allFiles.forEach(f => selectedFileIds.add(f.id));
+      } else {
+        selectedFileIds.clear();
+      }
+      updateSelectionState();
+    });
+  }
+
+  if (downloadSelectedBtn) {
+    downloadSelectedBtn.addEventListener('click', () => {
+      if (selectedFileIds.size === 0) return;
+      const url = getZipDownloadUrl(Array.from(selectedFileIds));
+      const filename = customZipName || activeTransferData.transferName || 'LabDrop_Selected';
+      openDownloadModal(url, filename + '.zip', downloadSelectedBtn);
+    });
+  }
+
+  if (shareSelectedBtn) {
+    shareSelectedBtn.addEventListener('click', () => {
+      if (selectedFileIds.size === 0) return;
+      pendingShareZipUrl = getZipDownloadUrl(Array.from(selectedFileIds));
+      shareZipNameInput.value = customZipName || activeTransferData.transferName || 'LabDrop_Selected';
+      shareNameModal.classList.add('active');
+    });
+  }
+
+  function getZipDownloadUrl(fileIds = []) {
+    const params = new URLSearchParams();
+    if (currentPin) params.append('pin', currentPin);
+    if (customZipName) params.append('name', customZipName);
+    if (fileIds.length > 0) params.append('files', fileIds.join(','));
+    return `/download/${activeTransferData.id}/zip?${params.toString()}`;
+  }
+
+  // ---- Share ZIP Logic ----
+  if (shareAllBtn) {
+    shareAllBtn.addEventListener('click', () => {
+      pendingShareZipUrl = getZipDownloadUrl();
+      shareZipNameInput.value = customZipName || activeTransferData.transferName || 'LabDrop_Transfer';
+      shareNameModal.classList.add('active');
+    });
+  }
+
+  if (shareNameModalClose) shareNameModalClose.addEventListener('click', () => shareNameModal.classList.remove('active'));
+
+  if (confirmShareZipBtn) {
+    confirmShareZipBtn.addEventListener('click', async () => {
+      if (!pendingShareZipUrl) return;
+      const baseName = shareZipNameInput.value.trim() || 'Shared_Files';
+      const filename = baseName.endsWith('.zip') ? baseName : baseName + '.zip';
+      shareNameModal.classList.remove('active');
+      
+      const prevHtml = shareAllBtn.innerHTML;
+      shareAllBtn.innerHTML = '<span class="spinner"></span> Working...';
+      if (shareSelectedBtn) shareSelectedBtn.innerHTML = '<span class="spinner"></span>';
+      
+      await shareItem(pendingShareZipUrl + (pendingShareZipUrl.includes('?') ? '&' : '?') + 'name=' + encodeURIComponent(baseName), filename);
+      
+      shareAllBtn.innerHTML = prevHtml;
+      if (shareSelectedBtn) shareSelectedBtn.innerHTML = '📤 Share';
+    });
+  }
+
+  async function shareItem(url, filename) {
+    if (!navigator.share) {
+      alert("Your browser does not support native sharing.");
+      return;
+    }
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch file for sharing");
+      const blob = await res.blob();
+      const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+      
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: filename,
+          files: [file]
+        });
+      } else {
+        await navigator.share({
+          title: filename,
+          url: window.location.href
+        });
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error("Share error:", err);
+        alert("Could not share file directly. It might be too large or unsupported.");
+      }
+    }
+  }
 
   // ---- PIN form submit ----
   pinForm.addEventListener('submit', (e) => {
