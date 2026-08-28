@@ -566,9 +566,9 @@
       });
 
       // Rename
-      item.querySelector('[data-action="rename"]').addEventListener('click', (e) => {
+      item.querySelector('[data-action="rename"]').addEventListener('click', async (e) => {
         e.stopPropagation();
-        const newName = prompt('Rename folder:', folder.name);
+        const newName = await window.LabDialog.prompt('Rename folder:', folder.name);
         if (newName && newName.trim()) {
           folder.name = newName.trim().substring(0, 40);
           renderFileList();
@@ -576,13 +576,13 @@
       });
 
       // Delete
-      item.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
+      item.querySelector('[data-action="delete"]').addEventListener('click', async (e) => {
         e.stopPropagation();
         const totalItems = folder.files.length + folder.links.length;
         const msg = totalItems > 0
           ? `Delete "${folder.name}" and its ${totalItems} item(s)?`
           : `Delete empty folder "${folder.name}"?`;
-        if (confirm(msg)) {
+        if (await window.LabDialog.confirm(msg)) {
           folders = folders.filter(f => f.id !== folder.id);
           if (activeFolderId === folder.id) {
             activeFolderId = folders.length > 0 ? folders[0].id : null;
@@ -1416,15 +1416,15 @@
               window.location.href = decodedText;
             });
           } else {
-              alert("Invalid QR Code. Please scan a LabDrop transfer QR code.");
+              window.LabDialog.alert("Invalid QR Code. Please scan a LabDrop transfer QR code.");
               // wait a bit before allowing next scan to prevent spam
           }
         },
         (errorMessage) => {
           // parse errors are ignored (it just keeps scanning)
         }
-      ).catch(err => {
-        alert("Camera access denied or unavailable.");
+      ).catch(async err => {
+        await window.LabDialog.alert("Camera access denied or unavailable.");
         qrScannerModalOverlay.style.display = 'none';
         qrScannerModalOverlay.classList.remove('active');
       });

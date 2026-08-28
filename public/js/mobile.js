@@ -357,10 +357,10 @@
   }
 
   // ---- Rename ZIP ----
-  renameZipBtn.addEventListener('click', () => {
+  renameZipBtn.addEventListener('click', async () => {
     if (!activeTransferData) return;
     const defaultName = customZipName || activeTransferData.transferName || activeTransferData.shortCode;
-    const newName = prompt('Enter a name for the ZIP file:', defaultName);
+    const newName = await window.LabDialog.prompt('Enter a name for the ZIP file:', defaultName);
     if (newName !== null && newName.trim() !== '') {
       customZipName = newName.trim();
       renderTransfer();
@@ -397,7 +397,7 @@
            baseName = baseName.slice(0, -ext.length);
         }
 
-        const newBase = prompt(`Enter a new name for this file (without ${ext}):`, baseName);
+        const newBase = await window.LabDialog.prompt(`Enter a new name for this file (without ${ext}):`, baseName);
         if (newBase !== null && newBase.trim() !== '') {
           let finalName = newBase.trim();
           if (ext && !finalName.toLowerCase().endsWith(ext.toLowerCase())) {
@@ -527,7 +527,7 @@
 
   async function shareMultipleFiles(filesArray) {
     if (!navigator.share) {
-      alert("Your browser does not support native sharing.");
+      await window.LabDialog.alert("Your browser does not support native sharing.");
       return;
     }
     
@@ -613,7 +613,7 @@
         }
     } catch(e) {
         if (document.body.contains(overlay)) document.body.removeChild(overlay);
-        alert("Failed to fetch files for sharing. They might be too large.");
+        await window.LabDialog.alert("Failed to fetch files for sharing. They might be too large.");
         return;
     }
 
@@ -760,7 +760,7 @@
         await writable.close();
       } catch (err) {
         if (err.name !== 'AbortError') {
-          alert('Save failed: ' + err.message);
+          await window.LabDialog.alert('Save failed: ' + err.message);
           window.location.href = url; // Fallback to direct download
         }
       } finally {

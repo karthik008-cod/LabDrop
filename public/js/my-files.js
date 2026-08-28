@@ -151,7 +151,7 @@
         await writable.close();
       } catch (err) {
         if (err.name !== 'AbortError') {
-          alert('Save failed: ' + err.message);
+          await window.LabDialog.alert('Save failed: ' + err.message);
           window.location.href = downloadUrl;
         }
       } finally {
@@ -162,7 +162,7 @@
   });
 
   window.deleteTransfer = async (id) => {
-    if (!confirm('Are you sure you want to delete this transfer?')) return;
+    if (!(await window.LabDialog.confirm('Are you sure you want to delete this transfer?'))) return;
     try {
       const res = await fetch(`/api/transfer/${id}`, {
         method: 'DELETE',
