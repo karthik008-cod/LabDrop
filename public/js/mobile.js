@@ -544,27 +544,43 @@
       alert("Your browser does not support native sharing.");
       return;
     }
+    
+    // Test if we can share this file type before downloading
+    let type = 'application/octet-stream';
+    const ext = filename.split('.').pop().toLowerCase();
+    if (ext === 'zip') type = 'application/zip';
+    else if (ext === 'pdf') type = 'application/pdf';
+    else if (['jpg','jpeg','png','gif','webp'].includes(ext)) type = 'image/' + ext.replace('jpg','jpeg');
+    
+    const testFile = new File([''], filename, { type });
+    const absoluteUrl = new URL(url, window.location.origin).href;
+    
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to fetch file for sharing");
-      const blob = await res.blob();
-      const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
-      
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (navigator.canShare && navigator.canShare({ files: [testFile] })) {
+        // Browser supports sharing this file type. Fetch it!
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Failed to fetch file for sharing");
+        const blob = await res.blob();
+        const file = new File([blob], filename, { type: blob.type || type });
+        
         await navigator.share({
           title: filename,
           files: [file]
         });
       } else {
+        // Browser does not support sharing this file type as a file.
+        // Fallback: Share the direct download link instantly to preserve user gesture
         await navigator.share({
           title: filename,
-          url: window.location.href
+          text: `Download ${filename}`,
+          url: absoluteUrl
         });
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
         console.error("Share error:", err);
-        alert("Could not share file directly. It might be too large or unsupported.");
+        // If native share fails (e.g. user gesture expired), fallback to direct download
+        window.location.href = url;
       }
     }
   }
