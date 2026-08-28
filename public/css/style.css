@@ -1166,3 +1166,13 @@ img, svg {
     margin-top: 0 !important;
   }
 }
+
+
+/* OVERRIDE BASE SIDEBAR FOR MOBILE */
+@media (max-width: 800px) {
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    max-height: 100vh !important;
+  }
+}
