@@ -370,6 +370,26 @@ app.get('/admin/stats', async (req, res) => {
 
 // --- Authentication ---
 
+function correctEmailTypos(email) {
+  let [localPart, domain] = email.split('@');
+  if (!domain) return email;
+  
+  // Safely auto-correct common typos for major providers
+  const gmailTypos = ['gmai.com', 'gamil.com', 'gmail.co', 'gmail.coom', 'gmai.coom', 'gamil.coom', 'gmail.con', 'gmial.com', 'gmaill.com', 'gmal.com', 'gma.com'];
+  if (gmailTypos.includes(domain)) domain = 'gmail.com';
+  
+  const yahooTypos = ['yaho.com', 'yahoo.co', 'yahoo.con', 'yaho.co'];
+  if (yahooTypos.includes(domain)) domain = 'yahoo.com';
+
+  const hotmailTypos = ['hotmai.com', 'hotmal.com', 'hotmail.co', 'hotmail.con'];
+  if (hotmailTypos.includes(domain)) domain = 'hotmail.com';
+  
+  // Note: we purposefully do NOT auto-correct "mail.com" because it is a legitimate email provider.
+
+  return `${localPart}@${domain}`;
+}
+
+
 // Middleware to get user from token (optional auth)
 function optionalAuth(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -387,7 +407,10 @@ function optionalAuth(req, res, next) {
 app.post('/api/register', async (req, res) => {
   try {
     let { email, password } = req.body;
-    if (email) email = email.trim().toLowerCase();
+    if (email) {
+      email = email.trim().toLowerCase();
+      email = correctEmailTypos(email);
+    }
     if (!email || !password || password.length < 6) {
       return res.status(400).json({ error: 'Valid email and a password of at least 6 characters required.' });
     }
@@ -420,7 +443,10 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   try {
     let { email, password } = req.body;
-    if (email) email = email.trim().toLowerCase();
+    if (email) {
+      email = email.trim().toLowerCase();
+      email = correctEmailTypos(email);
+    }
     const user = await storage.users.findOne({ email });
     
     if (!user) {
