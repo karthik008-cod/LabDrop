@@ -563,10 +563,10 @@
 
     // OS accepted the pre-flight check! We can safely fetch and share natively.
     const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;backdrop-filter:blur(4px);';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;backdrop-filter:blur(2px);';
     
     const card = document.createElement('div');
-    card.style.cssText = 'background:var(--color-surface);padding:24px;border-radius:12px;text-align:center;max-width:300px;width:90%;box-shadow:0 10px 25px rgba(0,0,0,0.2);border:1px solid var(--color-border);';
+    card.style.cssText = 'background:var(--color-bg);padding:24px;border-radius:12px;text-align:center;max-width:300px;width:90%;box-shadow:var(--shadow-md);border:1px solid var(--color-border);';
     
     const text = document.createElement('p');
     text.innerHTML = '<span class="spinner"></span> Fetching files... (0/' + filesArray.length + ')';
