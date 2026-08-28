@@ -1135,3 +1135,8 @@ img, svg {
 /* QR Scanner Mobile Button */
 .mobile-scan-btn { display: none; }
 @media (max-width: 768px) { .mobile-scan-btn { display: block; } }
+
+
+/* Fix inline style override for QR button */
+.mobile-scan-btn { display: none !important; }
+@media (max-width: 768px) { .mobile-scan-btn { display: flex !important; } }
