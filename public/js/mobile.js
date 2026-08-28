@@ -496,9 +496,8 @@
   if (shareSelectedBtn) {
     shareSelectedBtn.addEventListener('click', () => {
       if (selectedFileIds.size === 0) return;
-      pendingShareZipUrl = getZipDownloadUrl(Array.from(selectedFileIds));
-      shareZipNameInput.value = customZipName || activeTransferData.transferName || 'LabDrop_Selected';
-      shareNameModal.classList.add('active');
+      const selectedFiles = (activeTransferData.files || []).filter(f => selectedFileIds.has(f.id));
+      shareMultipleFiles(selectedFiles);
     });
   }
 
@@ -510,12 +509,10 @@
     return `/download/${activeTransferData.id}/zip?${params.toString()}`;
   }
 
-  // ---- Share ZIP Logic ----
+  // ---- Share Logic ----
   if (shareAllBtn) {
     shareAllBtn.addEventListener('click', () => {
-      pendingShareZipUrl = getZipDownloadUrl();
-      shareZipNameInput.value = customZipName || activeTransferData.transferName || 'LabDrop_Transfer';
-      shareNameModal.classList.add('active');
+      shareMultipleFiles(activeTransferData.files || []);
     });
   }
 
@@ -523,82 +520,79 @@
 
   if (confirmShareZipBtn) {
     confirmShareZipBtn.addEventListener('click', async () => {
-      if (!pendingShareZipUrl) return;
-      const baseName = shareZipNameInput.value.trim() || 'Shared_Files';
-      const filename = baseName.endsWith('.zip') ? baseName : baseName + '.zip';
+      // confirmShareZipBtn is now only used if needed, or we can just hide it
       shareNameModal.classList.remove('active');
-      
-      const prevHtml = shareAllBtn.innerHTML;
-      shareAllBtn.innerHTML = '<span class="spinner"></span> Working...';
-      if (shareSelectedBtn) shareSelectedBtn.innerHTML = '<span class="spinner"></span>';
-      
-      await shareItem(pendingShareZipUrl + (pendingShareZipUrl.includes('?') ? '&' : '?') + 'name=' + encodeURIComponent(baseName), filename);
-      
-      shareAllBtn.innerHTML = prevHtml;
-      if (shareSelectedBtn) shareSelectedBtn.innerHTML = '📤 Share';
     });
   }
 
-  async function shareItem(url, filename) {
+  async function shareMultipleFiles(filesArray) {
     if (!navigator.share) {
       alert("Your browser does not support native sharing.");
       return;
     }
     
-    // Test if we can share this file type before downloading
-    let type = 'application/octet-stream';
-    const ext = filename.split('.').pop().toLowerCase();
-    if (ext === 'zip') type = 'application/zip';
-    else if (ext === 'pdf') type = 'application/pdf';
-    else if (['jpg','jpeg','png','gif','webp'].includes(ext)) type = 'image/' + ext.replace('jpg','jpeg');
+    if (filesArray.length === 0) return;
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;backdrop-filter:blur(4px);';
     
-    const testFile = new File([''], filename, { type });
-    const absoluteUrl = new URL(url, window.location.origin).href;
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--color-surface);padding:24px;border-radius:12px;text-align:center;max-width:300px;width:90%;box-shadow:0 10px 25px rgba(0,0,0,0.2);border:1px solid var(--color-border);';
+    
+    const text = document.createElement('p');
+    text.innerHTML = '<span class="spinner"></span> Fetching files... (0/' + filesArray.length + ')';
+    text.style.marginBottom = '16px';
+    text.style.color = 'var(--color-text)';
+    text.style.fontWeight = '500';
+    
+    let isCancelled = false;
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn btn--outline btn--sm';
+    cancelBtn.style.width = '100%';
+    cancelBtn.innerText = 'Cancel';
+    cancelBtn.onclick = () => {
+        isCancelled = true;
+        document.body.removeChild(overlay);
+    };
+    
+    card.appendChild(text);
+    card.appendChild(cancelBtn);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    const shareFiles = [];
+    let completed = 0;
     
     try {
-      if (navigator.canShare && navigator.canShare({ files: [testFile] })) {
-        // Browser supports sharing this file type.
-        // Fetching might take too long and cause the user gesture to expire (especially on iOS).
-        // To prevent this, we fetch first, then ask the user to click a "Share Now" button.
-        
-        const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;backdrop-filter:blur(4px);';
-        
-        const card = document.createElement('div');
-        card.style.cssText = 'background:var(--color-surface);padding:24px;border-radius:12px;text-align:center;max-width:300px;width:90%;box-shadow:0 10px 25px rgba(0,0,0,0.2);border:1px solid var(--color-border);';
-        
-        const text = document.createElement('p');
-        text.innerHTML = '<span class="spinner"></span> Preparing file...';
-        text.style.marginBottom = '16px';
-        text.style.color = 'var(--color-text)';
-        text.style.fontWeight = '500';
-        
-        const cancelBtn = document.createElement('button');
-        cancelBtn.className = 'btn btn--outline btn--sm';
-        cancelBtn.style.width = '100%';
-        cancelBtn.innerText = 'Cancel';
-        cancelBtn.onclick = () => document.body.removeChild(overlay);
-        
-        card.appendChild(text);
-        card.appendChild(cancelBtn);
-        overlay.appendChild(card);
-        document.body.appendChild(overlay);
-
-        let res;
-        try {
-            res = await fetch(url);
+        for (const fileObj of filesArray) {
+            if (isCancelled) return;
+            const originalName = fileObj.customName || fileObj.originalName || fileObj.name;
+            const url = `/download/${activeTransferData.id}/${fileObj.id}${currentPin ? '?pin=' + encodeURIComponent(currentPin) : ''}`;
+            const res = await fetch(url);
             if (!res.ok) throw new Error("Failed to fetch");
-        } catch(e) {
-            if (document.body.contains(overlay)) document.body.removeChild(overlay);
-            throw e;
+            const blob = await res.blob();
+            
+            let type = blob.type || 'application/octet-stream';
+            const ext = originalName.split('.').pop().toLowerCase();
+            if (ext === 'pdf') type = 'application/pdf';
+            else if (['jpg','jpeg','png','gif','webp'].includes(ext)) type = 'image/' + ext.replace('jpg','jpeg');
+            else if (ext === 'zip') type = 'application/zip';
+            
+            shareFiles.push(new File([blob], originalName, { type }));
+            completed++;
+            text.innerHTML = '<span class="spinner"></span> Fetching files... (' + completed + '/' + filesArray.length + ')';
         }
+    } catch(e) {
+        if (document.body.contains(overlay)) document.body.removeChild(overlay);
+        alert("Failed to fetch files for sharing. They might be too large.");
+        return;
+    }
 
-        const blob = await res.blob();
-        const file = new File([blob], filename, { type: blob.type || type });
-        
-        // Ready to share!
+    if (isCancelled) return;
+
+    if (navigator.canShare && navigator.canShare({ files: shareFiles })) {
         text.innerHTML = '✅ Ready to share!';
-        
         const shareBtn = document.createElement('button');
         shareBtn.className = 'btn btn--primary btn--lg';
         shareBtn.style.width = '100%';
@@ -609,34 +603,54 @@
             document.body.removeChild(overlay);
             try {
                 await navigator.share({
-                    title: filename,
-                    files: [file]
+                    title: 'LabDrop Files',
+                    files: shareFiles
                 });
             } catch (err) {
                 if (err.name !== 'AbortError') {
                     console.error("Share error:", err);
-                    window.location.href = url; // Fallback to download
+                    const zipUrl = getZipDownloadUrl(filesArray.map(f => f.id));
+                    window.location.href = zipUrl;
                 }
             }
         };
-        
         card.insertBefore(shareBtn, cancelBtn);
-
-      } else {
-        // Browser does not support sharing this file type as a file natively.
-        // Share the direct download link instantly.
-        await navigator.share({
-          title: filename,
-          text: `Download ${filename}`,
-          url: absoluteUrl
-        });
-      }
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error("Share error:", err);
-        window.location.href = url; // Fallback to download
-      }
+    } else {
+        document.body.removeChild(overlay);
+        const zipUrl = getZipDownloadUrl(filesArray.map(f => f.id));
+        const absoluteUrl = new URL(zipUrl, window.location.origin).href;
+        try {
+            await navigator.share({
+                title: 'LabDrop Shared Files',
+                text: 'Download LabDrop Shared Files',
+                url: absoluteUrl
+            });
+        } catch(err) {
+            if (err.name !== 'AbortError') window.location.href = zipUrl;
+        }
     }
+  }
+
+  async function shareItem(url, filename) {
+      const fileIdMatch = url.match(/\/download\/[^\/]+\/([^\/?]+)/);
+      if (fileIdMatch && fileIdMatch[1] !== 'zip') {
+          const fileObj = (activeTransferData.files || []).find(f => f.id === fileIdMatch[1]);
+          if (fileObj) {
+              await shareMultipleFiles([fileObj]);
+              return;
+          }
+      }
+      
+      const absoluteUrl = new URL(url, window.location.origin).href;
+      try {
+          await navigator.share({
+              title: filename,
+              text: `Download ${filename}`,
+              url: absoluteUrl
+          });
+      } catch (err) {
+          if (err?.name !== 'AbortError') window.location.href = url;
+      }
   }
 
   // ---- PIN form submit ----
