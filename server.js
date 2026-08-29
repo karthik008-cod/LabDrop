@@ -335,7 +335,7 @@ app.get('/admin/stats', async (req, res) => {
   try {
     const stats = await storage.analytics.get();
     const allTransfers = await storage.transfers.getAll();
-    const activeTransfers = allTransfers.filter(t => Date.now() < t.expiresAt);
+    const activeTransfers = allTransfers.filter(t => Date.now() < t.expiresAt && t.status !== 'EXPIRED');
     const activeFilesCount = activeTransfers.reduce((acc, t) => acc + (t.files ? t.files.length : 0), 0);
 
     const html = `
@@ -710,7 +710,7 @@ app.get('/api/transfer/:id', async (req, res) => {
     return res.status(404).json({ error: 'Transfer not found or has expired.' });
   }
 
-  if (Date.now() > transfer.expiresAt) {
+  if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
     return res.status(410).json({ error: 'This transfer has expired.' });
   }
 
@@ -748,7 +748,7 @@ app.get('/download/:transferId/zip', async (req, res) => {
     return res.status(404).json({ error: 'Transfer not found or has expired.' });
   }
 
-  if (Date.now() > transfer.expiresAt) {
+  if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
     if (req.accepts('html')) return res.status(410).sendFile(path.join(__dirname, 'public', 'expired.html'));
     return res.status(410).json({ error: 'This transfer has expired.' });
   }
@@ -820,7 +820,7 @@ app.get('/download/:transferId/:fileId', async (req, res) => {
     return res.status(404).json({ error: 'Transfer not found or has expired.' });
   }
 
-  if (Date.now() > transfer.expiresAt) {
+  if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
     if (req.accepts('html')) return res.status(410).sendFile(path.join(__dirname, 'public', 'expired.html'));
     return res.status(410).json({ error: 'This transfer has expired.' });
   }
@@ -867,7 +867,7 @@ app.get('/api/transfer/code/:code', async (req, res) => {
   const shortCode = req.params.code.toUpperCase();
   for (const transfer of await storage.transfers.getAll()) {
     if (transfer.shortCode === shortCode) {
-      if (Date.now() > transfer.expiresAt) {
+      if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
         return res.status(410).json({ error: 'Transfer has expired.' });
       }
       return res.json({ id: transfer.id });
@@ -913,8 +913,11 @@ app.delete('/api/transfer/:id', optionalAuth, async (req, res) => {
     return res.status(403).json({ error: 'Unauthorized to delete this transfer.' });
   }
 
-  await deleteTransfer(transfer.id);
-  res.json({ success: true, message: 'Transfer cancelled and files deleted.' });
+  transfer.expiresAt = Date.now() - 1000;
+  transfer.status = 'EXPIRED';
+  await storage.transfers.set(transfer.id, transfer);
+  
+  res.json({ success: true, message: 'Transfer cancelled and files will be deleted shortly.' });
 });
 
 // --- Extend transfer expiry ---
@@ -925,7 +928,7 @@ app.post('/api/transfer/:id/extend', async (req, res) => {
     return res.status(404).json({ error: 'Transfer not found.' });
   }
   
-  if (Date.now() > transfer.expiresAt) {
+  if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
     return res.status(410).json({ error: 'Transfer already expired.' });
   }
 
@@ -967,13 +970,15 @@ app.get('/api/info', (req, res) => {
 // Transfer cleanup
 // ============================================================
 
-async function deleteTransfer(transferId) {
-  const transfer = await storage.transfers.get(transferId);
-  if (!transfer) return;
+async function processExpiredTransfer(transfer) {
+  if (transfer.status !== 'EXPIRED') {
+    transfer.status = 'EXPIRED';
+    await storage.transfers.set(transfer.id, transfer);
+  }
 
   if (transfer.files && transfer.files.length > 0) {
     const objectsToDelete = transfer.files.map(f => ({
-      Key: `${transferId}/${f.storageName}`
+      Key: `${transfer.id}/${f.storageName}`
     }));
     
     try {
@@ -983,29 +988,28 @@ async function deleteTransfer(transferId) {
       });
       await s3Client.send(command);
     } catch (err) {
-      console.error(`Failed to delete S3 files for transfer ${transferId}:`, err);
+      console.error(`[Cleanup] Failed to delete S3 files for transfer ${transfer.id}:`, err);
+      return false; // Retry later
     }
   }
 
-  await storage.transfers.delete(transferId);
+  await storage.transfers.delete(transfer.id);
+  return true;
 }
 
 async function cleanupExpiredTransfers() {
   const now = Date.now();
   let cleaned = 0;
   
-  // 1. Clean up from storage
   for (const transfer of await storage.transfers.getAll()) {
-    if (now > transfer.expiresAt) {
-      await deleteTransfer(transfer.id);
-      cleaned++;
+    if (now > transfer.expiresAt || transfer.status === 'EXPIRED') {
+      const success = await processExpiredTransfer(transfer);
+      if (success) cleaned++;
     }
   }
 
-  // Note: Orphaned file cleanup is typically handled by Cloud Storage lifecycle rules in a production S3 setup.
-
   if (cleaned > 0) {
-    console.log(`[Cleanup] Removed ${cleaned} expired transfer(s).`);
+    console.log(`[Cleanup] Processed and removed ${cleaned} expired transfer(s).`);
   }
 }
 

@@ -36,7 +36,8 @@ const transferSchema = new mongoose.Schema({
   totalSize: { type: Number, default: 0 },
   downloadCount: { type: Number, default: 0 },
   isSavedForLater: { type: Boolean, default: false },
-  userId: String
+  userId: String,
+  status: { type: String, default: 'ACTIVE' }
 });
 
 const analyticsSchema = new mongoose.Schema({
