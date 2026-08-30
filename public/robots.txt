@@ -13,6 +13,7 @@ Allow: /labdroplogo.png
 Allow: /icon.svg
 Allow: /favicon.ico
 Allow: /manifest.json
+Allow: /google*.html
 
 # Disallow private transfers and internal endpoints from search indexing
 Disallow: /api/
