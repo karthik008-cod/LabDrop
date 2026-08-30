@@ -2,14 +2,145 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>LabDrop — How to Use</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>How to Use LabDrop — Guide &amp; FAQ</title>
   
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
+  <!-- Primary SEO Meta Tags -->
+  <meta name="title" content="How to Use LabDrop — Guide &amp; FAQ" />
+  <meta name="description" content="Step-by-step guide and FAQ on using LabDrop to transfer lab files, code, and documents instantly with QR codes, PIN protection, and cloud saves." />
+  <meta name="keywords" content="how to use labdrop, labdrop guide, qr file transfer tutorial, college lab file drop, pwa file share tutorial" />
+  <meta name="author" content="Yuvaan Kaarthikeyaa Adulapuram" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <link rel="canonical" href="https://labdrop.online/how-to-use.html" />
+
+  <!-- Google Chrome & Mobile Web App Meta -->
+  <meta name="theme-color" content="#FDFBF7" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="LabDrop Guide" />
+  <meta name="application-name" content="LabDrop" />
+  <meta name="format-detection" content="telephone=no" />
+
+  <!-- Resource Preconnect Hints -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Open Graph / Facebook / WhatsApp -->
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="LabDrop" />
+  <meta property="og:url" content="https://labdrop.online/how-to-use.html" />
+  <meta property="og:title" content="How to Use LabDrop — Guide &amp; FAQ" />
+  <meta property="og:description" content="Step-by-step guide and FAQ on using LabDrop to transfer lab files, code, and documents instantly with QR codes, PIN protection, and cloud saves." />
+  <meta property="og:image" content="https://labdrop.online/labdroplogo.png" />
+  <meta property="og:image:alt" content="LabDrop Logo - Temporary Lab File Transfer System" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://labdrop.online/how-to-use.html" />
+  <meta name="twitter:title" content="How to Use LabDrop — Guide &amp; FAQ" />
+  <meta name="twitter:description" content="Step-by-step guide and FAQ on using LabDrop to transfer lab files, code, and documents instantly with QR codes, PIN protection, and cloud saves." />
+  <meta name="twitter:image" content="https://labdrop.online/labdroplogo.png" />
+  <meta name="twitter:image:alt" content="LabDrop Logo" />
+
+  <!-- Favicons and Manifest -->
+  <link rel="icon" type="image/png" href="/labdroplogo.png" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/labdroplogo.png" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Stylesheets -->
   <link rel="stylesheet" href="/css/style.css" />
+
+  <!-- Structured Data: Schema.org FAQPage & BreadcrumbList (JSON-LD) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://labdrop.online/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "How to Use",
+            "item": "https://labdrop.online/how-to-use.html"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is LabDrop and why should I use it?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "LabDrop is a lightning-fast file sharing tool designed to bypass the friction of USB drives or emailing files to yourself. You should use it whenever you need to seamlessly move files or text snippets between devices, such as transferring a document from your phone to your laptop. By installing LabDrop, you can even share directly from apps like WhatsApp straight to your computer without searching through your file explorer."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I install or download LabDrop on my device?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "To install LabDrop, open this website in Google Chrome or Microsoft Edge. Tap the three-dot menu icon located in the top right corner of your browser, and select the 'Install LabDrop' or 'Add to Home screen' option. The app will install instantly and run as a standalone application on your device for quick access."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I quickly transfer files between devices without logging in?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Use the Quick Transfer feature when you're in a rush and need to send files instantly without creating an account. Simply drag and drop your files into the workspace, click the 'Select Files' button, or paste a copied image directly onto the page. Once your files are ready, a QR code and a 4-digit code will appear—scan the code or enter the digits on your other device to download everything immediately."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "When should I use the 'Save for Later' feature?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The Save for Later feature is perfect for situations where you can't immediately download the files on your second device (for example, if phones aren't allowed in a specific lab or office). By switching to this mode, you can upload your files today and they will be securely held in the cloud for up to 7 days. You can retrieve them later by logging into your account or using the unique code provided."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How can I organize multiple files for different projects?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "If you are working on several different projects simultaneously, you can use the Workspace folders to keep your transfers organized. Click on '+ New Folder' in the left sidebar to create dedicated folders for each project. You can then drop files directly into those specific folders, ensuring your workflow remains clean and structured."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I add a password or PIN to my file transfers?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, if you are sharing sensitive or private documents, you can add an extra layer of security using PIN Protection. Before finalizing your transfer, simply toggle the protection option and set a custom 4-digit PIN. The recipient will be required to enter this exact PIN before they are allowed to view or download any of the shared files."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I transfer a long link or text snippet?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "LabDrop isn't just for files—you can also use it to quickly send URLs or blocks of text across devices. Paste your link or text into the dedicated text box at the bottom of the workspace and hit 'Add Text'. This is extremely useful for sharing long meeting links, code snippets, or notes without having to email yourself."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
   <style>
     .accordion-container {
       max-width: 800px;
@@ -79,7 +210,7 @@
   <header class="header">
   <div class="header__container">
       <a href="/" class="header__brand" style="text-decoration: none; color: inherit;">
-        <img class="brand__logo" src="/labdroplogo.png" alt="LabDrop Logo" style="height: 40px; width: auto;" />
+        <img class="brand__logo" src="/labdroplogo.png" alt="LabDrop Logo - Instant Lab File Transfer" width="40" height="40" loading="eager" decoding="async" style="height: 40px; width: auto;" />
         <div class="brand__text">
           <h1 id="mHeaderTitle">LabDrop</h1>
           <p id="mHeaderSubtitle">Move files. Anywhere.</p>

@@ -261,8 +261,34 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files from public/
-app.use(express.static(path.join(__dirname, 'public')));
+// Security & SEO Headers Middleware
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  next();
+});
+
+// Explicit SEO routes for robots.txt and sitemap.xml
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain; charset=utf-8');
+  res.sendFile(path.join(__dirname, 'public', 'robots.txt'));
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml; charset=utf-8');
+  res.sendFile(path.join(__dirname, 'public', 'sitemap.xml'));
+});
+
+// Serve static files from public/ with optimized caching
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '1d',
+  setHeaders: (res, filePath) => {
+    // HTML files should revalidate immediately for fresh SEO and state
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
+}));
 
 // ============================================================
 // Multer configuration for file uploads
@@ -952,6 +978,7 @@ app.post('/api/transfer/:id/extend', async (req, res) => {
 
 // --- Serve transfer page (mobile) ---
 app.get('/t/:id', (req, res) => {
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   res.sendFile(path.join(__dirname, 'public', 'transfer.html'));
 });
 

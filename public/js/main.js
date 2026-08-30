@@ -1382,52 +1382,70 @@
 
 })();
 
-// QR Scanner Logic
+// QR Scanner Logic (Lazy-loaded for maximum performance)
 (function() {
   const mobileScanBtn = document.getElementById('mobileScanBtn');
   const qrScannerModalOverlay = document.getElementById('qrScannerModalOverlay');
   const closeQrScannerBtn = document.getElementById('closeQrScannerBtn');
   let html5QrcodeScanner = null;
 
+  function loadQrLibrary() {
+    if (window.Html5Qrcode) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/html5-qrcode';
+      script.async = true;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('Failed to load QR scanner library'));
+      document.head.appendChild(script);
+    });
+  }
+
   if (mobileScanBtn && qrScannerModalOverlay) {
     // Hide overlay by default
     qrScannerModalOverlay.style.display = 'none';
 
-    mobileScanBtn.addEventListener('click', () => {
+    mobileScanBtn.addEventListener('click', async () => {
       qrScannerModalOverlay.style.display = 'flex';
       qrScannerModalOverlay.classList.add('active'); 
       
-      html5QrcodeScanner = new Html5Qrcode("qr-reader");
-      html5QrcodeScanner.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 }
-        },
-        (decodedText, decodedResult) => {
-          // Handle successful scan
-          if (decodedText.includes('/t/') || decodedText.includes('/r/')) {
-            html5QrcodeScanner.stop().then(() => {
-              qrScannerModalOverlay.style.display = 'none';
-              qrScannerModalOverlay.classList.remove('active');
-              window.location.href = decodedText;
-            }).catch(err => {
-              console.error("Failed to stop scanner", err);
-              window.location.href = decodedText;
-            });
-          } else {
-              window.LabDialog.alert("Invalid QR Code. Please scan a LabDrop transfer QR code.");
-              // wait a bit before allowing next scan to prevent spam
+      try {
+        await loadQrLibrary();
+        html5QrcodeScanner = new Html5Qrcode("qr-reader");
+        html5QrcodeScanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 }
+          },
+          (decodedText, decodedResult) => {
+            // Handle successful scan
+            if (decodedText.includes('/t/') || decodedText.includes('/r/')) {
+              html5QrcodeScanner.stop().then(() => {
+                qrScannerModalOverlay.style.display = 'none';
+                qrScannerModalOverlay.classList.remove('active');
+                window.location.href = decodedText;
+              }).catch(err => {
+                console.error("Failed to stop scanner", err);
+                window.location.href = decodedText;
+              });
+            } else {
+                window.LabDialog.alert("Invalid QR Code. Please scan a LabDrop transfer QR code.");
+            }
+          },
+          (errorMessage) => {
+            // parse errors are ignored (it just keeps scanning)
           }
-        },
-        (errorMessage) => {
-          // parse errors are ignored (it just keeps scanning)
-        }
-      ).catch(async err => {
-        await window.LabDialog.alert("Camera access denied or unavailable.");
+        ).catch(async err => {
+          await window.LabDialog.alert("Camera access denied or unavailable.");
+          qrScannerModalOverlay.style.display = 'none';
+          qrScannerModalOverlay.classList.remove('active');
+        });
+      } catch (err) {
+        await window.LabDialog.alert("Could not load QR scanner. Please check your internet connection.");
         qrScannerModalOverlay.style.display = 'none';
         qrScannerModalOverlay.classList.remove('active');
-      });
+      }
     });
 
     closeQrScannerBtn.addEventListener('click', () => {

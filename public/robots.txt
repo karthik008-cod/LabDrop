@@ -1,0 +1,27 @@
+# ============================================================
+# LabDrop Robots.txt
+# https://labdrop.online
+# ============================================================
+
+User-agent: *
+Allow: /
+Allow: /how-to-use.html
+Allow: /my-files.html
+Allow: /css/
+Allow: /js/
+Allow: /labdroplogo.png
+Allow: /icon.svg
+Allow: /favicon.ico
+Allow: /manifest.json
+
+# Disallow private transfers and internal endpoints from search indexing
+Disallow: /api/
+Disallow: /uploads/
+Disallow: /admin/
+Disallow: /t/
+Disallow: /expired.html
+Disallow: /404.html
+Disallow: /500.html
+
+# Sitemap location
+Sitemap: https://labdrop.online/sitemap.xml

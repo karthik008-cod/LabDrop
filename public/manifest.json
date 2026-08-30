@@ -1,17 +1,56 @@
 {
-  "name": "LabDrop",
+  "id": "/?source=pwa",
+  "name": "LabDrop — Fast Lab File Transfer",
   "short_name": "LabDrop",
-  "description": "Temporary lab file transfer system",
-  "start_url": "/",
+  "description": "Instantly transfer lab files, code, and documents between lab computers and mobile devices with QR codes. No login required.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#121212",
+  "orientation": "any",
+  "background_color": "#FDFBF7",
+  "theme_color": "#FDFBF7",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "utilities",
+    "productivity",
+    "education"
+  ],
   "icons": [
     {
       "src": "/labdroplogo.png",
       "sizes": "192x192 512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Transfer",
+      "short_name": "Transfer",
+      "description": "Start a new quick file transfer with QR code",
+      "url": "/?source=shortcut",
+      "icons": [{ "src": "/labdroplogo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Saved Transfers",
+      "short_name": "Saved Files",
+      "description": "Access your saved cloud transfers",
+      "url": "/my-files.html?source=shortcut",
+      "icons": [{ "src": "/labdroplogo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "How to Use",
+      "short_name": "Guide",
+      "description": "LabDrop user guide and FAQ",
+      "url": "/how-to-use.html?source=shortcut",
+      "icons": [{ "src": "/labdroplogo.png", "sizes": "192x192" }]
     }
   ],
   "share_target": {
