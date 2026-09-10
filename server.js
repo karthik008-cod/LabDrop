@@ -192,15 +192,35 @@ let analytics = {
 
 let analyticsLoaded = false;
 
+const RESET_MIGRATION_VERSION = 'v2_force_zero_2026_09_10_r1';
+
 // Initialize analytics from DB
 async function initAnalytics() {
   try {
     const stats = await storage.analytics.get();
-    analytics.totalTransfersCreated = stats.totalTransfersCreated || 0;
-    analytics.totalFilesUploaded = stats.totalFilesUploaded || 0;
-    analytics.totalDownloads = stats.totalDownloads || 0;
-    analytics.uniqueDevices = new Set(stats.uniqueDevices || []);
-    analyticsLoaded = true;
+    if (stats.resetMigration !== RESET_MIGRATION_VERSION) {
+      console.log('⚡ Applying one-time analytics reset to zero...');
+      analytics.totalTransfersCreated = 0;
+      analytics.totalFilesUploaded = 0;
+      analytics.totalDownloads = 0;
+      analytics.uniqueDevices = new Set();
+      analyticsLoaded = true;
+      await storage.analytics.set({
+        id: 'global',
+        totalTransfersCreated: 0,
+        totalFilesUploaded: 0,
+        totalDownloads: 0,
+        uniqueDevices: [],
+        resetMigration: RESET_MIGRATION_VERSION
+      });
+      console.log('✅ Analytics reset to zero applied.');
+    } else {
+      analytics.totalTransfersCreated = stats.totalTransfersCreated || 0;
+      analytics.totalFilesUploaded = stats.totalFilesUploaded || 0;
+      analytics.totalDownloads = stats.totalDownloads || 0;
+      analytics.uniqueDevices = new Set(stats.uniqueDevices || []);
+      analyticsLoaded = true;
+    }
   } catch (err) {
     console.error('Failed to load analytics from DB', err);
   }
@@ -215,10 +235,12 @@ function scheduleAnalyticsSave() {
     if (!analyticsLoaded) return;
     try {
       await storage.analytics.set({
+        id: 'global',
         totalTransfersCreated: analytics.totalTransfersCreated,
         totalFilesUploaded: analytics.totalFilesUploaded,
         totalDownloads: analytics.totalDownloads,
-        uniqueDevices: Array.from(analytics.uniqueDevices)
+        uniqueDevices: Array.from(analytics.uniqueDevices),
+        resetMigration: RESET_MIGRATION_VERSION
       });
     } catch (err) {
       console.error('Failed to save analytics', err);
@@ -344,6 +366,23 @@ app.get('/admin/stats', async (req, res) => {
     return res.status(403).send('Forbidden');
   }
 
+  // Handle explicit reset to zero request
+  if (req.query.reset === '1' || req.query.reset === 'true') {
+    analytics.totalTransfersCreated = 0;
+    analytics.totalFilesUploaded = 0;
+    analytics.totalDownloads = 0;
+    analytics.uniqueDevices.clear();
+    await storage.analytics.set({
+      id: 'global',
+      totalTransfersCreated: 0,
+      totalFilesUploaded: 0,
+      totalDownloads: 0,
+      uniqueDevices: [],
+      resetMigration: RESET_MIGRATION_VERSION
+    });
+    return res.redirect(`/admin/stats?pass=${encodeURIComponent(adminPass)}&resetSuccess=1`);
+  }
+
   try {
     const stats = await storage.analytics.get();
     const allTransfers = await storage.transfers.getAll();
@@ -354,6 +393,7 @@ app.get('/admin/stats', async (req, res) => {
     const transfersCount = analyticsLoaded ? analytics.totalTransfersCreated : (stats.totalTransfersCreated || 0);
     const filesCount = analyticsLoaded ? analytics.totalFilesUploaded : (stats.totalFilesUploaded || 0);
     const downloadsCount = analyticsLoaded ? analytics.totalDownloads : (stats.totalDownloads || 0);
+    const resetSuccess = req.query.resetSuccess === '1';
 
     const html = `
       <!DOCTYPE html>
@@ -466,6 +506,7 @@ app.get('/admin/stats', async (req, res) => {
               <h2>LabDrop Admin Stats</h2>
               <span class="badge">Live</span>
             </div>
+            ${resetSuccess ? '<div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #10B981; padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1rem; text-align: center; font-weight: 600;">✅ All active counters have been reset to 0!</div>' : ''}
             <div class="stats-list">
               <div class="stat">
                 <span>Unique Users:</span>
@@ -491,6 +532,15 @@ app.get('/admin/stats', async (req, res) => {
                 <span>Active Files:</span>
                 <strong>${activeFilesCount}</strong>
               </div>
+            </div>
+            <div style="margin-top: 1.5rem; text-align: center;">
+              <form method="GET" action="/admin/stats" onsubmit="return confirm('Are you sure you want to reset all active counters to 0?');">
+                <input type="hidden" name="pass" value="${adminPass}" />
+                <input type="hidden" name="reset" value="1" />
+                <button type="submit" style="background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 9px 16px; border-radius: 8px; font-size: 0.82rem; cursor: pointer; font-weight: 600; width: 100%; transition: all 0.2s;">
+                  Reset Active Counters to 0
+                </button>
+              </form>
             </div>
             <div class="footer-info">
               <span>Uptime: ${Math.round(process.uptime() / 60)} mins</span>

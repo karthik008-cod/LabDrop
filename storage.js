@@ -45,7 +45,8 @@ const analyticsSchema = new mongoose.Schema({
   totalTransfersCreated: { type: Number, default: 0 },
   totalFilesUploaded: { type: Number, default: 0 },
   totalDownloads: { type: Number, default: 0 },
-  uniqueDevices: { type: [String], default: [] }
+  uniqueDevices: { type: [String], default: [] },
+  resetMigration: { type: String, default: '' }
 });
 
 const User = mongoose.model('User', userSchema);
