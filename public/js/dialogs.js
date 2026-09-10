@@ -153,3 +153,51 @@ window.LabDialog = (function() {
     }, 1200);
 })();
 
+// --- Dynamic Footer Links (.env Support) ---
+(function() {
+    function applySiteConfig(cfg) {
+        if (!cfg) return;
+        if (cfg.contactEmail) {
+            document.querySelectorAll('.footer-email-link').forEach(function(el) {
+                el.href = 'mailto:' + cfg.contactEmail.trim();
+            });
+        }
+        if (cfg.portfolioUrl && cfg.portfolioUrl.trim()) {
+            var url = cfg.portfolioUrl.trim();
+            if (!/^https?:\/\//i.test(url) && !url.startsWith('/')) {
+                url = 'https://' + url;
+            }
+            document.querySelectorAll('.footer-portfolio-link').forEach(function(el) {
+                el.href = url;
+                el.style.display = 'inline-flex';
+            });
+        } else {
+            document.querySelectorAll('.footer-portfolio-link').forEach(function(el) {
+                el.style.display = 'none';
+            });
+        }
+    }
+
+    function initFooterConfig() {
+        if (window.LABDROP_CONFIG) {
+            applySiteConfig(window.LABDROP_CONFIG);
+        } else {
+            fetch('/api/config')
+                .then(function(res) { return res.ok ? res.json() : null; })
+                .then(function(cfg) {
+                    if (cfg) {
+                        window.LABDROP_CONFIG = cfg;
+                        applySiteConfig(cfg);
+                    }
+                })
+                .catch(function() {});
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initFooterConfig);
+    } else {
+        initFooterConfig();
+    }
+})();
+

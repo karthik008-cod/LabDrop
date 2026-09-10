@@ -266,6 +266,25 @@ app.get('/sitemap.xml', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'sitemap.xml'));
 });
 
+// Dynamic site configuration from environment variables
+function getSiteConfig() {
+  return {
+    contactEmail: process.env.CONTACT_EMAIL || process.env.SUPPORT_EMAIL || process.env.EMAIL || 'yuvaankaarthikeyaa.1206@gmail.com',
+    portfolioUrl: (process.env.PORTFOLIO_URL || process.env.PORTFOLIO_LINK || process.env.PORTFOLIO || '').trim()
+  };
+}
+
+app.get('/js/site-config.js', (req, res) => {
+  res.type('application/javascript');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.send(`window.LABDROP_CONFIG = ${JSON.stringify(getSiteConfig())};`);
+});
+
+app.get('/api/config', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.json(getSiteConfig());
+});
+
 // Serve static files from public/ with optimized caching
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '1d',
