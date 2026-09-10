@@ -1364,20 +1364,6 @@
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 
-  // Analytics Tracking
-  setTimeout(() => {
-    let deviceId = localStorage.getItem('deviceId');
-    if (!deviceId) {
-      deviceId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-      localStorage.setItem('deviceId', deviceId);
-      fetch('/api/analytics/visit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId })
-      }).catch(() => {});
-    }
-  }, 1000);
-
   checkSharedFiles();
 
 })();
@@ -1458,4 +1444,28 @@
       qrScannerModalOverlay.classList.remove('active');
     });
   }
+
+  // ---- Quick Guide Collapsible State Handling ----
+  const guideAccordion = document.getElementById('guideAccordion');
+  if (guideAccordion) {
+    const guideToggleLabel = guideAccordion.querySelector('.guide-toggle-label');
+    const updateGuideLabel = () => {
+      if (guideToggleLabel) {
+        guideToggleLabel.textContent = guideAccordion.open ? 'Hide Steps' : 'Instructions';
+      }
+    };
+    guideAccordion.addEventListener('toggle', () => {
+      updateGuideLabel();
+      try {
+        localStorage.setItem('labdrop_guide_open', guideAccordion.open ? 'true' : 'false');
+      } catch (e) {}
+    });
+    try {
+      if (localStorage.getItem('labdrop_guide_open') === 'true') {
+        guideAccordion.open = true;
+        updateGuideLabel();
+      }
+    } catch (e) {}
+  }
 })();
+

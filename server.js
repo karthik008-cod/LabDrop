@@ -226,41 +226,6 @@ function scheduleAnalyticsSave() {
   }, 5000); // Debounce save every 5 seconds
 }
 
-function parseCookies(cookieStr) {
-  if (!cookieStr) return {};
-  return cookieStr.split(';').reduce((res, c) => {
-    const [key, val] = c.trim().split('=').map(decodeURIComponent);
-    try {
-      return Object.assign(res, { [key]: JSON.parse(val) });
-    } catch (e) {
-      return Object.assign(res, { [key]: val });
-    }
-  }, {});
-}
-
-// Middleware to track unique visitors using device cookies
-app.use((req, res, next) => {
-  const userAgent = req.headers['user-agent'] || '';
-  if (userAgent.toLowerCase().includes('uptimerobot')) {
-    return next(); // Skip tracking for UptimeRobot
-  }
-
-  const cookies = parseCookies(req.headers.cookie);
-  let deviceId = cookies['labdrop_device_id'];
-  
-  if (!deviceId) {
-    deviceId = uuidv4();
-    // Set cookie for 1 year
-    res.cookie('labdrop_device_id', deviceId, { maxAge: 365 * 24 * 60 * 60 * 1000, httpOnly: true });
-  }
-
-  if (analyticsLoaded && !analytics.uniqueDevices.has(deviceId)) {
-    analytics.uniqueDevices.add(deviceId);
-    scheduleAnalyticsSave();
-  }
-  next();
-});
-
 // Security & SEO Headers Middleware
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -335,16 +300,37 @@ app.use('/api/upload', (req, res, next) => {
 // ============================================================
 
 // --- Analytics & Admin ---
+
+// Baseline historical counters (frozen static numbers for lifetime satisfaction)
+const BASELINE_COUNTERS = {
+  totalTransfers: 133,
+  totalFiles: 216,
+  totalDownloads: 151
+};
+
+// Bot / crawler / uptime monitor detection pattern
+const BOT_UA_REGEX = /uptimerobot|pingdom|betterstack|statuscake|uptime|bot|crawler|spider|slurp|headless|lighthouse|inspect|checker|python|curl|wget|axios|postman|node-fetch|go-http|java|ruby|httpclient/i;
+
 app.post('/api/analytics/visit', express.json(), async (req, res) => {
   try {
+    const userAgent = req.headers['user-agent'] || '';
+
+    // Ignore bots, crawlers, uptime monitors, and headless clients
+    if (!userAgent || BOT_UA_REGEX.test(userAgent)) {
+      return res.json({ success: true, ignored: true });
+    }
+
+    // Ignore prefetch or preview requests
+    if (req.headers['x-purpose'] === 'preview' || req.headers['purpose'] === 'prefetch') {
+      return res.json({ success: true, ignored: true });
+    }
+
     const { deviceId } = req.body;
-    if (deviceId) {
-      const Analytics = require('mongoose').model('Analytics');
-      await Analytics.findOneAndUpdate(
-        { id: 'global' },
-        { $addToSet: { uniqueDevices: String(deviceId) } },
-        { upsert: true }
-      );
+    if (typeof deviceId === 'string' && deviceId.length >= 8 && deviceId.length <= 100) {
+      if (analyticsLoaded && !analytics.uniqueDevices.has(deviceId)) {
+        analytics.uniqueDevices.add(deviceId);
+        scheduleAnalyticsSave();
+      }
     }
     res.json({ success: true });
   } catch (err) {
@@ -364,26 +350,152 @@ app.get('/admin/stats', async (req, res) => {
     const activeTransfers = allTransfers.filter(t => Date.now() < t.expiresAt && t.status !== 'EXPIRED');
     const activeFilesCount = activeTransfers.reduce((acc, t) => acc + (t.files ? t.files.length : 0), 0);
 
+    const uniqueCount = analyticsLoaded ? analytics.uniqueDevices.size : ((stats.uniqueDevices || []).length);
+    const transfersCount = analyticsLoaded ? analytics.totalTransfersCreated : (stats.totalTransfersCreated || 0);
+    const filesCount = analyticsLoaded ? analytics.totalFilesUploaded : (stats.totalFilesUploaded || 0);
+    const downloadsCount = analyticsLoaded ? analytics.totalDownloads : (stats.totalDownloads || 0);
+
     const html = `
-      <html>
+      <!DOCTYPE html>
+      <html lang="en">
         <head>
-          <title>LabDrop Admin</title>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>LabDrop Admin Stats</title>
           <style>
-            body { font-family: sans-serif; background: #1a1a1a; color: #fff; padding: 2rem; }
-            .card { background: #2a2a2a; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; max-width: 400px;}
-            h2 { margin-top: 0; color: #FFD166; }
-            .stat { font-size: 1.2rem; margin: 0.5rem 0; display: flex; justify-content: space-between; }
+            :root {
+              --bg: #0f1117;
+              --card-bg: #1a1d26;
+              --border: #2a2e3d;
+              --text: #f0f3f8;
+              --text-muted: #8b949e;
+              --accent: #FFD166;
+              --success: #10B981;
+            }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              background: var(--bg);
+              color: var(--text);
+              padding: 2.5rem 1rem;
+              display: flex;
+              justify-content: center;
+              align-items: flex-start;
+              min-height: 100vh;
+            }
+            .card {
+              background: var(--card-bg);
+              padding: 2rem;
+              border-radius: 16px;
+              width: 100%;
+              max-width: 440px;
+              border: 1px solid var(--border);
+              box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            }
+            .header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 1.5rem;
+              padding-bottom: 1rem;
+              border-bottom: 1px solid var(--border);
+            }
+            h2 {
+              margin: 0;
+              color: var(--accent);
+              font-size: 1.35rem;
+              font-weight: 700;
+              letter-spacing: -0.5px;
+            }
+            .badge {
+              font-size: 0.72rem;
+              font-weight: 600;
+              background: rgba(16, 185, 129, 0.15);
+              color: var(--success);
+              padding: 4px 8px;
+              border-radius: 20px;
+              border: 1px solid rgba(16, 185, 129, 0.3);
+            }
+            .stats-list {
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+            }
+            .stat {
+              font-size: 1.05rem;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 10px 14px;
+              background: rgba(255, 255, 255, 0.03);
+              border-radius: 10px;
+              border: 1px solid rgba(255, 255, 255, 0.05);
+            }
+            .stat span {
+              color: var(--text-muted);
+              font-size: 0.95rem;
+            }
+            .stat strong {
+              font-size: 1.15rem;
+              color: #fff;
+              display: inline-flex;
+              align-items: baseline;
+              gap: 4px;
+            }
+            .baseline {
+              font-weight: 500;
+              color: var(--text-muted);
+              font-size: 0.85em;
+              opacity: 0.8;
+            }
+            .footer-info {
+              margin-top: 1.5rem;
+              padding-top: 1rem;
+              border-top: 1px solid var(--border);
+              font-size: 0.75rem;
+              color: var(--text-muted);
+              text-align: center;
+              display: flex;
+              justify-content: space-between;
+            }
           </style>
         </head>
         <body>
           <div class="card">
-            <h2>LabDrop Admin Stats</h2>
-            <div class="stat"><span>Unique Users:</span> <strong>${(stats.uniqueDevices || []).length}</strong></div>
-            <div class="stat"><span>Total Transfers:</span> <strong>${stats.totalTransfersCreated || 0}</strong></div>
-            <div class="stat"><span>Total Files:</span> <strong>${stats.totalFilesUploaded || 0}</strong></div>
-            <div class="stat"><span>Total Downloads:</span> <strong>${stats.totalDownloads || 0}</strong></div>
-            <div class="stat"><span>Active Transfers:</span> <strong>${activeTransfers.length}</strong></div>
-            <div class="stat"><span>Active Files:</span> <strong>${activeFilesCount}</strong></div>
+            <div class="header">
+              <h2>LabDrop Admin Stats</h2>
+              <span class="badge">Live</span>
+            </div>
+            <div class="stats-list">
+              <div class="stat">
+                <span>Unique Users:</span>
+                <strong>${uniqueCount}</strong>
+              </div>
+              <div class="stat">
+                <span>Total Transfers:</span>
+                <strong>${transfersCount} <span class="baseline">(${BASELINE_COUNTERS.totalTransfers})</span></strong>
+              </div>
+              <div class="stat">
+                <span>Total Files:</span>
+                <strong>${filesCount} <span class="baseline">(${BASELINE_COUNTERS.totalFiles})</span></strong>
+              </div>
+              <div class="stat">
+                <span>Total Downloads:</span>
+                <strong>${downloadsCount} <span class="baseline">(${BASELINE_COUNTERS.totalDownloads})</span></strong>
+              </div>
+              <div class="stat">
+                <span>Active Transfers:</span>
+                <strong>${activeTransfers.length}</strong>
+              </div>
+              <div class="stat">
+                <span>Active Files:</span>
+                <strong>${activeFilesCount}</strong>
+              </div>
+            </div>
+            <div class="footer-info">
+              <span>Uptime: ${Math.round(process.uptime() / 60)} mins</span>
+              <span>Only real visitors counted</span>
+            </div>
           </div>
         </body>
       </html>
@@ -910,12 +1022,19 @@ app.get('/stats', async (req, res) => {
     return res.status(403).send('Forbidden: Invalid admin key.');
   }
 
+  const allTransfers = await storage.transfers.getAll();
+  const activeTransfers = allTransfers.filter(t => Date.now() < t.expiresAt && t.status !== 'EXPIRED');
+
   res.json({
-    activeTransfersInServer: await storage.transfers.getAll().length,
+    activeTransfersInServer: activeTransfers.length,
     totalUniqueVisitors: analytics.uniqueDevices.size,
     totalTransfersCreated: analytics.totalTransfersCreated,
+    totalTransfersDisplay: `${analytics.totalTransfersCreated} (${BASELINE_COUNTERS.totalTransfers})`,
     totalFilesUploaded: analytics.totalFilesUploaded,
+    totalFilesDisplay: `${analytics.totalFilesUploaded} (${BASELINE_COUNTERS.totalFiles})`,
     totalDownloads: analytics.totalDownloads,
+    totalDownloadsDisplay: `${analytics.totalDownloads} (${BASELINE_COUNTERS.totalDownloads})`,
+    baselineCounters: BASELINE_COUNTERS,
     serverUptimeMinutes: Math.round(process.uptime() / 60)
   });
 });

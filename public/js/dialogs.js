@@ -123,3 +123,33 @@ window.LabDialog = (function() {
         }
     };
 })();
+
+// --- Real Visitor Analytics Beacon ---
+(function() {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+    // Ignore headless or automated testing environments (Selenium, Puppeteer, bots, etc.)
+    if (navigator.webdriver) return;
+    // Ignore prerender/hidden states
+    if (document.visibilityState === 'prerender') return;
+
+    setTimeout(function() {
+        try {
+            if (sessionStorage.getItem('labdrop_v2_logged')) return;
+
+            var visitorId = localStorage.getItem('labdrop_v2_id');
+            if (!visitorId) {
+                visitorId = 'v2_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+                localStorage.setItem('labdrop_v2_id', visitorId);
+            }
+
+            sessionStorage.setItem('labdrop_v2_logged', '1');
+
+            fetch('/api/analytics/visit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deviceId: visitorId })
+            }).catch(function() {});
+        } catch (e) {}
+    }, 1200);
+})();
+
