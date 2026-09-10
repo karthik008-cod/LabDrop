@@ -198,6 +198,26 @@ img, svg {
   gap: var(--space-md);
 }
 
+.brand__header-logo {
+  height: 46px;
+  width: auto;
+  max-width: 170px;
+  object-fit: contain;
+  display: block;
+  transition: transform var(--transition-fast);
+}
+
+.header__brand:hover .brand__header-logo {
+  transform: scale(1.03);
+}
+
+@media (max-width: 600px) {
+  .brand__header-logo {
+    height: 38px;
+    max-width: 140px;
+  }
+}
+
 .brand__logo {
   width: 48px;
   height: 48px;

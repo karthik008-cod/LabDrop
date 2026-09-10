@@ -181,12 +181,11 @@
 
     showState('transfer');
 
-    if (data.transferName) {
-       mHeaderTitle.textContent = data.transferName;
-       mHeaderSubtitle.textContent = 'Your lab files are ready';
-    } else {
-       mHeaderTitle.textContent = 'LabDrop';
-       mHeaderSubtitle.textContent = 'Your lab files are ready';
+    if (mHeaderTitle) {
+      mHeaderTitle.textContent = data.transferName || 'LabDrop';
+    }
+    if (mHeaderSubtitle) {
+      mHeaderSubtitle.textContent = 'Your lab files are ready';
     }
 
     mStatFiles.textContent = data.fileCount + (data.linkCount > 0 ? ` (+${data.linkCount})` : '');
