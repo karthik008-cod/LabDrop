@@ -201,7 +201,22 @@
     const qs = params.toString() ? `?${params.toString()}` : '';
 
     // Download All link
-    downloadAllBtn.href = `/download/${data.id}/zip${qs}`;
+    const zipUrl = `/download/${data.id}/zip${qs}`;
+    downloadAllBtn.href = zipUrl;
+    downloadAllBtn.setAttribute('href', zipUrl);
+    let defaultZipFilename = customZipName || data.transferName || (data.shortCode ? `LabDrop_${data.shortCode}` : 'LabDrop_Files');
+    if (!defaultZipFilename.toLowerCase().endsWith('.zip')) {
+      defaultZipFilename += '.zip';
+    }
+    downloadAllBtn.setAttribute('download', defaultZipFilename);
+
+    if (!data.files || data.files.length === 0) {
+      downloadAllBtn.style.display = 'none';
+      if (renameZipBtn) renameZipBtn.style.display = 'none';
+    } else {
+      downloadAllBtn.style.display = 'inline-flex';
+      if (renameZipBtn) renameZipBtn.style.display = 'inline-flex';
+    }
     
     // Rename button state
     if (customZipName || data.transferName) {
@@ -368,14 +383,23 @@
 
   // ---- Save As (Browse) vs Direct for ZIP ----
   downloadAllBtn.addEventListener('click', (e) => {
+    const downloadUrl = downloadAllBtn.getAttribute('href') || downloadAllBtn.href;
+    if (!downloadUrl || downloadUrl === '#' || downloadUrl.endsWith('#')) {
+      e.preventDefault();
+      return;
+    }
+
+    let filename = customZipName || activeTransferData?.transferName || (activeTransferData?.shortCode ? `LabDrop_${activeTransferData.shortCode}` : 'LabDrop_Transfer');
+    if (!filename.toLowerCase().endsWith('.zip')) {
+      filename += '.zip';
+    }
+
     if (window.showSaveFilePicker) {
       e.preventDefault();
-      const downloadUrl = downloadAllBtn.getAttribute('href');
-      let filename = customZipName || activeTransferData.transferName || 'LabDrop_Transfer';
-      if (!filename.toLowerCase().endsWith('.zip')) {
-        filename += '.zip';
-      }
       openDownloadModal(downloadUrl, filename, downloadAllBtn);
+    } else {
+      e.preventDefault();
+      window.location.href = downloadUrl;
     }
   });
 
@@ -487,8 +511,11 @@
     downloadSelectedBtn.addEventListener('click', () => {
       if (selectedFileIds.size === 0) return;
       const url = getZipDownloadUrl(Array.from(selectedFileIds));
-      const filename = customZipName || activeTransferData.transferName || 'LabDrop_Selected';
-      openDownloadModal(url, filename + '.zip', downloadSelectedBtn);
+      let filename = customZipName || activeTransferData?.transferName || 'LabDrop_Selected';
+      if (!filename.toLowerCase().endsWith('.zip')) {
+        filename += '.zip';
+      }
+      openDownloadModal(url, filename, downloadSelectedBtn);
     });
   }
 
@@ -505,7 +532,8 @@
     if (currentPin) params.append('pin', currentPin);
     if (customZipName) params.append('name', customZipName);
     if (fileIds.length > 0) params.append('files', fileIds.join(','));
-    return `/download/${activeTransferData.id}/zip?${params.toString()}`;
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return `/download/${activeTransferData.id}/zip${qs}`;
   }
 
   // ---- Share Logic ----
@@ -709,6 +737,11 @@
   let pendingDownload = null;
 
   function openDownloadModal(url, filename, btnEl) {
+    if (!url) return;
+    if (!window.showSaveFilePicker) {
+      window.location.href = url;
+      return;
+    }
     pendingDownload = { url, filename, btnEl };
     downloadModal.classList.add('active');
   }
@@ -722,7 +755,7 @@
 
   if (btnDownloadDefault) {
     btnDownloadDefault.addEventListener('click', () => {
-      if (pendingDownload) {
+      if (pendingDownload && pendingDownload.url) {
         window.location.href = pendingDownload.url;
       }
       closeDownloadModal();
@@ -731,12 +764,12 @@
 
   if (btnDownloadBrowse) {
     btnDownloadBrowse.addEventListener('click', async () => {
-      if (!pendingDownload) return;
+      if (!pendingDownload || !pendingDownload.url) return;
       const { url, filename, btnEl } = pendingDownload;
       closeDownloadModal();
       
       try {
-        const ext = filename.split('.').pop();
+        const ext = filename.split('.').pop().toLowerCase();
         const types = [];
         if (ext === 'zip') {
           types.push({ description: 'ZIP Archive', accept: { 'application/zip': ['.zip'] } });
@@ -747,16 +780,22 @@
           types: types.length > 0 ? types : undefined
         });
         
-        btnEl.style.opacity = '0.5';
-        btnEl.style.pointerEvents = 'none';
+        if (btnEl) {
+          btnEl.style.opacity = '0.5';
+          btnEl.style.pointerEvents = 'none';
+        }
 
         const res = await fetch(url);
         if (!res.ok) throw new Error('Download failed');
         
-        const blob = await res.blob();
         const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
+        if (res.body && typeof res.body.pipeTo === 'function') {
+          await res.body.pipeTo(writable);
+        } else {
+          const blob = await res.blob();
+          await writable.write(blob);
+          await writable.close();
+        }
       } catch (err) {
         if (err.name !== 'AbortError') {
           await window.LabDialog.alert('Save failed: ' + err.message);

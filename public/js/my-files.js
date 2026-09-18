@@ -145,10 +145,14 @@
         const res = await fetch(downloadUrl);
         if (!res.ok) throw new Error('Download failed');
         
-        const blob = await res.blob();
         const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
+        if (res.body && typeof res.body.pipeTo === 'function') {
+          await res.body.pipeTo(writable);
+        } else {
+          const blob = await res.blob();
+          await writable.write(blob);
+          await writable.close();
+        }
       } catch (err) {
         if (err.name !== 'AbortError') {
           await window.LabDialog.alert('Save failed: ' + err.message);

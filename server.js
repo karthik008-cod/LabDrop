@@ -962,15 +962,38 @@ app.get('/download/:transferId/zip', async (req, res) => {
 
   if (!verifyPin(req, res, transfer)) return;
 
+  const fsMap = transfer.folderStructure || {};
+
+  let filesToZip = transfer.files || [];
+  if (req.query.files) {
+    const selectedIds = new Set(req.query.files.split(','));
+    filesToZip = (transfer.files || []).filter(f => selectedIds.has(f.id));
+  }
+
+  if (!filesToZip || filesToZip.length === 0) {
+    return res.status(400).json({ error: 'No files to download in this transfer.' });
+  }
+
   // Determine ZIP filename (query param > transferName > shortCode)
   let baseName = req.query.name ? req.query.name : (transfer.transferName || transfer.shortCode);
   baseName = sanitizeFilename(baseName);
+  if (baseName.toLowerCase().endsWith('.zip')) {
+    baseName = baseName.slice(0, -4);
+  }
   const zipFilename = `LabDrop-${baseName}.zip`;
 
   res.setHeader('Content-Type', 'application/zip');
   res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
 
   const archive = archiver('zip', { zlib: { level: 5 } });
+
+  archive.on('warning', (err) => {
+    if (err.code === 'ENOENT') {
+      console.warn('Archiver warning:', err);
+    } else {
+      console.error('Archiver warning:', err);
+    }
+  });
 
   archive.on('error', (err) => {
     console.error('Archive error:', err);
@@ -979,15 +1002,15 @@ app.get('/download/:transferId/zip', async (req, res) => {
     }
   });
 
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      archive.abort();
+    }
+  });
+
   archive.pipe(res);
 
-  const fsMap = transfer.folderStructure || {};
-
-  let filesToZip = transfer.files;
-  if (req.query.files) {
-    const selectedIds = new Set(req.query.files.split(','));
-    filesToZip = transfer.files.filter(f => selectedIds.has(f.id));
-  }
+  const usedEntryNames = new Set();
 
   for (const file of filesToZip) {
     const s3Key = `${transfer.id}/${file.storageName}`;
@@ -1005,13 +1028,27 @@ app.get('/download/:transferId/zip', async (req, res) => {
          const safeFolder = folderName.replace(/^(\.\.(\/|\\|$))+/, '');
          entryName = path.join(safeFolder, file.originalName).replace(/\\/g, '/');
       }
-      archive.append(response.Body, { name: entryName });
+
+      // Handle duplicate entry names inside zip
+      let finalEntryName = entryName;
+      let counter = 1;
+      const parsedPath = path.posix.parse(entryName);
+      while (usedEntryNames.has(finalEntryName.toLowerCase())) {
+        finalEntryName = path.posix.join(
+          parsedPath.dir,
+          `${parsedPath.name} (${counter})${parsedPath.ext}`
+        );
+        counter++;
+      }
+      usedEntryNames.add(finalEntryName.toLowerCase());
+
+      archive.append(response.Body, { name: finalEntryName });
     } catch (err) {
       console.error(`Failed to fetch file from S3 for ZIP: ${s3Key}`, err);
     }
   }
 
-  transfer.downloadCount++;
+  transfer.downloadCount = (transfer.downloadCount || 0) + 1;
   await storage.transfers.set(transfer.id, transfer);
   analytics.totalDownloads++;
   scheduleAnalyticsSave();
