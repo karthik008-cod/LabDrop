@@ -904,4 +904,3 @@
 
     updateAuthUI();
   }
-}
