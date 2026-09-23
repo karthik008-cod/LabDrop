@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="/labdroplogo.png" />
   <link rel="manifest" href="/manifest.json" />
 
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/style.css?v=5.4" />
   <script src="/js/site-config.js"></script>
 </head>
 <body>
@@ -160,15 +160,31 @@
             </div>
           </div>
 
-          <!-- Download All -->
-          <div style="display: flex; gap: 8px; margin-top: var(--space-lg);">
+          <!-- Download All & Actions Row -->
+          <div style="display: flex; gap: 8px; margin-top: var(--space-lg); align-items: center;">
             <a class="btn btn--primary btn--lg" id="downloadAllBtn" href="#" style="flex: 1; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
               ⬇️ Download All
             </a>
             <button class="btn btn--primary btn--lg" id="shareAllBtn" style="flex: 1;">
               📤 Share All
             </button>
-            <button class="btn btn--outline" id="renameZipBtn" title="Rename ZIP" style="padding: 0 16px;">✏️</button>
+            <button class="btn btn--outline" id="renameZipBtn" title="Rename ZIP" style="padding: 0 14px; height: 44px;">✏️</button>
+          </div>
+          <!-- LabDrop AI Assistant Callout -->
+          <div class="transfer-ai-callout" style="margin-top: var(--space-md); padding: 12px 14px; background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(245, 158, 11, 0.07)); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px; text-align: left;">
+              <picture>
+                <source srcset="/LabDropAILogo-icon.webp" type="image/webp" />
+                <img src="/LabDropAILogo-icon.png" alt="LabDrop AI" width="38" height="38" style="border-radius: 50%; border: 1.5px solid #fbbf24; flex-shrink: 0; display: block;" />
+              </picture>
+              <div>
+                <div style="font-weight: 700; font-size: 0.92rem; color: var(--color-text);">LabDrop AI Assistant</div>
+                <div style="font-size: 0.78rem; color: var(--color-text-secondary);">Viva Voce prep, exam Q&amp;A, and code tutor</div>
+              </div>
+            </div>
+            <button type="button" class="btn btn--primary btn--sm open-ai-modal-btn" style="white-space: nowrap; font-weight: 600; padding: 6px 14px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: white;">
+              Ask AI
+            </button>
           </div>
         </div>
 
@@ -195,6 +211,15 @@
     </main>
 
     </div>
+
+  <!-- Floating Circular AI Bot Button -->
+  <button class="ai-fab-btn open-ai-modal-btn" id="aiFloatingBtn" title="LabDrop AI Assistant (Viva, Exam Prep, Summarize)" aria-label="Open AI Assistant">
+    <div class="ai-fab-pulse"></div>
+    <picture>
+      <source srcset="/LabDropAILogo-icon.webp" type="image/webp" />
+      <img src="/LabDropAILogo-icon.png" alt="LabDrop AI" width="60" height="60" loading="eager" />
+    </picture>
+  </button>
 
   <!-- Download Options Modal -->
   <div class="modal-overlay" id="downloadModal">
@@ -228,6 +253,150 @@
     </div>
   </div>
 
+  <!-- AI Assistant Modal (Slidable & Resizable) -->
+  <div class="modal-overlay ai-modal-overlay" id="aiModal">
+      <div class="modal modal--lg modal--ai" id="aiModalWindow" style="max-width: 720px; width: 95%; height: 640px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; position: relative;">
+        
+        <!-- Multi-directional Resize Handles -->
+        <div class="ai-resizer ai-resizer-n" data-dir="n"></div>
+        <div class="ai-resizer ai-resizer-s" data-dir="s"></div>
+        <div class="ai-resizer ai-resizer-e" data-dir="e"></div>
+        <div class="ai-resizer ai-resizer-w" data-dir="w"></div>
+        <div class="ai-resizer ai-resizer-ne" data-dir="ne"></div>
+        <div class="ai-resizer ai-resizer-nw" data-dir="nw"></div>
+        <div class="ai-resizer ai-resizer-se" data-dir="se"></div>
+        <div class="ai-resizer ai-resizer-sw" data-dir="sw"></div>
+
+        <div class="modal__header ai-modal-header" id="aiModalHeader" style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(219, 39, 119, 0.08)); border-bottom: 1px solid var(--color-border); padding: 12px 18px; cursor: move; user-select: none; flex-shrink: 0;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <picture>
+              <source srcset="/LabDropAILogo-icon.webp" type="image/webp" />
+              <img src="/LabDropAILogo-icon.png" alt="LabDrop AI" width="32" height="32" style="border-radius: 50%; border: 1.5px solid #fbbf24; display: block;" />
+            </picture>
+            <div>
+              <div class="modal__title" style="font-size: 1.15rem; font-weight: 700; background: linear-gradient(135deg, #f59e0b, #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">LabDrop AI Assistant</div>
+              <div style="font-size: 0.72rem; color: var(--color-text-secondary);">Viva Voce & Exam Prep · Summary · Assistant</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button class="modal__close" id="aiModalResetPos" title="Reset Window" style="font-size: 0.85rem; padding: 2px 6px; border-radius: 4px; background: transparent; border: 1px solid var(--color-border); cursor: pointer; color: var(--color-text-secondary);">⟲</button>
+            <button class="modal__close" id="aiModalClose">✕</button>
+          </div>
+        </div>
+
+        <!-- AI Modal Body -->
+        <div class="modal__body" id="aiModalBody" style="flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 0; position: relative;">
+          
+          <!-- Viva & Exam Prep View -->
+          <div class="ai-tab-content" id="tabContentViva" style="display: flex; flex-direction: column; height: 100%; flex: 1; min-height: 0; overflow: hidden;">
+            
+            <!-- Scrollable Content Area -->
+            <div id="tabContentVivaScroll" style="flex: 1; min-height: 0; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;">
+              
+              <!-- Compact File Selector Dropdown -->
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label for="aiFileSelect" style="font-size: 0.76rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.03em;">Select File:</label>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <select id="aiFileSelect" class="form-input" style="flex: 1; font-size: 0.84rem; padding: 6px 10px; height: 36px; border-radius: var(--radius-sm);"></select>
+                  <label for="aiDirectFileInput" class="btn btn--outline btn--sm" style="font-size: 0.76rem; padding: 0 10px; height: 36px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; margin: 0;" title="Upload an additional file from your device">
+                    ➕ Upload
+                  </label>
+                  <input type="file" id="aiDirectFileInput" multiple style="display: none;" />
+                </div>
+              </div>
+
+              <!-- Exam Mode & Dynamic Secondary Option (Difficulty / Summary Length) Row - Compact Side-by-Side -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start;">
+                <div>
+                  <label for="aiExamType" style="font-size: 0.76rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.03em; display: block; margin-bottom: 3px;">Target Action / Prep:</label>
+                  <select id="aiExamType" class="form-input" onchange="window.updateAiSecondaryDropdown && window.updateAiSecondaryDropdown(this.value)" style="width: 100%; font-size: 0.84rem; padding: 6px 8px; height: 36px; border-radius: var(--radius-sm);">
+                    <option value="viva">🎓 Oral Lab Viva (Voce)</option>
+                    <option value="internal_20">📝 20 Marks Internal Test</option>
+                    <option value="semester_100">🏛️ 100 Marks Semester Paper</option>
+                    <option value="rapid_fire">⚡ Rapid-Fire Flashcards</option>
+                    <option value="summarize">📄 Summarize Content</option>
+                  </select>
+                </div>
+
+                <!-- Dynamic Secondary Option: Difficulty Level (for Viva/Exams) OR Summary Length (for Summarize) -->
+                <div id="aiSecondaryContainer">
+                  <label id="aiSecondaryLabel" for="aiSecondaryOption" style="font-size: 0.76rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.03em; display: block; margin-bottom: 3px;">Difficulty Level:</label>
+                  <div style="display: flex; gap: 6px; align-items: center;">
+                    <select id="aiSecondaryOption" class="form-input" onchange="window.handleAiSecondaryChange && window.handleAiSecondaryChange(this.value)" style="flex: 1; width: 100%; font-size: 0.84rem; padding: 6px 8px; height: 36px; border-radius: var(--radius-sm);">
+                      <option value="easy">🟢 Easy (Fundamentals)</option>
+                      <option value="medium" selected>🟡 Medium (Lab Standard)</option>
+                      <option value="hard">🔴 Hard (Advanced Traps)</option>
+                      <option value="extreme">🔥 Extreme (Compiler & Internals)</option>
+                    </select>
+                    <input type="number" id="aiCustomLines" class="form-input" min="1" max="500" value="15" placeholder="Lines..." title="Number of summary lines" style="width: 65px; font-size: 0.84rem; padding: 6px 8px; height: 36px; border-radius: var(--radius-sm); display: none;" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Non-study / Media Asset Warning Banner -->
+              <div id="aiMediaWarningBanner" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 8px 12px; align-items: flex-start; gap: 10px;">
+                <span style="font-size: 1.2rem; line-height: 1;">⚠️</span>
+                <div style="flex: 1;">
+                  <div style="font-weight: 700; font-size: 0.84rem; color: #92400e;">Non-Study / Media Asset Detected</div>
+                  <div id="aiMediaWarningText" style="font-size: 0.8rem; color: #b45309; margin-top: 2px; line-height: 1.3;">
+                    This file appears to be an image, logo, or media asset that doesn't typically require viva questions.
+                  </div>
+                  <div style="margin-top: 6px; display: flex; gap: 8px;">
+                    <button type="button" class="btn btn--sm" id="btnForceViva" style="background: linear-gradient(135deg, #d97706, #b45309); color: #fff; border: none; font-weight: 700; font-size: 0.78rem; padding: 5px 12px; border-radius: var(--radius-sm); cursor: pointer; box-shadow: 0 2px 6px rgba(180, 83, 9, 0.25);">⚡ Create Viva Questions Forcefully</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Primary Generate Button -->
+              <button class="btn btn--primary btn--ai" id="btnRunViva" style="width: 100%; padding: 8px 12px; font-size: 0.88rem; font-weight: 700; border-radius: var(--radius-sm); height: 38px;">🎓 Generate Exam & Viva Prep</button>
+
+              <!-- Loading Indicator (Positioned in the main content area, above the bottom chat bar) -->
+              <div id="aiLoadingSpinner" style="display: none; text-align: center; padding: 30px 14px; background: rgba(79, 70, 229, 0.04); border: 1px dashed rgba(79, 70, 229, 0.25); border-radius: var(--radius-md); margin-top: 6px;">
+                <div class="spinner" style="width: 32px; height: 32px; border-width: 3px; margin: 0 auto 10px;"></div>
+                <div id="aiLoadingText" style="font-weight: 600; color: var(--color-text-secondary); font-size: 0.88rem;">Consulting Gemini AI to prepare high-scoring Exam & Viva questions...</div>
+              </div>
+
+              <!-- Viva Result Output -->
+              <div id="vivaResult" style="display: none; margin-top: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                  <span id="vivaBadge" style="font-size: 0.75rem; font-weight: 700; background: rgba(79, 70, 229, 0.1); color: var(--color-primary); padding: 4px 10px; border-radius: var(--radius-full); border: 1px solid rgba(79, 70, 229, 0.25);">Oral Viva · Medium</span>
+                  <div style="display: flex; gap: 8px;">
+                    <button class="btn btn--outline btn--sm" id="btnRegenViva">🔄 Regenerate</button>
+                    <button class="btn btn--outline btn--sm" id="btnCopyViva">📋 Copy Output</button>
+                  </div>
+                </div>
+                <div id="vivaOutput" class="markdown-body" style="font-size: 0.9rem; line-height: 1.6; text-align: left; background: var(--color-bg-secondary); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); max-height: 360px; overflow-y: auto;"></div>
+              </div>
+
+              <!-- Messages Feed (Appears once conversation starts) -->
+              <div id="vivaChatMessages" style="display: none; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); max-height: 280px; overflow-y: auto; margin-top: 8px;"></div>
+
+            </div>
+
+            <!-- Docked Bottom Chat Box (Always visible at the bottom of the AI window) -->
+            <div id="vivaChatBottomBar" style="flex-shrink: 0; background: var(--color-bg-secondary); border-top: 1px solid var(--color-border); padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -2px 10px rgba(0,0,0,0.03); z-index: 10;">
+              <!-- Quick Prompt Chips -->
+              <div id="vivaChipsContainer" style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" class="chip-btn viva-chip" data-prompt="Summarize this in 5 lines">⚡ Summarize in 5 lines</button>
+                <button type="button" class="chip-btn viva-chip" data-prompt="What is this document about?">❓ What is this document about?</button>
+                <button type="button" class="chip-btn viva-chip" data-prompt="Give me a 3-bullet quick overview of key concepts.">📋 3-Bullet Overview</button>
+                <button type="button" class="chip-btn viva-chip" data-prompt="Explain how this works in simple words.">💡 Explain Simply</button>
+              </div>
+
+              <!-- Chat Input Form -->
+              <form id="vivaChatForm" style="display: flex; gap: 8px; width: 100%;">
+                <input type="text" id="vivaChatInput" class="form-input" placeholder="Ask AI a question or request a summary..." style="flex: 1; font-size: 0.88rem; padding: 9px 12px; border-radius: var(--radius-sm);" required />
+                <button type="submit" class="btn btn--primary" id="vivaChatSubmitBtn" style="padding: 0 18px; font-weight: 600; white-space: nowrap;">Send</button>
+              </form>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Footer -->
     <footer class="footer" style="margin-top: auto; padding-top: var(--space-2xl); padding-bottom: var(--space-md); text-align: right; color: var(--color-text-muted); font-size: 0.85rem;">
       <div style="display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
@@ -240,9 +409,49 @@
       <div style="margin-top: 6px;">&copy; 2026 Yuvaan Kaarthikeyaa Adulapuram</div>
     </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
   <script src="/js/dialogs.js"></script>
   <script src="/js/bg.js"></script>
-  <script src="/js/mobile.js"></script>
-  
+  <script>
+    // Immediate dynamic dropdown handler (ensures instant response without waiting for any deferred scripts)
+    window.updateAiSecondaryDropdown = function(actionType) {
+      var label = document.getElementById('aiSecondaryLabel');
+      var select = document.getElementById('aiSecondaryOption');
+      var custom = document.getElementById('aiCustomLines');
+      var btn = document.getElementById('btnRunViva');
+      if (!select) return;
+
+      if (actionType === 'summarize') {
+        if (label) label.textContent = 'Summary Length:';
+        select.innerHTML = '<option value="short">⚡ Short (5 lines)</option>' +
+                           '<option value="medium" selected>📄 Medium (20 lines)</option>' +
+                           '<option value="large">📚 Large (50 lines)</option>' +
+                           '<option value="custom">✏️ Custom (Let user fill this number)</option>';
+        if (btn) btn.textContent = '📄 Generate Summary';
+        if (custom) custom.style.display = 'none';
+      } else {
+        if (label) label.textContent = 'Difficulty Level:';
+        select.innerHTML = '<option value="easy">🟢 Easy (Fundamentals)</option>' +
+                           '<option value="medium" selected>🟡 Medium (Lab Standard)</option>' +
+                           '<option value="hard">🔴 Hard (Advanced Traps)</option>' +
+                           '<option value="extreme">🔥 Extreme (Compiler & Internals)</option>';
+        if (btn) btn.textContent = '🎓 Generate Exam & Viva Prep';
+        if (custom) custom.style.display = 'none';
+      }
+    };
+
+    window.handleAiSecondaryChange = function(val) {
+      var custom = document.getElementById('aiCustomLines');
+      var examType = document.getElementById('aiExamType');
+      var isSummarize = examType && examType.value === 'summarize';
+      if (custom) {
+        var isCustom = isSummarize && val === 'custom';
+        custom.style.display = isCustom ? 'block' : 'none';
+        if (isCustom) custom.focus();
+      }
+    };
+  </script>
+  <script src="/js/mobile.js?v=3.1"></script>
 </body>
 </html>

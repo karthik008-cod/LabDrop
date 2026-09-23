@@ -19,6 +19,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const storage = require('./storage');
+const aiService = require('./ai-service');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'labdrop-super-secret-jwt-key';
 
@@ -173,8 +174,12 @@ if (!fs.existsSync(CONFIG.UPLOAD_DIR)) {
 // Express app setup
 // ============================================================
 
+const compression = require('compression');
+
 const app = express();
-app.use(express.json());
+app.use(compression());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Trust proxy so req.ip returns the actual client IP instead of Render's load balancer IP
 app.set('trust proxy', true);
@@ -285,13 +290,19 @@ app.get('/api/config', (req, res) => {
   res.json(getSiteConfig());
 });
 
-// Serve static files from public/ with optimized caching
+// Serve static files from public/ with optimized caching & compression
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '1d',
   setHeaders: (res, filePath) => {
-    // HTML files should revalidate immediately for fresh SEO and state
-    if (filePath.endsWith('.html')) {
-      res.setHeader('Cache-Control', 'no-cache');
+    // Images, fonts, and icons: cache immutably for 1 year (Lighthouse Best Practice)
+    if (/\.(png|jpe?g|webp|svg|ico|woff2?|ttf|eot)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else if (filePath.endsWith('.css') || filePath.endsWith('.js')) {
+      // CSS & JS assets
+      res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    } else if (filePath.endsWith('.html') || filePath.endsWith('manifest.json')) {
+      // HTML documents revalidate
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
     }
   }
 }));
@@ -931,8 +942,11 @@ app.get('/api/transfer/:id', async (req, res) => {
     files: transfer.files.map((f) => ({
       id: f.id,
       name: f.originalName,
+      originalName: f.originalName,
+      customName: f.customName || f.originalName,
       size: f.size,
       category: f.category,
+      mimeType: f.mimeType,
     })),
     links: transfer.links || [],
     folderStructure: transfer.folderStructure || {},
@@ -1199,6 +1213,397 @@ app.post('/api/transfer/:id/extend', async (req, res) => {
   await storage.transfers.set(transfer.id, transfer); // Update storage
 
   res.json({ success: true, expiresAt: transfer.expiresAt });
+});
+
+// Helper: fetch file text from S3 with automatic PDF & Word (.docx) document extraction
+async function fetchFileTextFromS3(transferId, storageName, maxBytes = 4 * 1024 * 1024, originalName = '') {
+  const s3Key = `${transferId}/${storageName}`;
+  const command = new GetObjectCommand({
+    Bucket: S3_BUCKET_NAME,
+    Key: s3Key,
+  });
+
+  const response = await s3Client.send(command);
+  const chunks = [];
+  let totalBytes = 0;
+
+  for await (const chunk of response.Body) {
+    chunks.push(chunk);
+    totalBytes += chunk.length;
+    if (totalBytes >= maxBytes) break;
+  }
+
+  const rawBuffer = Buffer.concat(chunks);
+  const combinedName = `${originalName || ''} ${storageName || ''}`.toLowerCase();
+  const isPdf = combinedName.includes('.pdf') || (rawBuffer.length >= 4 && rawBuffer.slice(0, 4).toString() === '%PDF');
+  const isDocx = combinedName.includes('.docx') || combinedName.includes('.doc') || 
+                (rawBuffer.length >= 4 && rawBuffer[0] === 0x50 && rawBuffer[1] === 0x4B && rawBuffer[2] === 0x03 && rawBuffer[3] === 0x04 && !combinedName.includes('.zip'));
+
+  // 1. PDF Document extraction
+  if (isPdf) {
+    try {
+      const pdfLib = require('pdf-parse');
+      let extractedText = '';
+      if (typeof pdfLib === 'function') {
+        const pdfData = await pdfLib(rawBuffer);
+        extractedText = pdfData?.text || '';
+      } else if (pdfLib.PDFParse) {
+        const parser = new pdfLib.PDFParse({ data: rawBuffer });
+        try {
+          const res = await parser.getText();
+          extractedText = res?.text || (typeof res === 'string' ? res : '');
+        } finally {
+          await parser.destroy();
+        }
+      }
+      if (extractedText && extractedText.trim().length > 10) {
+        console.log(`[fetchFileTextFromS3] Successfully extracted ${extractedText.trim().length} chars from PDF: ${originalName || storageName}`);
+        return extractedText.trim();
+      }
+    } catch (pdfErr) {
+      console.warn(`[fetchFileTextFromS3] PDF parse warning for ${originalName || storageName}:`, pdfErr.message);
+    }
+  }
+
+  // 2. Word Document (.docx / .doc) extraction
+  if (isDocx) {
+    try {
+      const mammoth = require('mammoth');
+      const docxResult = await mammoth.extractRawText({ buffer: rawBuffer });
+      if (docxResult && docxResult.value && docxResult.value.trim().length > 10) {
+        console.log(`[fetchFileTextFromS3] Successfully extracted ${docxResult.value.trim().length} chars from DOCX: ${originalName || storageName}`);
+        return docxResult.value.trim();
+      }
+    } catch (docxErr) {
+      console.warn(`[fetchFileTextFromS3] DOCX parse warning for ${originalName || storageName}:`, docxErr.message);
+    }
+  }
+
+  // 3. Plain text / code fallback
+  return rawBuffer.toString('utf8').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ');
+}
+
+// Helper to identify media/non-academic assets
+function isMediaAsset(name = '', category = '') {
+  if (category === 'image' || category === 'video' || category === 'audio') return true;
+  return /\.(png|jpe?g|gif|webp|svg|bmp|ico|mp4|mov|avi|mkv|webm|mp3|wav|ogg|m4a|zip|tar|gz|rar|7z)$/i.test(name);
+}
+
+// Helper to identify non-study documents (OMR sheets, hall tickets, fee receipts, blank forms)
+function isNonStudyDocument(text = '', filename = '') {
+  if (!text || typeof text !== 'string') return false;
+  const lower = text.toLowerCase();
+  const lowerName = filename.toLowerCase();
+
+  if (lowerName.includes('omr') || lower.includes('omr sheet') || lower.includes('optical mark')) return true;
+  
+  // OMR bubble sheet patterns:
+  // e.g. "1 1 2 3 4", "2 1 2 3 4", or "(1) (2) (3) (4)" repeated across many questions
+  const bubbleMatches = text.match(/\b\d{1,3}\s+[1-4]\s+[1-4]\s+[1-4]\s+[1-4]\b/g) || text.match(/\b\d{1,3}\s*\([1-4]\)\s*\([1-4]\)\s*\([1-4]\)\s*\([1-4]\)/g);
+  if (bubbleMatches && bubbleMatches.length >= 8) return true;
+
+  // NMMS / Mental Ability / Scholastic Aptitude exam bubble sheets
+  if ((lower.includes('mental ability test') || lower.includes('scholastic aptitude test') || lower.includes('director of government examinations')) &&
+      (lower.includes('hall ticket') || lower.includes('name of the student') || lower.includes('part - i') || lower.includes('part - ii'))) {
+    return true;
+  }
+
+  // Admit cards / Hall tickets without study content
+  if ((lowerName.includes('hallticket') || lowerName.includes('admit_card') || lowerName.includes('hall_ticket') || lowerName.includes('admitcard')) &&
+      (lower.includes('exam center') || lower.includes('examination center') || lower.includes('roll no') || lower.includes('reporting time'))) {
+    return true;
+  }
+
+  // Fee receipts / payment challans
+  if ((lowerName.includes('receipt') || lowerName.includes('fee') || lowerName.includes('challan') || lowerName.includes('invoice')) &&
+      (lower.includes('payment received') || lower.includes('transaction id') || lower.includes('tuition fee') || lower.includes('amount paid'))) {
+    return true;
+  }
+
+  return false;
+}
+
+// --- LabDrop AI: Instant Lab Record / Observation Generator (Zero-Transfer Required) ---
+app.post('/api/ai/lab-record', async (req, res) => {
+  try {
+    const {
+      codeContent,
+      filename,
+      selectedSections = [],
+      studentDetails = {},
+      transferId,
+      fileId,
+      engine = 'instant',
+      contentSize = 'standard'
+    } = req.body;
+
+    let targetCode = codeContent || '';
+    let targetFilename = filename || 'program';
+
+    // If transferId and fileId provided, resolve from transfer
+    if ((!targetCode || !targetCode.trim()) && transferId && fileId) {
+      const transfer = await storage.transfers.get(transferId);
+      if (transfer) {
+        const fileObj = (transfer.files || []).find(f => f.id === fileId);
+        if (fileObj) {
+          targetCode = await fetchFileTextFromS3(transfer.id, fileObj.storageName, 35 * 1024);
+          targetFilename = fileObj.originalName;
+        }
+      }
+    }
+
+    if (!targetCode || !targetCode.trim()) {
+      return res.status(400).json({ error: 'Please provide code content or upload a code file to generate a Lab Record.' });
+    }
+
+    const recordData = await aiService.generateLabRecord({
+      codeContent: targetCode,
+      filename: targetFilename,
+      selectedSections,
+      studentDetails,
+      engine,
+      contentSize
+    });
+
+    return res.json({
+      success: true,
+      ...recordData
+    });
+  } catch (err) {
+    console.error('[LabDrop AI Lab Record] Error, falling back to synthesizer:', err);
+    try {
+      const fallback = aiService.synthesizeLabRecord({
+        codeContent: req.body?.codeContent || '',
+        filename: req.body?.filename || 'program',
+        selectedSections: req.body?.selectedSections || [],
+        studentDetails: req.body?.studentDetails || {},
+        contentSize: req.body?.contentSize || 'standard'
+      });
+      return res.json({
+        success: true,
+        ...fallback,
+        engineUsed: 'Academic Engine (Instant Fallback)'
+      });
+    } catch (synthErr) {
+      return res.status(500).json({ error: synthErr.message || 'Failed to generate Lab Record.' });
+    }
+  }
+});
+
+// --- LabDrop AI Assistant (Exam Prep, Viva, Flowchart, and Follow-up Chat) ---
+app.post('/api/ai/analyze', async (req, res) => {
+  const {
+    transferId,
+    action,
+    fileId,
+    fileIds,
+    directFiles = [],
+    examType = 'viva',
+    difficulty = 'medium',
+    lengthType = 'medium',
+    customLines = 15,
+    force = false,
+    prompt,
+    conversationHistory = [],
+    previousOutput = ''
+  } = req.body;
+
+  if (!action) {
+    return res.status(400).json({ error: 'Missing action.' });
+  }
+
+  let transfer = null;
+  if (transferId) {
+    transfer = await storage.transfers.get(transferId);
+    if (!transfer) {
+      return res.status(404).json({ error: 'Transfer not found or has expired.' });
+    }
+
+    if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
+      return res.status(410).json({ error: 'This transfer has expired.' });
+    }
+
+    if (!verifyPin(req, res, transfer)) return;
+  } else if (action !== 'chat' && (!directFiles || directFiles.length === 0)) {
+    return res.status(400).json({ error: 'Missing transferId or direct files for AI analysis.' });
+  }
+
+  try {
+    if (action === 'viva' || action === 'exam_prep') {
+      const filesData = [];
+
+      // 1. Resolve files from transfer
+      const targetIds = Array.isArray(fileIds) && fileIds.length > 0 
+        ? fileIds 
+        : (fileId ? [fileId] : []);
+
+      let transferFilesToAnalyze = [];
+      if (targetIds.length > 0) {
+        transferFilesToAnalyze = (transfer.files || []).filter(f => targetIds.includes(f.id));
+      } else if (!directFiles || directFiles.length === 0) {
+        // Fallback: Pick all files or first file
+        transferFilesToAnalyze = (transfer.files || []).slice(0, 5);
+      }
+
+      for (const tf of transferFilesToAnalyze) {
+        const isMedia = isMediaAsset(tf.originalName, tf.category);
+        if (isMedia) {
+          filesData.push({
+            name: tf.originalName,
+            isMedia: true,
+            size: tf.size,
+            content: ''
+          });
+        } else {
+          try {
+            const content = await fetchFileTextFromS3(transfer.id, tf.storageName, 4 * 1024 * 1024, tf.originalName);
+            filesData.push({
+              name: tf.originalName,
+              isMedia: false,
+              size: tf.size,
+              content: content || ''
+            });
+          } catch (err) {
+            console.warn(`[LabDrop AI] Failed to read ${tf.originalName}:`, err.message);
+          }
+        }
+      }
+
+      // 2. Resolve direct files (uploaded client-side)
+      if (Array.isArray(directFiles)) {
+        for (const df of directFiles) {
+          if (df && df.name) {
+            const isMedia = isMediaAsset(df.name);
+            const rawContent = isMedia ? '' : (df.content || '').slice(0, 35 * 1024);
+            // Clean up any binary control chars from local file string
+            const safeContent = typeof rawContent === 'string' 
+              ? rawContent.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ') 
+              : '';
+            filesData.push({
+              name: df.name,
+              isMedia,
+              size: df.size || safeContent.length,
+              content: safeContent
+            });
+          }
+        }
+      }
+
+      if (filesData.length === 0) {
+        return res.status(400).json({ error: 'No readable files selected for preparation.' });
+      }
+
+      // 3. Non-study / Media guardrails:
+      const isMediaOnly = filesData.every(f => f.isMedia);
+      const isNonStudyOnly = filesData.every(f => f.isMedia || isNonStudyDocument(f.content, f.name));
+
+      // If viva/exam prep requested on non-study or media files without force
+      if (examType !== 'summarize' && (isMediaOnly || isNonStudyOnly) && !force) {
+        const names = filesData.map(f => f.name).join(', ');
+        const reason = isMediaOnly
+          ? 'images, logos, or media assets'
+          : 'non-study documents (such as an OMR answer sheet, hall ticket, fee receipt, or blank form)';
+        return res.json({
+          needsForce: true,
+          isMediaOnly,
+          isNonStudyOnly,
+          warning: `Selected file(s) [${names}] appear to be ${reason} that do not contain academic study material or questions.`
+        });
+      }
+
+      // 4. Generate Exam/Viva prep or Summary
+      const result = await aiService.generateExamPrep({
+        filesData,
+        examType,
+        difficulty,
+        lengthType,
+        customLines,
+        isForceful: !!force,
+        isMediaOnly
+      });
+
+      return res.json({
+        success: true,
+        type: 'exam_prep',
+        examType,
+        difficulty,
+        lengthType,
+        result,
+        filenames: filesData.map(f => f.name)
+      });
+
+    } else if (action === 'flowchart') {
+      let targetFile = null;
+      if (fileId) {
+        targetFile = (transfer.files || []).find(f => f.id === fileId);
+      } else if (Array.isArray(fileIds) && fileIds.length > 0) {
+        targetFile = (transfer.files || []).find(f => f.id === fileIds[0]);
+      } else {
+        targetFile = (transfer.files || []).find(f => f.category === 'code' || f.category === 'text') || (transfer.files || [])[0];
+      }
+
+      if (!targetFile) {
+        return res.status(400).json({ error: 'No file selected for flowchart generation.' });
+      }
+
+      const fileContent = await fetchFileTextFromS3(transfer.id, targetFile.storageName, 4 * 1024 * 1024, targetFile.originalName);
+      if (!fileContent || fileContent.trim().length === 0) {
+        return res.status(400).json({ error: 'The selected file is empty or cannot be converted to flowchart.' });
+      }
+
+      const flowchartOutput = await aiService.generateFlowchart(fileContent, targetFile.originalName);
+      return res.json({ success: true, type: 'flowchart', filename: targetFile.originalName, result: flowchartOutput });
+
+    } else if (action === 'chat') {
+      if (!prompt || !prompt.trim()) {
+        return res.status(400).json({ error: 'Prompt is required for AI chat.' });
+      }
+
+      let filesContext = `Workspace: "${transfer ? (transfer.transferName || 'Lab Files') : 'Direct Lab Workspace'}"\n`;
+      const targetIds = Array.isArray(fileIds) && fileIds.length > 0 
+        ? fileIds 
+        : (fileId ? [fileId] : []);
+
+      let filesToRead = [];
+      if (transfer) {
+        if (targetIds.length > 0) {
+          filesToRead = (transfer.files || []).filter(f => targetIds.includes(f.id));
+        } else {
+          filesToRead = (transfer.files || []).slice(0, 5);
+        }
+      }
+
+      for (const f of filesToRead) {
+        try {
+          if (!isMediaAsset(f.originalName, f.category)) {
+            const content = await fetchFileTextFromS3(transfer.id, f.storageName, 4 * 1024 * 1024, f.originalName);
+            filesContext += `\n--- Content of ${f.originalName} ---\n${(content || '').slice(0, 30000)}\n`;
+          } else {
+            filesContext += `\n--- Media Asset: ${f.originalName} (${(f.size / 1024).toFixed(1)} KB) ---\n`;
+          }
+        } catch (e) {
+          // ignore error
+        }
+      }
+
+      // Add direct files if provided
+      if (Array.isArray(directFiles)) {
+        for (const df of directFiles) {
+          if (df && df.name) {
+            filesContext += `\n--- User Uploaded: ${df.name} ---\n${(df.content || '').slice(0, 8000)}\n`;
+          }
+        }
+      }
+
+      const answer = await aiService.chatWithFiles(prompt.trim(), filesContext, conversationHistory, previousOutput);
+      return res.json({ success: true, type: 'chat', result: answer });
+    } else {
+      return res.status(400).json({ error: `Unsupported AI action: ${action}` });
+    }
+  } catch (err) {
+    console.error('[LabDrop AI] Error:', err);
+    return res.status(500).json({ error: err.message || 'AI processing failed.' });
+  }
 });
 
 // --- Serve transfer page (mobile) ---

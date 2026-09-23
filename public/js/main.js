@@ -409,6 +409,8 @@
       totalSize += file.size;
       const cat = getFileCategory(file.name);
       const icon = FILE_ICONS[cat] || '📎';
+      const isCode = cat === 'code';
+      const recordBtnHtml = isCode ? `<button type="button" class="file-item__record" data-index="${index}" title="Generate Lab Record" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: var(--radius-sm); color: #7c3aed; font-weight: 600; cursor: pointer;">📄 Record</button>` : '';
 
       const li = document.createElement('li');
       li.className = 'file-item';
@@ -419,11 +421,20 @@
           <div class="file-item__size">${formatBytes(file.size)}</div>
         </div>
         <div class="file-item__actions">
+          ${recordBtnHtml}
           <button type="button" class="file-item__move" data-index="${index}" data-type="file" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
           <button class="file-item__remove" data-index="${index}" title="Remove file">✕</button>
         </div>
       `;
       fileList.appendChild(li);
+    });
+
+    // Bind file record buttons
+    fileList.querySelectorAll('.file-item__record').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.index, 10);
+        openLabRecordModal(currentFiles[idx]);
+      });
     });
 
     // Bind file remove buttons
@@ -498,6 +509,9 @@
 
     // --- Render folder panel ---
     renderFolderPanel();
+
+    // --- Update code detection banner ---
+    updateCodeDetectionBanner();
   }
 
   // ---- Render folder panel ----
@@ -1364,6 +1378,720 @@
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 
+  // ============================================================
+  // LabDrop — Instant AI Lab Record & Observation Generator
+  // ============================================================
+  const navLabRecordBtn = $('#navLabRecordBtn');
+  const navLabRecordBtnLoggedIn = $('#navLabRecordBtnLoggedIn');
+  const mobileRecordBtn = $('#mobileRecordBtn');
+  const codeDetectionBanner = $('#codeDetectionBanner');
+  const detectedCodeFilename = $('#detectedCodeFilename');
+  const btnTriggerLabRecord = $('#btnTriggerLabRecord');
+
+  const labRecordModal = $('#labRecordModal');
+  const labRecordModalClose = $('#labRecordModalClose');
+  const recordConfigView = $('#recordConfigView');
+  const recordResultView = $('#recordResultView');
+  const recordLoadingState = $('#recordLoadingState');
+  const recordLoadingSub = $('#recordLoadingSub');
+
+  const recordSourceSelect = $('#recordSourceSelect');
+  const recordUploadBtn = $('#recordUploadBtn');
+  const recordFileInput = $('#recordFileInput');
+  const selectedSectionsCount = $('#selectedSectionsCount');
+
+  const recExpNo = $('#recExpNo');
+  const recSubject = $('#recSubject');
+  const recStudentName = $('#recStudentName');
+  const recRollNo = $('#recRollNo');
+
+  const btnRunLabRecord = $('#btnRunLabRecord');
+  const btnPrintRecord = $('#btnPrintRecord');
+  const btnCopyRecordMd = $('#btnCopyRecordMd');
+  const btnCopyRecordRich = $('#btnCopyRecordRich');
+  const btnDownloadRecordMd = $('#btnDownloadRecordMd');
+  const btnReconfigureRecord = $('#btnReconfigureRecord');
+
+  const labRecordSheet = $('#labRecordSheet');
+  const labRecordHeaderInfo = $('#labRecordHeaderInfo');
+  const labRecordContent = $('#labRecordContent');
+  const labRecordMermaidArea = $('#labRecordMermaidArea');
+  const labRecordMermaidSvg = $('#labRecordMermaidSvg');
+
+  // External files uploaded directly via the Lab Record modal
+  let externalRecordFiles = [];
+  let currentGeneratedRecord = null;
+
+  // Find all code files from workspace or upload
+  function findCodeFiles() {
+    const all = getAllFiles();
+    const codeFiles = all.filter(f => getFileCategory(f.name) === 'code');
+    externalRecordFiles.forEach(f => {
+      if (!codeFiles.some(cf => cf.name === f.name)) {
+        codeFiles.push(f);
+      }
+    });
+    return codeFiles;
+  }
+
+  function updateCodeDetectionBanner() {
+    if (!codeDetectionBanner) return;
+    const codeFiles = findCodeFiles();
+    if (codeFiles.length > 0) {
+      detectedCodeFilename.textContent = codeFiles[0].name + (codeFiles.length > 1 ? ` (+${codeFiles.length - 1} more)` : '');
+      codeDetectionBanner.style.display = 'flex';
+    } else {
+      codeDetectionBanner.style.display = 'none';
+    }
+  }
+
+  // Populate source code dropdown
+  function populateRecordSourceSelect(preferredName) {
+    if (!recordSourceSelect) return;
+    recordSourceSelect.innerHTML = '';
+    const codeFiles = findCodeFiles();
+    const allFiles = getAllFiles();
+    const list = codeFiles.length > 0 ? codeFiles : allFiles;
+
+    list.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f.name;
+      opt.textContent = `${getFileCategory(f.name) === 'code' ? '💻' : '📄'} ${f.name} (${formatBytes(f.size)})`;
+      if (preferredName && f.name === preferredName) opt.selected = true;
+      recordSourceSelect.appendChild(opt);
+    });
+
+    // Also offer link text if user entered snippet
+    const links = getAllLinks();
+    links.forEach((link, idx) => {
+      const opt = document.createElement('option');
+      opt.value = `__link_${idx}`;
+      opt.textContent = `🔗 Snippet / Text #${idx + 1} (${link.slice(0, 30)}...)`;
+      recordSourceSelect.appendChild(opt);
+    });
+
+    if (recordSourceSelect.options.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '-- No file selected. Click "Browse Other" to upload code --';
+      recordSourceSelect.appendChild(opt);
+    }
+  }
+
+  const recordModalAlert = $('#recordModalAlert');
+  const recordModalAlertText = $('#recordModalAlertText');
+  const recordModalAlertClose = $('#recordModalAlertClose');
+
+  function showRecordModalError(message) {
+    if (recordModalAlert && recordModalAlertText) {
+      recordModalAlertText.textContent = message;
+      recordModalAlert.style.display = 'flex';
+      recordModalAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  function clearRecordModalError() {
+    if (recordModalAlert) {
+      recordModalAlert.style.display = 'none';
+      if (recordModalAlertText) recordModalAlertText.textContent = '';
+    }
+  }
+
+  if (recordModalAlertClose) {
+    recordModalAlertClose.addEventListener('click', clearRecordModalError);
+  }
+
+  // Open modal
+  function openLabRecordModal(preferredFile) {
+    clearRecordModalError();
+    const prefName = typeof preferredFile === 'string' ? preferredFile : (preferredFile ? preferredFile.name : null);
+    populateRecordSourceSelect(prefName);
+    
+    recordConfigView.style.display = 'block';
+    recordResultView.style.display = 'none';
+    recordLoadingState.style.display = 'none';
+    
+    labRecordModal.classList.add('active');
+  }
+
+  function closeLabRecordModal() {
+    clearRecordModalError();
+    labRecordModal.classList.remove('active');
+  }
+
+  // Section Checkbox Presets
+  const SECTION_PRESETS = {
+    full: ['aim', 'requirements', 'apparatus', 'description', 'algorithm', 'flowchart', 'procedure', 'program', 'table', 'precautions', 'output', 'result'],
+    observation: ['aim', 'algorithm', 'flowchart', 'program', 'output', 'result'],
+    theory_code: ['aim', 'description', 'program', 'output'],
+    flowchart_table: ['aim', 'algorithm', 'flowchart', 'table', 'output'],
+    custom: []
+  };
+
+  function updateSelectedCount() {
+    const checked = document.querySelectorAll('input[name="labSection"]:checked');
+    if (selectedSectionsCount) {
+      selectedSectionsCount.textContent = `${checked.length} / 12 selected`;
+    }
+  }
+
+  let selectedEngine = 'auto';
+  let activeSectionSizes = {};
+  let lastCodePayload = null;
+
+  function applySectionPreset(presetKey) {
+    const checkboxes = document.querySelectorAll('input[name="labSection"]');
+    const targetSections = SECTION_PRESETS[presetKey] || [];
+    
+    if (presetKey !== 'custom') {
+      checkboxes.forEach(cb => {
+        cb.checked = targetSections.includes(cb.value);
+      });
+    }
+
+    document.querySelectorAll('#presetContainer .preset-chip').forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.preset === presetKey);
+    });
+
+    updateSelectedCount();
+  }
+
+  // Bind preset chips
+  document.querySelectorAll('#presetContainer .preset-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      applySectionPreset(chip.dataset.preset);
+    });
+  });
+
+  // Checkbox change listener
+  document.querySelectorAll('input[name="labSection"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      document.querySelectorAll('#presetContainer .preset-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.preset === 'custom');
+      });
+      updateSelectedCount();
+    });
+  });
+
+  // Browse Other Code File button
+  if (recordUploadBtn && recordFileInput) {
+    recordUploadBtn.addEventListener('click', () => recordFileInput.click());
+    recordFileInput.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length > 0) {
+        const file = files[0];
+        externalRecordFiles.push(file);
+        populateRecordSourceSelect(file.name);
+        showToast(`Loaded "${escapeHtml(file.name)}" into Record Generator.`);
+      }
+    });
+  }
+
+  // Read code content from File object or link
+  async function getSelectedCodePayload() {
+    const selectedVal = recordSourceSelect.value;
+    if (!selectedVal) {
+      throw new Error('Please select or upload a code file.');
+    }
+
+    if (selectedVal.startsWith('__link_')) {
+      const idx = parseInt(selectedVal.replace('__link_', ''), 10);
+      const links = getAllLinks();
+      return {
+        codeContent: links[idx] || '',
+        filename: 'snippet.txt'
+      };
+    }
+
+    const all = [...getAllFiles(), ...externalRecordFiles];
+    const fileObj = all.find(f => f.name === selectedVal);
+    if (!fileObj) {
+      throw new Error(`Could not locate file "${selectedVal}".`);
+    }
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ codeContent: reader.result, filename: fileObj.name });
+      reader.onerror = () => reject(new Error(`Failed to read file "${fileObj.name}".`));
+      reader.readAsText(fileObj);
+    });
+  }
+
+  function renderLabRecordReport() {
+    if (!labRecordContent || !currentGeneratedRecord) return;
+    const data = currentGeneratedRecord;
+    const variants = data.sectionVariants || {};
+    const titles = data.sectionTitles || {
+      aim: '🎯 Aim / Objective',
+      requirements: '💻 HW & SW Requirements',
+      apparatus: '🔬 Apparatus & Libraries',
+      description: '📖 Theory & Description',
+      theory: '📖 Theory & Description',
+      algorithm: '🔢 Step-by-Step Algorithm',
+      flowchart: '📊 Visual Flowchart',
+      procedure: '⚙️ Procedure & Commands',
+      program: '💻 Source Code (Program)',
+      table: '📋 Observation Table',
+      precautions: '⚠️ Precautions & Boundary',
+      output: '🖥️ Sample Console Output',
+      result: '🏁 Result Statement'
+    };
+
+    // If variants not present, parse sections from raw markdown so dropdowns are always present
+    if (Object.keys(variants).length === 0) {
+      const rawMd = data.markdown || '';
+      const sectionRegex = /^##\s+([^\n\r]+)/gm;
+      let match;
+      const matches = [];
+      while ((match = sectionRegex.exec(rawMd)) !== null) {
+        matches.push({
+          title: match[1].trim(),
+          startIndex: match.index,
+          headerLength: match[0].length
+        });
+      }
+
+      if (matches.length > 0) {
+        let parsedHtml = '';
+        for (let i = 0; i < matches.length; i++) {
+          const m = matches[i];
+          const nextStart = (i + 1 < matches.length) ? matches[i + 1].startIndex : rawMd.length;
+          const bodyMd = rawMd.slice(m.startIndex + m.headerLength, nextStart).trim();
+          const secKey = `sec_${i}`;
+          const currentSize = activeSectionSizes[secKey] || 'standard';
+
+          parsedHtml += `
+            <div class="record-section-block" data-section="${secKey}">
+              <div class="record-section-header">
+                <h2 class="record-section-title">${escapeHtml(m.title)}</h2>
+                <div class="section-size-dropdown-wrap no-print">
+                  <label class="section-size-label" for="sec_size_${secKey}">Size:</label>
+                  <select class="section-size-select" id="sec_size_${secKey}" data-section="${secKey}" aria-label="${escapeHtml(m.title)} size">
+                    <option value="brief" ${currentSize === 'brief' ? 'selected' : ''}>Brief</option>
+                    <option value="standard" ${currentSize === 'standard' ? 'selected' : ''}>Standard</option>
+                    <option value="detailed" ${currentSize === 'detailed' ? 'selected' : ''}>Detailed</option>
+                  </select>
+                </div>
+              </div>
+              <div class="record-section-body" id="sec_body_${secKey}">
+                ${window.marked ? window.marked.parse(bodyMd) : escapeHtml(bodyMd)}
+              </div>
+            </div>
+          `;
+        }
+        labRecordContent.innerHTML = parsedHtml;
+        return;
+      }
+
+      if (window.marked) {
+        labRecordContent.innerHTML = window.marked.parse(data.markdown);
+      } else {
+        labRecordContent.textContent = data.markdown;
+      }
+      return;
+    }
+
+    const sections = (data.selectedSections && data.selectedSections.length > 0)
+      ? data.selectedSections
+      : Object.keys(variants);
+
+    let html = '';
+    sections.forEach(secKey => {
+      if (secKey === 'flowchart') return; // Handled in dedicated SVG flowchart box
+      const title = titles[secKey] || secKey.toUpperCase();
+      const currentSize = activeSectionSizes[secKey] || 'standard';
+      activeSectionSizes[secKey] = currentSize;
+
+      const secMd = (variants[secKey] && variants[secKey][currentSize])
+        ? variants[secKey][currentSize]
+        : (variants[secKey]?.standard || '');
+      const parsed = window.marked ? window.marked.parse(secMd) : escapeHtml(secMd);
+
+      html += `
+        <div class="record-section-block" data-section="${escapeHtml(secKey)}">
+          <div class="record-section-header">
+            <h2 class="record-section-title">${title}</h2>
+            <div class="section-size-dropdown-wrap no-print">
+              <label class="section-size-label" for="sec_size_${escapeHtml(secKey)}">Size:</label>
+              <select class="section-size-select" id="sec_size_${escapeHtml(secKey)}" data-section="${escapeHtml(secKey)}" aria-label="${escapeHtml(title)} size">
+                <option value="brief" ${currentSize === 'brief' ? 'selected' : ''}>Brief</option>
+                <option value="standard" ${currentSize === 'standard' ? 'selected' : ''}>Standard</option>
+                <option value="detailed" ${currentSize === 'detailed' ? 'selected' : ''}>Detailed</option>
+              </select>
+            </div>
+          </div>
+          <div class="record-section-body" id="sec_body_${escapeHtml(secKey)}">
+            ${parsed}
+          </div>
+        </div>
+      `;
+    });
+
+    labRecordContent.innerHTML = html;
+
+    // Attach change listener for each section size dropdown
+    labRecordContent.querySelectorAll('.section-size-select').forEach(sel => {
+      sel.addEventListener('change', (e) => {
+        const sec = e.target.dataset.section;
+        const newSize = e.target.value;
+        activeSectionSizes[sec] = newSize;
+
+        const newMd = variants[sec]?.[newSize] || variants[sec]?.standard || '';
+        const bodyEl = document.getElementById(`sec_body_${sec}`);
+        if (bodyEl) {
+          bodyEl.innerHTML = window.marked ? window.marked.parse(newMd) : escapeHtml(newMd);
+        }
+      });
+    });
+  }
+
+  function getCurrentRecordMarkdown() {
+    if (!currentGeneratedRecord) return '';
+    const data = currentGeneratedRecord;
+    const variants = data.sectionVariants;
+    if (!variants || Object.keys(variants).length === 0) {
+      return data.markdown || '';
+    }
+
+    const titles = data.sectionTitles || {};
+    const sections = (data.selectedSections && data.selectedSections.length > 0)
+      ? data.selectedSections
+      : Object.keys(variants);
+
+    const parts = [];
+    parts.push(`# 📄 LABORATORY OBSERVATION & RECORD`);
+    if (data.filename) parts.push(`**Source Code File:** ${data.filename}\n`);
+
+    sections.forEach(secKey => {
+      const title = titles[secKey] || secKey.toUpperCase();
+      const sz = activeSectionSizes[secKey] || 'standard';
+      const secMd = variants[secKey]?.[sz] || variants[secKey]?.standard || '';
+      parts.push(`## ${title}\n${secMd}\n`);
+    });
+
+    return parts.join('\n');
+  }
+
+  async function runLabRecord(isReRun = false) {
+    clearRecordModalError();
+    const checkedBoxes = Array.from(document.querySelectorAll('input[name="labSection"]:checked')).map(cb => cb.value);
+    if (checkedBoxes.length === 0) {
+      showRecordModalError('Please select at least one section to include in your Lab Record.');
+      return;
+    }
+
+    let payloadData;
+    if (isReRun && lastCodePayload) {
+      payloadData = lastCodePayload;
+    } else {
+      try {
+        payloadData = await getSelectedCodePayload();
+        lastCodePayload = payloadData;
+      } catch (err) {
+        showRecordModalError(err.message || 'Please select or upload a code file.');
+        if (recordSourceSelect) {
+          recordSourceSelect.focus();
+          recordSourceSelect.style.borderColor = '#ef4444';
+          setTimeout(() => { if (recordSourceSelect) recordSourceSelect.style.borderColor = ''; }, 2000);
+        }
+        return;
+      }
+    }
+
+    const studentDetails = {
+      expNo: (recExpNo ? recExpNo.value.trim() : '') || '1',
+      subject: (recSubject ? recSubject.value.trim() : '') || 'Practical Lab',
+      studentName: (recStudentName ? recStudentName.value.trim() : '') || '',
+      rollNo: (recRollNo ? recRollNo.value.trim() : '') || '',
+      date: new Date().toLocaleDateString('en-GB')
+    };
+
+    if (isReRun) {
+      if (labRecordContent) labRecordContent.style.opacity = '0.5';
+    } else {
+      recordConfigView.style.display = 'none';
+      recordResultView.style.display = 'none';
+      recordLoadingState.style.display = 'block';
+    }
+
+    try {
+      const res = await fetch('/api/ai/lab-record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          codeContent: payloadData.codeContent,
+          filename: payloadData.filename,
+          selectedSections: checkedBoxes,
+          studentDetails,
+          engine: selectedEngine
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to generate Lab Record.');
+      }
+
+      currentGeneratedRecord = data;
+
+      // Populate student header on the print sheet
+      if (labRecordHeaderInfo) {
+        let metaHtml = `
+          <div class="lab-sheet-header__grid">
+            <div class="lab-sheet-header__item"><strong>EXPERIMENT NO:</strong> ${escapeHtml(studentDetails.expNo)}</div>
+            <div class="lab-sheet-header__item"><strong>SUBJECT / LAB:</strong> ${escapeHtml(studentDetails.subject)}</div>
+            <div class="lab-sheet-header__item"><strong>DATE:</strong> ${escapeHtml(studentDetails.date)}</div>
+            <div class="lab-sheet-header__item"><strong>SOURCE FILE:</strong> ${escapeHtml(payloadData.filename)}</div>
+        `;
+        if (studentDetails.studentName || studentDetails.rollNo) {
+          metaHtml += `
+            <div class="lab-sheet-header__item"><strong>STUDENT NAME:</strong> ${escapeHtml(studentDetails.studentName || '—')}</div>
+            <div class="lab-sheet-header__item"><strong>ROLL / REG NO:</strong> ${escapeHtml(studentDetails.rollNo || '—')}</div>
+          `;
+        }
+        metaHtml += `</div>`;
+        labRecordHeaderInfo.innerHTML = metaHtml;
+      }
+
+      // Render Markdown sections with per-section size dropdowns
+      renderLabRecordReport();
+      if (labRecordContent) labRecordContent.style.opacity = '1';
+
+      // Render Flowchart SVG if available (Lazy-load Mermaid on demand to keep initial load lightweight)
+      if (data.mermaidCode && labRecordMermaidSvg) {
+        try {
+          if (!window.mermaid) {
+            await new Promise((resolve, reject) => {
+              const script = document.createElement('script');
+              script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+              script.onload = () => resolve();
+              script.onerror = reject;
+              document.head.appendChild(script);
+            });
+          }
+          window.mermaid.initialize({ startOnLoad: false, theme: 'default' });
+          const graphId = 'recordMermaid_' + Date.now();
+          const renderResult = await window.mermaid.render(graphId, data.mermaidCode);
+          labRecordMermaidSvg.innerHTML = renderResult.svg;
+          labRecordMermaidArea.style.display = 'block';
+        } catch (mermaidErr) {
+          console.warn('[LabDrop] Mermaid render error:', mermaidErr);
+          labRecordMermaidArea.style.display = 'none';
+        }
+      } else {
+        labRecordMermaidArea.style.display = 'none';
+      }
+
+      recordLoadingState.style.display = 'none';
+      recordResultView.style.display = 'block';
+      if (!isReRun) {
+        recordResultView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+    } catch (err) {
+      if (labRecordContent) labRecordContent.style.opacity = '1';
+      recordLoadingState.style.display = 'none';
+      if (!isReRun) {
+        recordConfigView.style.display = 'block';
+      }
+      showRecordModalError(err.message || 'Lab Record generation failed.');
+    }
+  }
+
+  if (btnRunLabRecord) btnRunLabRecord.addEventListener('click', runLabRecord);
+
+  // Trigger buttons
+  if (btnTriggerLabRecord) btnTriggerLabRecord.addEventListener('click', () => openLabRecordModal());
+  if (navLabRecordBtn) navLabRecordBtn.addEventListener('click', () => openLabRecordModal());
+  if (navLabRecordBtnLoggedIn) navLabRecordBtnLoggedIn.addEventListener('click', () => openLabRecordModal());
+  if (mobileRecordBtn) mobileRecordBtn.addEventListener('click', () => openLabRecordModal());
+  const aiFloatingBtn = document.getElementById('aiFloatingBtn');
+  if (aiFloatingBtn) aiFloatingBtn.addEventListener('click', () => openLabRecordModal());
+  const qrTriggerAiBtn = document.getElementById('qrTriggerAiBtn');
+  if (qrTriggerAiBtn) qrTriggerAiBtn.addEventListener('click', () => openLabRecordModal());
+  if (labRecordModalClose) labRecordModalClose.addEventListener('click', closeLabRecordModal);
+
+  // Print / Save as PDF
+  if (btnPrintRecord) {
+    btnPrintRecord.addEventListener('click', () => {
+      window.print();
+    });
+  }
+
+  // Copy Markdown
+  if (btnCopyRecordMd) {
+    btnCopyRecordMd.addEventListener('click', async () => {
+      if (!currentGeneratedRecord) return;
+      try {
+        const md = getCurrentRecordMarkdown();
+        await navigator.clipboard.writeText(md);
+        const originalText = btnCopyRecordMd.textContent;
+        btnCopyRecordMd.textContent = '✅ Copied!';
+        setTimeout(() => btnCopyRecordMd.textContent = originalText, 2000);
+      } catch (e) {
+        showRecordModalError('Could not copy to clipboard.');
+      }
+    });
+  }
+
+  // Copy Rich Text (for Microsoft Word & Google Docs)
+  if (btnCopyRecordRich) {
+    btnCopyRecordRich.addEventListener('click', async () => {
+      if (!labRecordSheet) return;
+      try {
+        const html = labRecordSheet.innerHTML;
+        const text = labRecordSheet.innerText;
+        if (navigator.clipboard && window.ClipboardItem) {
+          const blobHtml = new Blob([html], { type: 'text/html' });
+          const blobText = new Blob([text], { type: 'text/plain' });
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'text/html': blobHtml,
+              'text/plain': blobText
+            })
+          ]);
+          const originalText = btnCopyRecordRich.textContent;
+          btnCopyRecordRich.textContent = '✅ Copied for Word!';
+          setTimeout(() => btnCopyRecordRich.textContent = originalText, 2000);
+        } else {
+          await navigator.clipboard.writeText(text);
+          showToast('Copied as plain text.');
+        }
+      } catch (e) {
+        showRecordModalError('Could not copy rich text.');
+      }
+    });
+  }
+
+  // Download Markdown file
+  if (btnDownloadRecordMd) {
+    btnDownloadRecordMd.addEventListener('click', () => {
+      if (!currentGeneratedRecord) return;
+      const baseName = (currentGeneratedRecord.filename || 'program').replace(/\.[^/.]+$/, '');
+      const md = getCurrentRecordMarkdown();
+      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${baseName}_Lab_Record.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  // Re-adjust sections
+  if (btnReconfigureRecord) {
+    btnReconfigureRecord.addEventListener('click', () => {
+      recordResultView.style.display = 'none';
+      recordConfigView.style.display = 'block';
+    });
+  }
+
+  // Report Sizing & Customization Controls
+  let currentReportScale = 1.0;
+  let currentChartScale = '80%';
+  let currentTableDensity = 'normal';
+  let isEditingReport = false;
+
+  const btnScaleDown = $('#btnScaleDown');
+  const btnScaleUp = $('#btnScaleUp');
+  const scaleValueDisplay = $('#scaleValueDisplay');
+  const btnToggleEditSheet = $('#btnToggleEditSheet');
+
+  function applyReportScale(scale) {
+    currentReportScale = Math.min(1.35, Math.max(0.70, Math.round(scale * 100) / 100));
+    if (labRecordSheet) {
+      labRecordSheet.style.setProperty('--sheet-scale', currentReportScale);
+    }
+    if (scaleValueDisplay) {
+      scaleValueDisplay.textContent = `${Math.round(currentReportScale * 100)}%`;
+    }
+    document.querySelectorAll('.size-preset-btn').forEach(btn => {
+      const btnScale = parseFloat(btn.dataset.scale);
+      btn.classList.toggle('active', Math.abs(btnScale - currentReportScale) < 0.03);
+    });
+  }
+
+  function applyChartScale(widthStr) {
+    currentChartScale = widthStr;
+    if (labRecordSheet) {
+      labRecordSheet.style.setProperty('--flowchart-width', widthStr);
+    }
+    document.querySelectorAll('.chart-size-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.chartSize === widthStr);
+    });
+  }
+
+  function applyTableDensity(density) {
+    currentTableDensity = density;
+    if (labRecordSheet) {
+      if (density === 'compact') {
+        labRecordSheet.style.setProperty('--table-padding', '4px 8px');
+        labRecordSheet.style.setProperty('--table-font-size', '0.82rem');
+      } else {
+        labRecordSheet.style.setProperty('--table-padding', '8px 12px');
+        labRecordSheet.style.setProperty('--table-font-size', '0.88rem');
+      }
+    }
+    document.querySelectorAll('.table-density-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.density === density);
+    });
+  }
+
+  function toggleEditSheet() {
+    isEditingReport = !isEditingReport;
+    if (labRecordContent) {
+      labRecordContent.contentEditable = isEditingReport ? 'true' : 'false';
+    }
+    if (labRecordHeaderInfo) {
+      labRecordHeaderInfo.contentEditable = isEditingReport ? 'true' : 'false';
+    }
+    if (labRecordSheet) {
+      labRecordSheet.classList.toggle('is-editing', isEditingReport);
+    }
+    if (btnToggleEditSheet) {
+      btnToggleEditSheet.textContent = isEditingReport ? '💾 Finish Editing' : '✏️ Edit Content';
+      btnToggleEditSheet.classList.toggle('active', isEditingReport);
+    }
+    if (isEditingReport) {
+      showToast('Click anywhere on the report to type, edit, or adjust text.');
+    }
+  }
+
+  if (btnScaleDown) {
+    btnScaleDown.addEventListener('click', () => applyReportScale(currentReportScale - 0.05));
+  }
+  if (btnScaleUp) {
+    btnScaleUp.addEventListener('click', () => applyReportScale(currentReportScale + 0.05));
+  }
+
+  document.querySelectorAll('.size-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyReportScale(parseFloat(btn.dataset.scale)));
+  });
+
+  document.querySelectorAll('.chart-size-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyChartScale(btn.dataset.chartSize));
+  });
+
+  document.querySelectorAll('.table-density-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyTableDensity(btn.dataset.density));
+  });
+
+  if (btnToggleEditSheet) {
+    btnToggleEditSheet.addEventListener('click', toggleEditSheet);
+  }
+
+  // Pre-configuration scale group
+  document.querySelectorAll('#configScaleGroup button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#configScaleGroup button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyReportScale(parseFloat(btn.dataset.configScale));
+    });
+  });
+
   checkSharedFiles();
 
 })();
@@ -1467,5 +2195,7 @@
       }
     } catch (e) {}
   }
+
 })();
+
 

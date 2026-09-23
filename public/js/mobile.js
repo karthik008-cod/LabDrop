@@ -278,6 +278,9 @@
         </div>
         <div class="file-item__actions" style="display:flex; gap: 4px; align-items: center;">
           <input type="checkbox" class="file-checkbox" data-file-id="${file.id}" style="margin-right: 8px; transform: scale(1.2);" />
+          <button class="btn btn--outline btn--icon ai-file-btn" data-file-id="${file.id}" title="AI Viva & Exam Prep for ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px; color: #7c3aed; border-color: rgba(124, 58, 237, 0.3);">
+            ✨
+          </button>
           <button class="btn btn--outline btn--icon rename-file-btn" data-file-id="${file.id}" title="Rename ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px;">
             ✏️
           </button>
@@ -405,6 +408,16 @@
 
   // ---- Individual File Rename & Save As ----
   mFileList.addEventListener('click', async (e) => {
+    // AI Assistant for Individual File
+    const aiBtn = e.target.closest('.ai-file-btn');
+    if (aiBtn) {
+      const fileId = aiBtn.getAttribute('data-file-id');
+      if (typeof openAiModal === 'function') {
+        openAiModal('viva', fileId);
+      }
+      return;
+    }
+
     // Rename File
     const renameBtn = e.target.closest('.rename-file-btn');
     if (renameBtn && activeTransferData) {
@@ -807,6 +820,813 @@
           btnEl.style.pointerEvents = 'auto';
         }
       }
+    });
+  }
+
+  // ---- LabDrop AI Assistant Logic ----
+  const aiModal = document.getElementById('aiModal');
+  const aiModalClose = document.getElementById('aiModalClose');
+
+  const aiFileSelect = document.getElementById('aiFileSelect');
+  const aiDirectFileInput = document.getElementById('aiDirectFileInput');
+
+  const aiExamType = document.getElementById('aiExamType');
+  const aiSecondaryOption = document.getElementById('aiSecondaryOption');
+  const aiSecondaryLabel = document.getElementById('aiSecondaryLabel');
+  const aiCustomLines = document.getElementById('aiCustomLines');
+  const aiDifficulty = aiSecondaryOption;
+  const aiSummaryLength = aiSecondaryOption;
+
+  const aiMediaWarningBanner = document.getElementById('aiMediaWarningBanner');
+  const aiMediaWarningText = document.getElementById('aiMediaWarningText');
+  const btnForceViva = document.getElementById('btnForceViva');
+
+  const btnRunViva = document.getElementById('btnRunViva');
+  const btnRegenViva = document.getElementById('btnRegenViva');
+  const vivaResult = document.getElementById('vivaResult');
+  const vivaOutput = document.getElementById('vivaOutput');
+  const vivaBadge = document.getElementById('vivaBadge');
+  const btnCopyViva = document.getElementById('btnCopyViva');
+
+  const vivaChatMessages = document.getElementById('vivaChatMessages');
+  const vivaChatForm = document.getElementById('vivaChatForm');
+  const vivaChatInput = document.getElementById('vivaChatInput');
+  const vivaChatSubmitBtn = document.getElementById('vivaChatSubmitBtn');
+
+  const aiLoadingSpinner = document.getElementById('aiLoadingSpinner');
+  const aiLoadingText = document.getElementById('aiLoadingText');
+
+  let directUploadedFiles = []; // array of { name, content, size, isMedia }
+  let lastGeneratedExamOutput = '';
+  let vivaConversationHistory = [];
+
+  // Dynamic Exam Mode vs Summary Length Switcher
+  window.updateAiSecondaryDropdown = function(actionType) {
+    const secSelect = document.getElementById('aiSecondaryOption');
+    const secLabel = document.getElementById('aiSecondaryLabel');
+    const customInput = document.getElementById('aiCustomLines');
+    const runBtn = document.getElementById('btnRunViva');
+
+    if (!secSelect) return;
+    const isSummarize = actionType === 'summarize';
+
+    if (secLabel) {
+      secLabel.textContent = isSummarize ? 'Summary Length:' : 'Difficulty Level:';
+    }
+
+    if (isSummarize) {
+      secSelect.innerHTML = `
+        <option value="short">⚡ Short (5 lines)</option>
+        <option value="medium" selected>📄 Medium (20 lines)</option>
+        <option value="large">📚 Large (50 lines)</option>
+        <option value="custom">✏️ Custom (Let user fill this number)</option>
+      `;
+      if (runBtn) runBtn.textContent = '📄 Generate Summary';
+      if (customInput) customInput.style.display = 'none';
+    } else {
+      secSelect.innerHTML = `
+        <option value="easy">🟢 Easy (Fundamentals)</option>
+        <option value="medium" selected>🟡 Medium (Lab Standard)</option>
+        <option value="hard">🔴 Hard (Advanced Traps)</option>
+        <option value="extreme">🔥 Extreme (Compiler & Internals)</option>
+      `;
+      if (runBtn) runBtn.textContent = '🎓 Generate Exam & Viva Prep';
+      if (customInput) customInput.style.display = 'none';
+    }
+  };
+
+  window.handleAiSecondaryChange = function(val) {
+    const customInput = document.getElementById('aiCustomLines');
+    const examSelect = document.getElementById('aiExamType');
+    const isSummarize = examSelect && examSelect.value === 'summarize';
+    if (customInput) {
+      const isCustom = isSummarize && val === 'custom';
+      customInput.style.display = isCustom ? 'block' : 'none';
+      if (isCustom) {
+        customInput.focus();
+      }
+    }
+  };
+
+  if (aiExamType) {
+    aiExamType.addEventListener('change', () => window.updateAiSecondaryDropdown(aiExamType.value));
+  }
+
+  if (aiSecondaryOption) {
+    aiSecondaryOption.addEventListener('change', () => window.handleAiSecondaryChange(aiSecondaryOption.value));
+  }
+
+  function isMediaFilename(name = '') {
+    return /\.(png|jpe?g|gif|webp|svg|bmp|ico|mp4|mov|avi|mkv|webm|mp3|wav|ogg|m4a|zip|tar|gz|rar|7z)$/i.test(name);
+  }
+
+  function populateAiFiles(preselectedFileId = null) {
+    if (!activeTransferData) return;
+    const allFiles = activeTransferData.files || [];
+
+    if (aiFileSelect) {
+      aiFileSelect.innerHTML = '';
+
+      if (allFiles.length === 0 && directUploadedFiles.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No files uploaded in this transfer yet.';
+        aiFileSelect.appendChild(opt);
+        checkSelectedMediaWarning();
+        return;
+      }
+
+      // If multiple files, provide "All Files in Transfer" option
+      if (allFiles.length > 1) {
+        const opt = document.createElement('option');
+        opt.value = 'ALL';
+        opt.textContent = `📁 All Files in Transfer (${allFiles.length} files)`;
+        aiFileSelect.appendChild(opt);
+      }
+
+      // Transfer files
+      allFiles.forEach((f, idx) => {
+        const displayName = f.customName || f.originalName || f.name || `File ${idx + 1}`;
+        const isMedia = isMediaFilename(displayName);
+        const opt = document.createElement('option');
+        opt.value = f.id;
+        opt.textContent = `${isMedia ? '🖼️' : '📄'} ${displayName} (${formatBytes(f.size)})`;
+        aiFileSelect.appendChild(opt);
+      });
+
+      // Direct local files
+      directUploadedFiles.forEach((df, idx) => {
+        const isMedia = isMediaFilename(df.name);
+        const opt = document.createElement('option');
+        opt.value = `direct_${idx}`;
+        opt.textContent = `💻 [Local] ${isMedia ? '🖼️' : '📄'} ${df.name} (${formatBytes(df.size)})`;
+        aiFileSelect.appendChild(opt);
+      });
+
+      if (preselectedFileId && Array.from(aiFileSelect.options).some(o => o.value === preselectedFileId)) {
+        aiFileSelect.value = preselectedFileId;
+      } else if (allFiles.length === 1) {
+        aiFileSelect.value = allFiles[0].id;
+      }
+    }
+
+    checkSelectedMediaWarning();
+  }
+
+  function getSelectedFiles() {
+    if (!aiFileSelect) {
+      return { transferFileIds: [], localFiles: [], allSelectedNames: [], count: 0, isMediaOnly: false };
+    }
+
+    const val = aiFileSelect.value;
+    const allFiles = (activeTransferData && activeTransferData.files) || [];
+    const transferFileIds = [];
+    const localFiles = [];
+    const allSelectedNames = [];
+    let allSelectedAreMedia = true;
+
+    if (val === 'ALL') {
+      allFiles.forEach(f => {
+        transferFileIds.push(f.id);
+        const name = f.customName || f.originalName || f.name;
+        allSelectedNames.push(name);
+        if (!isMediaFilename(name) && f.category !== 'image' && f.category !== 'video' && f.category !== 'audio') {
+          allSelectedAreMedia = false;
+        }
+      });
+      directUploadedFiles.forEach(df => {
+        localFiles.push(df);
+        allSelectedNames.push(df.name);
+        if (!isMediaFilename(df.name)) {
+          allSelectedAreMedia = false;
+        }
+      });
+    } else if (val && val.startsWith('direct_')) {
+      const idx = parseInt(val.replace('direct_', ''), 10);
+      const df = directUploadedFiles[idx];
+      if (df) {
+        localFiles.push(df);
+        allSelectedNames.push(df.name);
+        if (!isMediaFilename(df.name)) {
+          allSelectedAreMedia = false;
+        }
+      }
+    } else if (val) {
+      const f = allFiles.find(x => x.id === val);
+      if (f) {
+        transferFileIds.push(f.id);
+        const name = f.customName || f.originalName || f.name;
+        allSelectedNames.push(name);
+        if (!isMediaFilename(name) && f.category !== 'image' && f.category !== 'video' && f.category !== 'audio') {
+          allSelectedAreMedia = false;
+        }
+      }
+    }
+
+    const totalCount = transferFileIds.length + localFiles.length;
+    if (totalCount === 0) {
+      allSelectedAreMedia = false;
+    }
+
+    return {
+      transferFileIds,
+      localFiles,
+      allSelectedNames,
+      count: totalCount,
+      isMediaOnly: totalCount > 0 && allSelectedAreMedia
+    };
+  }
+
+  function checkSelectedMediaWarning() {
+    if (!aiMediaWarningBanner) return;
+    const selection = getSelectedFiles();
+    if (selection.isMediaOnly) {
+      aiMediaWarningText.textContent = `Selected file(s) [${selection.allSelectedNames.join(', ')}] appear to be images, logos, or media assets that don't typically require viva questions.`;
+      aiMediaWarningBanner.style.display = 'flex';
+    } else {
+      aiMediaWarningBanner.style.display = 'none';
+    }
+  }
+
+  if (aiFileSelect) {
+    aiFileSelect.addEventListener('change', checkSelectedMediaWarning);
+  }
+
+  // Local file upload directly into AI modal
+  if (aiDirectFileInput) {
+    aiDirectFileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length === 0) return;
+
+      for (const file of files) {
+        const isMedia = isMediaFilename(file.name);
+        if (isMedia) {
+          directUploadedFiles.push({
+            name: file.name,
+            content: '',
+            size: file.size,
+            isMedia: true
+          });
+        } else {
+          try {
+            const text = await readFileAsText(file);
+            directUploadedFiles.push({
+              name: file.name,
+              content: text,
+              size: file.size,
+              isMedia: false
+            });
+          } catch (err) {
+            console.error('Failed to read local file:', err);
+          }
+        }
+      }
+
+      aiDirectFileInput.value = '';
+      populateAiFiles();
+      if (directUploadedFiles.length > 0 && aiFileSelect) {
+        aiFileSelect.value = `direct_${directUploadedFiles.length - 1}`;
+        checkSelectedMediaWarning();
+      }
+    });
+  }
+
+  function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result || '');
+      reader.onerror = () => resolve('');
+      reader.readAsText(file.slice(0, 50 * 1024));
+    });
+  }
+
+  function openAiModal(tabOrFileId = null, maybeFileId = null) {
+    if (!activeTransferData) return;
+    const preselectedFileId = maybeFileId || (tabOrFileId !== 'viva' && tabOrFileId !== 'flowchart' ? tabOrFileId : null);
+    populateAiFiles(preselectedFileId);
+    if (aiExamType && typeof window.updateAiSecondaryDropdown === 'function') {
+      window.updateAiSecondaryDropdown(aiExamType.value);
+    }
+    if (typeof renderVivaChips === 'function') {
+      renderVivaChips(lastGeneratedExamOutput ? (aiExamType && aiExamType.value === 'summarize' ? 'summarize' : 'viva') : 'initial');
+    }
+    aiModal.classList.add('active');
+  }
+
+  function closeAiModal() {
+    aiModal.classList.remove('active');
+  }
+
+  // Open modal from all trigger buttons (Action bar circular button & Floating bot button)
+  const openModalBtns = document.querySelectorAll('.open-ai-modal-btn');
+  openModalBtns.forEach(btn => {
+    btn.addEventListener('click', () => openAiModal());
+  });
+
+  if (aiModalClose) {
+    aiModalClose.addEventListener('click', closeAiModal);
+  }
+
+  // Helper to call backend AI endpoint with robust non-JSON response handling
+  async function callAiAnalyze(payload) {
+    const body = {
+      transferId: activeTransferData.id,
+      ...payload
+    };
+    const headers = { 'Content-Type': 'application/json' };
+    if (currentPin) {
+      headers['x-transfer-pin'] = currentPin;
+    }
+
+    const res = await fetch('/api/ai/analyze', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body)
+    });
+
+    let data;
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      let errorMsg = `Server error (${res.status})`;
+      if (res.status === 413) {
+        errorMsg = 'Uploaded files are too large to process. Please select smaller or fewer files.';
+      } else if (text) {
+        const cleanText = text.replace(/<[^>]*>/g, '').trim();
+        if (cleanText) errorMsg += `: ${cleanText.slice(0, 160)}`;
+      }
+      throw new Error(errorMsg);
+    }
+
+    if (!res.ok || data.error) {
+      throw new Error(data.error || 'AI processing request failed.');
+    }
+    return data;
+  }
+
+  // ---- Viva & Exam Prep & Summary Handler ----
+  async function runViva(isForceful = false) {
+    const selection = getSelectedFiles();
+    if (selection.count === 0) {
+      await window.LabDialog.alert('Please select at least one file from the checklist.');
+      return;
+    }
+
+    // Media guardrail check
+    if (selection.isMediaOnly && !isForceful) {
+      checkSelectedMediaWarning();
+      return;
+    }
+
+    if (vivaResult) vivaResult.style.display = 'none';
+    const isSummarize = aiExamType && aiExamType.value === 'summarize';
+
+    aiLoadingText.textContent = isForceful 
+      ? '⚡ Forcefully analyzing file & formulating technical questions...' 
+      : (isSummarize ? 'Generating structured summary with Gemini AI...' : 'Consulting Gemini AI to prepare high-scoring Exam & Viva questions...');
+    aiLoadingSpinner.style.display = 'block';
+    aiLoadingSpinner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    const examType = aiExamType ? aiExamType.value : 'viva';
+    const secondaryVal = aiSecondaryOption ? aiSecondaryOption.value : 'medium';
+    const difficulty = !isSummarize ? secondaryVal : 'medium';
+    const lengthType = isSummarize ? secondaryVal : 'medium';
+    const customLines = aiCustomLines ? (parseInt(aiCustomLines.value, 10) || 15) : 15;
+
+    try {
+      const data = await callAiAnalyze({
+        action: 'exam_prep',
+        fileIds: selection.transferFileIds,
+        directFiles: selection.localFiles,
+        examType,
+        difficulty,
+        lengthType,
+        customLines,
+        force: !!isForceful
+      });
+
+      aiLoadingSpinner.style.display = 'none';
+
+      if (data.needsForce) {
+        aiMediaWarningText.textContent = data.warning || 'This file appears to be a non-study document or media asset that does not typically require viva questions.';
+        if (btnForceViva) {
+          btnForceViva.textContent = data.isNonStudyOnly ? '⚡ Formulate Viva Questions Anyway' : '⚡ Create Viva Questions Forcefully';
+        }
+        aiMediaWarningBanner.style.display = 'flex';
+        return;
+      }
+
+      aiMediaWarningBanner.style.display = 'none';
+      lastGeneratedExamOutput = data.result;
+      vivaConversationHistory = [];
+
+      // Update badge
+      if (vivaBadge) {
+        if (examType === 'summarize') {
+          const lenLabels = {
+            short: '⚡ Short (5 lines)',
+            medium: '📄 Medium (20 lines)',
+            large: '📚 Large (50 lines)',
+            custom: `✏️ Custom (${customLines} lines)`
+          };
+          vivaBadge.textContent = `Technical Summary · ${lenLabels[lengthType] || lengthType} · ${selection.count} file(s)`;
+        } else {
+          const typeLabels = {
+            viva: 'Oral Lab Viva',
+            internal_20: '20 Marks Internal',
+            semester_100: '100 Marks Semester Paper',
+            rapid_fire: 'Rapid-Fire Flashcards'
+          };
+          const diffLabels = {
+            easy: '🟢 Easy',
+            medium: '🟡 Medium',
+            hard: '🔴 Hard',
+            extreme: '🔥 Extreme'
+          };
+          vivaBadge.textContent = `${typeLabels[examType] || 'Exam Prep'} · ${diffLabels[difficulty] || difficulty} · ${selection.count} file(s)`;
+        }
+      }
+
+      vivaResult.style.display = 'block';
+
+      if (window.marked) {
+        vivaOutput.innerHTML = window.marked.parse(data.result);
+      } else {
+        vivaOutput.textContent = data.result;
+      }
+
+      // Inform chat feed of the generated content without wiping user history
+      if (vivaChatMessages) {
+        const initialPlaceholder = vivaChatMessages.querySelector('.ai-chat-placeholder');
+        if (initialPlaceholder) initialPlaceholder.remove();
+
+        const genNotice = document.createElement('div');
+        genNotice.style.cssText = 'color: var(--color-primary); font-size: 0.82rem; text-align: center; padding: 8px 12px; background: rgba(79, 70, 229, 0.08); border-radius: var(--radius-sm); font-weight: 600; border: 1px dashed rgba(79, 70, 229, 0.25);';
+        genNotice.innerHTML = `✨ ${isSummarize ? 'Summary generated above!' : 'Exam & Viva questions generated above!'} You can ask follow-up questions below.`;
+        vivaChatMessages.appendChild(genNotice);
+        vivaChatMessages.scrollTop = vivaChatMessages.scrollHeight;
+      }
+
+      if (typeof renderVivaChips === 'function') {
+        renderVivaChips(isSummarize ? 'summarize' : 'viva');
+      }
+
+      // Scroll to result
+      vivaResult.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    } catch (err) {
+      aiLoadingSpinner.style.display = 'none';
+      await window.LabDialog.alert((isSummarize ? 'Summary generation failed: ' : 'Exam Prep generation failed: ') + err.message);
+    }
+  }
+
+  if (btnRunViva) btnRunViva.addEventListener('click', () => runViva(false));
+  if (btnRegenViva) btnRegenViva.addEventListener('click', () => runViva(false));
+  if (btnForceViva) btnForceViva.addEventListener('click', () => runViva(true));
+
+  if (btnCopyViva) {
+    btnCopyViva.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(vivaOutput.innerText);
+        const originalText = btnCopyViva.textContent;
+        btnCopyViva.textContent = '✅ Copied!';
+        setTimeout(() => btnCopyViva.textContent = originalText, 2000);
+      } catch (err) {
+        window.LabDialog.alert('Failed to copy to clipboard.');
+      }
+    });
+  }
+
+  // ---- Slidable & Resizable Modal Window Implementation ----
+  function initDraggableResizableModal() {
+    const modalWindow = document.getElementById('aiModalWindow');
+    const modalHeader = document.getElementById('aiModalHeader');
+    const resetBtn = document.getElementById('aiModalResetPos');
+
+    if (!modalWindow || !modalHeader) return;
+
+    let isDragging = false;
+    let dragStartX, dragStartY, initialLeft, initialTop;
+
+    function resetModalPosition() {
+      modalWindow.style.position = 'relative';
+      modalWindow.style.left = '0px';
+      modalWindow.style.top = '0px';
+      modalWindow.style.width = '720px';
+      modalWindow.style.height = '640px';
+      modalWindow.style.maxWidth = '95vw';
+      modalWindow.style.maxHeight = '92vh';
+    }
+
+    if (resetBtn) {
+      resetBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        resetModalPosition();
+      });
+    }
+
+    // Mouse Dragging
+    modalHeader.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.modal__close') || e.target.tagName === 'BUTTON') return;
+      isDragging = true;
+      modalHeader.style.cursor = 'grabbing';
+
+      const rect = modalWindow.getBoundingClientRect();
+      modalWindow.style.position = 'fixed';
+      modalWindow.style.left = `${rect.left}px`;
+      modalWindow.style.top = `${rect.top}px`;
+      modalWindow.style.margin = '0';
+
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      initialLeft = rect.left;
+      initialTop = rect.top;
+
+      function onMouseMove(moveEvent) {
+        if (!isDragging) return;
+        const dx = moveEvent.clientX - dragStartX;
+        const dy = moveEvent.clientY - dragStartY;
+
+        let newLeft = initialLeft + dx;
+        let newTop = initialTop + dy;
+
+        const maxLeft = window.innerWidth - modalWindow.offsetWidth;
+        const maxTop = window.innerHeight - modalWindow.offsetHeight;
+        newLeft = Math.max(5, Math.min(maxLeft - 5, newLeft));
+        newTop = Math.max(5, Math.min(maxTop - 5, newTop));
+
+        modalWindow.style.left = `${newLeft}px`;
+        modalWindow.style.top = `${newTop}px`;
+      }
+
+      function onMouseUp() {
+        isDragging = false;
+        modalHeader.style.cursor = 'move';
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+      }
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    });
+
+    // Touch Dragging
+    modalHeader.addEventListener('touchstart', (e) => {
+      if (e.target.closest('.modal__close') || e.target.tagName === 'BUTTON') return;
+      const touch = e.touches[0];
+      isDragging = true;
+
+      const rect = modalWindow.getBoundingClientRect();
+      modalWindow.style.position = 'fixed';
+      modalWindow.style.left = `${rect.left}px`;
+      modalWindow.style.top = `${rect.top}px`;
+      modalWindow.style.margin = '0';
+
+      dragStartX = touch.clientX;
+      dragStartY = touch.clientY;
+      initialLeft = rect.left;
+      initialTop = rect.top;
+
+      function onTouchMove(moveEvent) {
+        if (!isDragging) return;
+        const t = moveEvent.touches[0];
+        const dx = t.clientX - dragStartX;
+        const dy = t.clientY - dragStartY;
+
+        let newLeft = initialLeft + dx;
+        let newTop = initialTop + dy;
+
+        const maxLeft = window.innerWidth - modalWindow.offsetWidth;
+        const maxTop = window.innerHeight - modalWindow.offsetHeight;
+        newLeft = Math.max(0, Math.min(maxLeft, newLeft));
+        newTop = Math.max(0, Math.min(maxTop, newTop));
+
+        modalWindow.style.left = `${newLeft}px`;
+        modalWindow.style.top = `${newTop}px`;
+      }
+
+      function onTouchEnd() {
+        isDragging = false;
+        window.removeEventListener('touchmove', onTouchMove);
+        window.removeEventListener('touchend', onTouchEnd);
+      }
+
+      window.addEventListener('touchmove', onTouchMove, { passive: false });
+      window.addEventListener('touchend', onTouchEnd);
+    }, { passive: true });
+
+    // Multi-directional Resizing
+    const resizers = modalWindow.querySelectorAll('.ai-resizer');
+    resizers.forEach(resizer => {
+      resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const dir = resizer.getAttribute('data-dir');
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const rect = modalWindow.getBoundingClientRect();
+
+        modalWindow.style.position = 'fixed';
+        modalWindow.style.left = `${rect.left}px`;
+        modalWindow.style.top = `${rect.top}px`;
+        modalWindow.style.margin = '0';
+
+        const startWidth = rect.width;
+        const startHeight = rect.height;
+        const startLeft = rect.left;
+        const startTop = rect.top;
+
+        function onResize(moveEvent) {
+          const dx = moveEvent.clientX - startX;
+          const dy = moveEvent.clientY - startY;
+
+          let newWidth = startWidth;
+          let newHeight = startHeight;
+          let newLeft = startLeft;
+          let newTop = startTop;
+
+          const minW = 320;
+          const minH = 340;
+
+          if (dir.includes('e')) {
+            newWidth = Math.max(minW, startWidth + dx);
+          }
+          if (dir.includes('s')) {
+            newHeight = Math.max(minH, startHeight + dy);
+          }
+          if (dir.includes('w')) {
+            const possibleW = startWidth - dx;
+            if (possibleW >= minW) {
+              newWidth = possibleW;
+              newLeft = startLeft + dx;
+            }
+          }
+          if (dir.includes('n')) {
+            const possibleH = startHeight - dy;
+            if (possibleH >= minH) {
+              newHeight = possibleH;
+              newTop = startTop + dy;
+            }
+          }
+
+          modalWindow.style.width = `${newWidth}px`;
+          modalWindow.style.height = `${newHeight}px`;
+          modalWindow.style.left = `${newLeft}px`;
+          modalWindow.style.top = `${newTop}px`;
+        }
+
+        function stopResize() {
+          window.removeEventListener('mousemove', onResize);
+          window.removeEventListener('mouseup', stopResize);
+        }
+
+        window.addEventListener('mousemove', onResize);
+        window.addEventListener('mouseup', stopResize);
+      });
+    });
+  }
+
+  initDraggableResizableModal();
+
+  if (btnCopyViva) {
+    btnCopyViva.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(vivaOutput.innerText);
+        const originalText = btnCopyViva.textContent;
+        btnCopyViva.textContent = '✅ Copied!';
+        setTimeout(() => btnCopyViva.textContent = originalText, 2000);
+      } catch (err) {
+        window.LabDialog.alert('Failed to copy to clipboard.');
+      }
+    });
+  }
+
+  // ---- Follow-Up & Direct Chat in Viva Tab ----
+  function renderVivaChips(type = 'initial') {
+    const container = document.getElementById('vivaChipsContainer');
+    if (!container) return;
+
+    let chips = [];
+    if (type === 'summarize') {
+      chips = [
+        { label: '⚡ Make it even shorter (3 lines)', prompt: 'Make the summary even shorter in exactly 3 bullet points.' },
+        { label: '🔍 Explain key concept in depth', prompt: 'Explain the most important concept from this summary in detail.' },
+        { label: '❓ Potential exam questions', prompt: 'What are 3 important questions a professor could ask on this topic?' },
+        { label: '📋 Key takeaways list', prompt: 'Give me a 3-bullet cheat sheet of key formulas or takeaways.' }
+      ];
+    } else if (type === 'viva') {
+      chips = [
+        { label: '💡 Explain Q1 Simply', prompt: 'Can you explain Question 1 in simpler terms with an everyday analogy?' },
+        { label: '🗣️ How to speak Answer 2', prompt: 'How should I speak Answer 2 out loud to sound confident and impress the professor?' },
+        { label: '⚠️ Mock Follow-up Question', prompt: 'Give me a mock follow-up trick question the examiner could ask on this.' },
+        { label: '📋 3-Bullet Cheat Sheet', prompt: 'Give me a 3-bullet quick cheat sheet of key formulas and definitions.' }
+      ];
+    } else {
+      chips = [
+        { label: '⚡ Summarize in 5 lines', prompt: 'Summarize this document in exactly 5 concise lines.' },
+        { label: '❓ What is this document about?', prompt: 'What is this document and what is its main purpose?' },
+        { label: '📋 3-Bullet Overview', prompt: 'Give me a 3-bullet quick overview of key points.' },
+        { label: '💡 Explain Simply', prompt: 'Explain what this file does in simple, non-technical words.' }
+      ];
+    }
+
+    container.innerHTML = '';
+    chips.forEach(c => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'chip-btn viva-chip';
+      btn.setAttribute('data-prompt', c.prompt);
+      btn.textContent = c.label;
+      btn.addEventListener('click', () => {
+        if (vivaChatInput) {
+          vivaChatInput.value = c.prompt;
+          sendVivaChatMessage(c.prompt);
+        }
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  // Initial binding for any static chips
+  const vivaChips = document.querySelectorAll('.viva-chip');
+  vivaChips.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prompt = btn.dataset.prompt;
+      if (prompt && vivaChatInput) {
+        vivaChatInput.value = prompt;
+        sendVivaChatMessage(prompt);
+      }
+    });
+  });
+
+  async function sendVivaChatMessage(customPrompt = null) {
+    const text = (customPrompt || (vivaChatInput ? vivaChatInput.value : '')).trim();
+    if (!text) return;
+    if (vivaChatInput) vivaChatInput.value = '';
+
+    // Make messages container visible
+    if (vivaChatMessages) {
+      vivaChatMessages.style.display = 'flex';
+      const initialPlaceholder = vivaChatMessages.querySelector('.ai-chat-placeholder');
+      if (initialPlaceholder) {
+        initialPlaceholder.remove();
+      }
+    }
+
+    // Append user bubble
+    const userMsg = document.createElement('div');
+    userMsg.style.cssText = 'align-self: flex-end; background: var(--color-primary); color: white; padding: 8px 12px; border-radius: 12px 12px 2px 12px; font-size: 0.86rem; max-width: 85%; word-break: break-word;';
+    userMsg.textContent = text;
+    if (vivaChatMessages) vivaChatMessages.appendChild(userMsg);
+
+    // Append loading bot bubble
+    const botMsg = document.createElement('div');
+    botMsg.style.cssText = 'align-self: flex-start; background: var(--color-bg-secondary); border: 1px solid var(--color-border); padding: 10px 14px; border-radius: 12px 12px 12px 2px; font-size: 0.86rem; max-width: 90%; word-break: break-word; line-height: 1.5; text-align: left;';
+    botMsg.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></span> Thinking...';
+    if (vivaChatMessages) {
+      vivaChatMessages.appendChild(botMsg);
+      vivaChatMessages.scrollTop = vivaChatMessages.scrollHeight;
+    }
+
+    if (vivaChatSubmitBtn) vivaChatSubmitBtn.disabled = true;
+
+    const selection = getSelectedFiles();
+
+    try {
+      const data = await callAiAnalyze({
+        action: 'chat',
+        prompt: text,
+        fileIds: selection.transferFileIds,
+        directFiles: selection.localFiles,
+        conversationHistory: vivaConversationHistory,
+        previousOutput: lastGeneratedExamOutput
+      });
+
+      vivaConversationHistory.push({ role: 'user', content: text });
+      vivaConversationHistory.push({ role: 'model', content: data.result });
+
+      if (window.marked) {
+        botMsg.innerHTML = window.marked.parse(data.result);
+      } else {
+        botMsg.textContent = data.result;
+      }
+    } catch (err) {
+      botMsg.innerHTML = `<span style="color: var(--color-danger);">Error: ${escapeHtml(err.message)}</span>`;
+    } finally {
+      if (vivaChatSubmitBtn) vivaChatSubmitBtn.disabled = false;
+      if (vivaChatMessages) vivaChatMessages.scrollTop = vivaChatMessages.scrollHeight;
+      const scrollArea = document.getElementById('tabContentVivaScroll');
+      if (scrollArea) scrollArea.scrollTop = scrollArea.scrollHeight;
+    }
+  }
+
+  if (vivaChatForm) {
+    vivaChatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      sendVivaChatMessage();
     });
   }
 

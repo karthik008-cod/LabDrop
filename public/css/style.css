@@ -7,6 +7,19 @@
 /* ============================================================
    CSS Variables (Design Tokens)
    ============================================================ */
+/* Accessibility: Visually hidden for screen readers and search crawlers */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 :root {
   /* Engineering Workbench Palette */
   --color-bg: #FDFBF7; /* Warm ivory paper */
@@ -109,6 +122,7 @@ img, svg {
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
+  contain: strict;
 }
 
 .dec-item {
@@ -200,7 +214,8 @@ img, svg {
 
 .brand__header-logo {
   height: 46px;
-  width: auto;
+  width: 115px;
+  aspect-ratio: 115 / 46;
   max-width: 170px;
   object-fit: contain;
   display: block;
@@ -214,6 +229,8 @@ img, svg {
 @media (max-width: 600px) {
   .brand__header-logo {
     height: 38px;
+    width: 95px;
+    aspect-ratio: 95 / 38;
     max-width: 140px;
   }
 }
@@ -1479,4 +1496,1068 @@ img, svg {
   }
 }
 
+/* ============================================================
+   LabDrop AI Assistant Component Styling
+   ============================================================ */
+.btn--ai {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+  font-weight: 600;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), filter var(--transition-fast);
+}
 
+.btn--ai:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.45);
+  filter: brightness(1.06);
+}
+
+.btn--ai:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.ai-file-btn {
+  background: rgba(124, 58, 237, 0.08) !important;
+  border-color: rgba(124, 58, 237, 0.3) !important;
+  color: #7c3aed !important;
+  transition: all var(--transition-fast);
+}
+
+.ai-file-btn:hover {
+  background: rgba(124, 58, 237, 0.16) !important;
+  transform: scale(1.05);
+}
+
+.chip-btn {
+  font-size: 0.78rem !important;
+  padding: 4px 10px !important;
+  border-radius: var(--radius-full) !important;
+  background: var(--color-bg) !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.chip-btn:hover {
+  border-color: var(--color-primary) !important;
+  color: var(--color-primary) !important;
+  background: var(--color-bg-secondary) !important;
+}
+
+/* Markdown styling inside AI answers */
+.markdown-body h1, .markdown-body h2, .markdown-body h3 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-text);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.markdown-body h3 {
+  font-size: 0.95rem;
+}
+
+.markdown-body p {
+  margin-bottom: 0.75rem;
+}
+
+.markdown-body ul, .markdown-body ol {
+  margin-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-body li {
+  margin-bottom: 0.35rem;
+}
+
+.markdown-body code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85em;
+}
+
+.markdown-body pre {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+  font-size: 0.85em;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 10px;
+  color: var(--color-text-secondary);
+  margin: 0.75rem 0;
+}
+
+/* AI Exam Prep Custom Controls */
+.ai-file-checkbox {
+  accent-color: var(--color-primary);
+  width: 16px;
+  height: 16px;
+}
+
+#aiFileChecklist::-webkit-scrollbar,
+#vivaChatMessages::-webkit-scrollbar,
+#vivaOutput::-webkit-scrollbar {
+  width: 6px;
+}
+
+#aiFileChecklist::-webkit-scrollbar-thumb,
+#vivaChatMessages::-webkit-scrollbar-thumb,
+#vivaOutput::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+#aiMediaWarningBanner {
+  animation: fadeInWarning 0.25s ease-out;
+}
+
+@keyframes fadeInWarning {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Floating Circular AI Assistant Button */
+.ai-fab-btn {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #f59e0b;
+  box-shadow: 0 8px 26px rgba(245, 158, 11, 0.4), 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 0;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+  outline: none;
+  overflow: visible;
+}
+
+.ai-fab-btn picture,
+.ai-fab-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+  pointer-events: none;
+}
+
+.ai-fab-btn:hover {
+  transform: scale(1.12) rotate(4deg);
+  box-shadow: 0 12px 34px rgba(245, 158, 11, 0.6), 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.ai-fab-btn:active {
+  transform: scale(0.95);
+}
+
+.ai-fab-pulse {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.35);
+  z-index: -1;
+  animation: aiPulse 2.4s infinite;
+}
+
+@keyframes aiPulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+.ai-fab-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #db2777;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  border: 2px solid white;
+  line-height: 1;
+  letter-spacing: 0.5px;
+}
+
+/* Slidable & Resizable AI Modal */
+.modal--ai {
+  position: relative;
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  min-width: 320px;
+  min-height: 360px;
+}
+
+.ai-modal-header {
+  cursor: move;
+  user-select: none;
+}
+
+/* Multi-directional Resize Handles */
+.ai-resizer {
+  position: absolute;
+  z-index: 50;
+}
+
+.ai-resizer-n {
+  top: 0;
+  left: 10px;
+  right: 10px;
+  height: 8px;
+  cursor: n-resize;
+}
+
+.ai-resizer-s {
+  bottom: 0;
+  left: 10px;
+  right: 10px;
+  height: 8px;
+  cursor: s-resize;
+}
+
+.ai-resizer-e {
+  top: 10px;
+  bottom: 10px;
+  right: 0;
+  width: 8px;
+  cursor: e-resize;
+}
+
+.ai-resizer-w {
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 8px;
+  cursor: w-resize;
+}
+
+.ai-resizer-ne {
+  top: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  cursor: ne-resize;
+}
+
+.ai-resizer-nw {
+  top: 0;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nw-resize;
+}
+
+.ai-resizer-se {
+  bottom: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  cursor: se-resize;
+}
+
+.ai-resizer-sw {
+  bottom: 0;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  cursor: sw-resize;
+}
+
+@media (max-width: 600px) {
+  .ai-fab-btn {
+    bottom: 20px;
+    right: 20px;
+    width: 52px;
+    height: 52px;
+  }
+}
+
+/* ============================================================
+   LabDrop — AI Lab Record & Observation Generator
+   ============================================================ */
+
+/* Code Detected Action Card */
+.code-detected-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: 14px 18px;
+  margin-bottom: var(--space-md);
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(124, 58, 237, 0.12) 100%);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: var(--radius-lg);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.code-detected-banner__content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.code-detected-banner__icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.code-detected-banner__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.code-detected-banner__sub {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.code-detected-banner__actions {
+  flex-shrink: 0;
+}
+
+/* Quick Presets Chips */
+.preset-chip {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.preset-chip:hover {
+  border-color: #7c3aed;
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.05);
+}
+
+.preset-chip.active {
+  background: #7c3aed;
+  color: white;
+  border-color: #7c3aed;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+/* Section Checkbox Grid */
+.section-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.section-checkbox-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+
+.section-checkbox-card:hover {
+  border-color: rgba(124, 58, 237, 0.5);
+  background: rgba(124, 58, 237, 0.02);
+  transform: translateY(-1px);
+}
+
+.section-checkbox-card input[type="checkbox"] {
+  display: none;
+}
+
+.section-card-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid var(--color-border);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: transparent;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: all var(--transition-fast);
+  background: var(--color-bg);
+}
+
+.section-checkbox-card input[type="checkbox"]:checked ~ .section-card-check {
+  background: #7c3aed;
+  border-color: #7c3aed;
+  color: white;
+}
+
+.section-checkbox-card:has(input[type="checkbox"]:checked) {
+  border-color: #7c3aed;
+  background: rgba(124, 58, 237, 0.06);
+}
+
+.section-card-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.section-card-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.section-card-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.section-card-desc {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+/* Report Sizing & Layout Customization Bar */
+.report-sizing-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--color-bg-secondary, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  margin-bottom: 16px;
+}
+
+.sizing-control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sizing-control-group__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text-secondary, #475569);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.size-stepper {
+  display: inline-flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.size-stepper-btn {
+  padding: 4px 10px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  background: transparent;
+  border: none;
+  color: var(--color-text, #0f172a);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.size-stepper-btn:hover {
+  background: #f1f5f9;
+}
+
+.size-stepper-value {
+  padding: 3px 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+  border-left: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  min-width: 48px;
+  text-align: center;
+  user-select: none;
+}
+
+.size-pill-btn {
+  padding: 4px 11px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.size-pill-btn:hover {
+  border-color: var(--color-primary, #4f46e5);
+  color: var(--color-primary, #4f46e5);
+}
+
+.size-pill-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+}
+
+.size-pill-btn.content-size-btn {
+  font-weight: 700;
+  border-color: #cbd5e1;
+}
+
+.size-pill-btn.content-size-btn.active {
+  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  border-color: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35);
+}
+
+/* Academic Lab Record Sheet (Preview & Print) */
+.lab-record-sheet {
+  --sheet-scale: 1;
+  --flowchart-width: 80%;
+  --table-padding: 8px 12px;
+  --table-font-size: 0.88rem;
+  background: #ffffff;
+  color: #111827;
+  padding: calc(28px * var(--sheet-scale, 1)) calc(32px * var(--sheet-scale, 1));
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.6;
+  font-size: calc(15px * var(--sheet-scale, 1));
+  transition: padding 0.15s ease, font-size 0.15s ease;
+}
+
+.lab-record-sheet.is-editing {
+  outline: 2px dashed #3b82f6;
+  outline-offset: 4px;
+}
+
+.lab-sheet-header {
+  border: 2px solid #374151;
+  border-radius: var(--radius-sm);
+  padding: calc(12px * var(--sheet-scale, 1)) calc(16px * var(--sheet-scale, 1));
+  margin-bottom: calc(24px * var(--sheet-scale, 1));
+  background: #f9fafb;
+}
+
+.lab-sheet-header__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(8px * var(--sheet-scale, 1)) calc(16px * var(--sheet-scale, 1));
+  font-size: calc(0.88rem * var(--sheet-scale, 1));
+}
+
+.lab-sheet-header__item strong {
+  color: #111827;
+}
+
+/* Markdown formatting inside Lab Record */
+.lab-record-sheet .markdown-body {
+  color: #111827;
+}
+
+.lab-record-sheet .markdown-body h1 {
+  font-size: calc(1.35rem * var(--sheet-scale, 1));
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  border-bottom: 2px solid #111827;
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+}
+
+.lab-record-sheet .markdown-body h2,
+.lab-record-sheet .markdown-body h3 {
+  font-size: calc(1.05rem * var(--sheet-scale, 1));
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #1e3a8a;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 4px;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.lab-record-sheet .markdown-body p,
+.lab-record-sheet .markdown-body ul,
+.lab-record-sheet .markdown-body ol {
+  font-size: calc(0.92rem * var(--sheet-scale, 1));
+  margin-bottom: 12px;
+}
+
+.lab-record-sheet .markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: calc(var(--table-font-size, 0.88rem) * var(--sheet-scale, 1));
+}
+
+.lab-record-sheet .markdown-body th {
+  background: #f3f4f6;
+  font-weight: 700;
+  text-align: left;
+  padding: var(--table-padding, 8px 12px);
+  border: 1px solid #d1d5db;
+}
+
+.lab-record-sheet .markdown-body td {
+  padding: var(--table-padding, 8px 12px);
+  border: 1px solid #e5e7eb;
+}
+
+.lab-record-sheet .markdown-body tr:nth-child(even) td {
+  background: #f9fafb;
+}
+
+/* Section Headers with Interactive Sizing Dropdown */
+.record-section-block {
+  margin-bottom: 24px;
+}
+
+.record-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1.5px solid #e2e8f0;
+  padding-bottom: 6px;
+  margin-top: 22px;
+  margin-bottom: 12px;
+}
+
+.record-section-header h2,
+.record-section-header h3,
+.record-section-title {
+  margin: 0 !important;
+  padding: 0 !important;
+  border-bottom: none !important;
+  font-size: calc(1.05rem * var(--sheet-scale, 1)) !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  text-transform: uppercase;
+}
+
+.section-size-dropdown-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+}
+
+.section-size-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.section-size-select {
+  padding: 2px 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #94a3b8;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.section-size-select:hover {
+  border-color: #3b82f6;
+  background: #f0fdf4;
+}
+
+.section-size-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.lab-record-sheet .markdown-body pre {
+  background: #f8fafc;
+  color: #0f172a !important; /* Deep dark slate - maximum contrast & crystal clear visibility */
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: calc(14px * var(--sheet-scale, 1)) calc(16px * var(--sheet-scale, 1));
+  font-size: calc(0.88rem * var(--sheet-scale, 1));
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  overflow-x: auto;
+  line-height: 1.55;
+  font-weight: 600;
+  margin: 12px 0 16px 0;
+}
+
+.lab-record-sheet .markdown-body pre code {
+  color: #0f172a !important; /* Deep slate, high contrast */
+  background: transparent !important;
+  border: none !important;
+  border-bottom: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+  font-weight: 600;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0 !important;
+  display: block;
+  line-height: 1.55;
+}
+
+.lab-record-sheet .markdown-body :not(pre) > code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 0.88em;
+  color: #0f172a !important;
+  background: #f1f5f9 !important;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  border: 1px solid #e2e8f0 !important;
+  text-decoration: none !important;
+}
+
+.lab-record-sheet .markdown-body blockquote {
+  background: #f8fafc;
+  border-left: 3px solid #64748b;
+  padding: 8px 14px;
+  margin: 12px 0;
+  color: #1e293b;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   A4 Print Media Stylesheet (1-Click University Lab Record Export)
+   ============================================================ */
+@media print {
+  /* Hide UI elements */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the lab record preview */
+  #labRecordModal,
+  #labRecordModal * {
+    visibility: visible;
+  }
+
+  #labRecordModal {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+    z-index: 99999 !important;
+  }
+
+  #labRecordModalDialog {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+#labRecordMermaidSvg svg {
+  max-width: var(--flowchart-width, 80%) !important;
+  height: auto !important;
+  display: block;
+  margin: 0 auto;
+  transition: max-width 0.2s ease;
+}
+
+/* ============================================================
+   A4 Print Media Stylesheet (1-Click University Lab Record Export)
+   ============================================================ */
+@media print {
+  /* Hide UI elements */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the lab record preview */
+  #labRecordModal,
+  #labRecordModal * {
+    visibility: visible;
+  }
+
+  #labRecordModal {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+    z-index: 99999 !important;
+  }
+
+  #labRecordModalDialog {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .modal__header,
+  .record-toolbar,
+  .report-sizing-bar,
+  #recordConfigView,
+  #recordLoadingState {
+    display: none !important;
+  }
+
+  .modal__body {
+    padding: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  #recordResultView {
+    display: block !important;
+  }
+
+  .lab-record-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    font-size: calc(11pt * var(--sheet-scale, 1)) !important;
+    line-height: 1.5 !important;
+    color: #000000 !important;
+  }
+
+  .lab-sheet-header {
+    border: 2px solid #000000 !important;
+    padding: 10px 14px !important;
+    margin-bottom: 18px !important;
+    background: transparent !important;
+  }
+
+  .lab-sheet-header__item strong {
+    color: #000000 !important;
+  }
+
+  .lab-record-sheet .markdown-body h1 {
+    font-size: calc(15pt * var(--sheet-scale, 1)) !important;
+    border-bottom: 2pt solid #000000 !important;
+    color: #000000 !important;
+  }
+
+  .lab-record-sheet .markdown-body h2,
+  .lab-record-sheet .markdown-body h3 {
+    font-size: calc(12pt * var(--sheet-scale, 1)) !important;
+    color: #000000 !important;
+    border-bottom: 1pt solid #666666 !important;
+    page-break-after: avoid;
+  }
+
+  .lab-record-sheet .markdown-body table {
+    page-break-inside: avoid;
+    font-size: calc(9.5pt * var(--sheet-scale, 1)) !important;
+    border: 1pt solid #000000 !important;
+  }
+
+  .lab-record-sheet .markdown-body th {
+    background: #f0f0f0 !important;
+    color: #000000 !important;
+    border: 1pt solid #000000 !important;
+    padding: var(--table-padding, 6px 10px) !important;
+  }
+
+  .lab-record-sheet .markdown-body td {
+    color: #000000 !important;
+    border: 1pt solid #000000 !important;
+    padding: var(--table-padding, 6px 10px) !important;
+  }
+
+  .no-print,
+  .section-size-dropdown-wrap {
+    display: none !important;
+  }
+
+  .lab-record-sheet,
+  .lab-record-sheet * {
+    text-decoration: none !important;
+  }
+
+  .record-section-header {
+    border-bottom: 1pt solid #000000 !important;
+    margin-top: 14pt !important;
+    margin-bottom: 8pt !important;
+    padding-bottom: 3pt !important;
+  }
+
+  .record-section-header h2,
+  .record-section-header h3,
+  .record-section-title {
+    color: #000000 !important;
+    font-size: calc(11pt * var(--sheet-scale, 1)) !important;
+  }
+
+  .lab-record-sheet .markdown-body pre {
+    page-break-inside: avoid;
+    background: #fafafa !important;
+    color: #000000 !important;
+    border: 1pt solid #cccccc !important;
+    border-left: 1pt solid #cccccc !important;
+    font-size: calc(9.5pt * var(--sheet-scale, 1)) !important;
+    padding: 8pt 10pt !important;
+  }
+
+  .lab-record-sheet .markdown-body pre code {
+    color: #000000 !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    text-decoration: none !important;
+    padding: 0 !important;
+  }
+
+  .lab-record-sheet .markdown-body code {
+    color: #000000 !important;
+    background: #f3f4f6 !important;
+    border: 1pt solid #e5e7eb !important;
+    text-decoration: none !important;
+    box-shadow: none !important;
+  }
+
+  .lab-record-sheet .markdown-body a {
+    color: #000000 !important;
+    text-decoration: none !important;
+  }
+
+  #labRecordMermaidArea {
+    page-break-inside: avoid;
+    border: 1pt solid #999999 !important;
+    background: white !important;
+  }
+
+  #labRecordMermaidSvg svg {
+    max-width: var(--flowchart-width, 80%) !important;
+    height: auto !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 15mm 20mm;
+  }
+}
+
+/* Accessibility and SEO Utilities */
+.visually-hidden,
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Footer high contrast link styling for WCAG AAA compliance */
+.footer a.nav-link {
+  color: #374151 !important;
+  font-weight: 600 !important;
+  transition: color 0.15s ease;
+}
+
+.footer a.nav-link:hover,
+.footer a.nav-link:focus {
+  color: #111827 !important;
+  text-decoration: underline !important;
+}
+
+.footer-copy {
+  color: #4b5563 !important;
+}
