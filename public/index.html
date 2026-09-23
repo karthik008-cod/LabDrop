@@ -58,7 +58,7 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" /></noscript>
-  <link rel="stylesheet" href="/css/style.css?v=5.4" />
+  <link rel="stylesheet" href="/css/style.css?v=5.5" />
   <script src="/js/site-config.js" defer></script>
 
   <!-- Structured Data: Schema.org (JSON-LD) - Rich Snippets & Brand Entity Signals -->
@@ -239,29 +239,18 @@
             <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
           <button class="nav-link" id="navLoginBtn" style="background:none;border:none;cursor:pointer;">Login</button>
           <button class="nav-link" id="navSignupBtn" style="background:none;border:none;cursor:pointer;">Sign Up</button>
-          <button class="nav-link btn-nav-ai" id="navLabRecordBtn" style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.22)); color: #b45309; font-weight: 600; border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-full); padding: 4px 14px 4px 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
-            <img src="/LabDropAILogo-icon.webp" alt="AI" width="24" height="24" style="border-radius: 50%; display: block;" />
-            <span>Lab Record AI</span>
-          </button>
         </div>
         <div id="authLoggedIn" style="display: none; gap: var(--space-md); align-items: center;">
             <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
           <a href="/my-files.html" class="nav-link">
             <span>🗄️</span> Saved Transfers
           </a>
-          <button class="nav-link btn-nav-ai" id="navLabRecordBtnLoggedIn" style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.22)); color: #b45309; font-weight: 600; border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-full); padding: 4px 14px 4px 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
-            <img src="/LabDropAILogo-icon.webp" alt="AI" width="24" height="24" style="border-radius: 50%; display: block;" />
-            <span>Lab Record AI</span>
-          </button>
           <div class="nav-icon" title="User Account" style="background: var(--color-bg-secondary); color: var(--color-text);">👤</div>
           <button class="nav-link" id="navLogoutBtn" style="background:none;border:none;cursor:pointer;color:var(--color-text-secondary);">Logout</button>
           <span id="navUserEmail" style="display:none;"></span>
         </div>
       </nav>
       <div class="mobile-header-actions" style="display: flex; align-items: center; gap: 4px;">
-        <button class="mobile-record-btn" id="mobileRecordBtn" aria-label="Lab Record AI" title="Lab Record AI" style="background:none;border:none;cursor:pointer;padding:0 6px;display:flex;align-items:center;">
-          <img src="/LabDropAILogo-icon.webp" alt="Lab Record AI" width="26" height="26" style="border-radius: 50%; border: 1px solid #fbbf24; display: block;" />
-        </button>
         <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle Menu">
           ☰
         </button>
@@ -498,23 +487,6 @@
               <button class="btn btn--ghost btn--sm" id="copyUrlBtn">📋 Copy Link</button>
               <button class="btn btn--ghost btn--sm" id="shareWhatsAppBtn">💬 WhatsApp</button>
               <button class="btn btn--ghost btn--sm" id="shareNativeBtn" style="display:none;">🔗 Share</button>
-            </div>
-
-            <!-- LabDrop AI Assistant Callout after Transfer Created -->
-            <div class="qr-ai-card" style="margin-top: var(--space-md); padding: 12px 14px; background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(245, 158, 11, 0.07)); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-              <div style="display: flex; align-items: center; gap: 10px; text-align: left;">
-                <picture>
-                  <source srcset="/LabDropAILogo-icon.webp" type="image/webp" />
-                  <img src="/LabDropAILogo-icon.png" alt="LabDrop AI" width="38" height="38" style="border-radius: 50%; border: 1.5px solid #fbbf24; flex-shrink: 0; display: block;" />
-                </picture>
-                <div>
-                  <div style="font-weight: 700; font-size: 0.92rem; color: var(--color-text);">LabDrop AI Assistant</div>
-                  <div style="font-size: 0.78rem; color: var(--color-text-secondary);">Generate lab record, viva Q&amp;A, and code explanations</div>
-                </div>
-              </div>
-              <button type="button" class="btn btn--primary btn--sm" id="qrTriggerAiBtn" style="white-space: nowrap; font-weight: 600; padding: 6px 14px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: white;">
-                Open AI
-              </button>
             </div>
             
             <div style="margin-top: var(--space-xl); text-align: left; border-top: 1px solid var(--color-border); padding-top: var(--space-md);">
@@ -1000,7 +972,7 @@
   <!-- Core App Scripts (Non-blocking & Deferred) -->
   <script src="/js/dialogs.js" defer></script>
   <script src="/js/bg.js" defer></script>
-  <script src="/js/main.js?v=5.3" defer></script>
+  <script src="/js/main.js?v=5.4" defer></script>
   
 </body>
 </html>

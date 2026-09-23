@@ -1902,13 +1902,8 @@
 
   // Trigger buttons
   if (btnTriggerLabRecord) btnTriggerLabRecord.addEventListener('click', () => openLabRecordModal());
-  if (navLabRecordBtn) navLabRecordBtn.addEventListener('click', () => openLabRecordModal());
-  if (navLabRecordBtnLoggedIn) navLabRecordBtnLoggedIn.addEventListener('click', () => openLabRecordModal());
-  if (mobileRecordBtn) mobileRecordBtn.addEventListener('click', () => openLabRecordModal());
   const aiFloatingBtn = document.getElementById('aiFloatingBtn');
   if (aiFloatingBtn) aiFloatingBtn.addEventListener('click', () => openLabRecordModal());
-  const qrTriggerAiBtn = document.getElementById('qrTriggerAiBtn');
-  if (qrTriggerAiBtn) qrTriggerAiBtn.addEventListener('click', () => openLabRecordModal());
   if (labRecordModalClose) labRecordModalClose.addEventListener('click', closeLabRecordModal);
 
   // Print / Save as PDF
