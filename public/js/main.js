@@ -3539,11 +3539,17 @@
       try {
         await loadQrLibrary();
         html5QrcodeScanner = new Html5Qrcode("qr-reader");
+        const qrboxFunction = (viewfinderWidth, viewfinderHeight) => {
+          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+          const boxSize = Math.min(Math.floor(minEdge * 0.72), 260);
+          return { width: boxSize, height: boxSize };
+        };
         html5QrcodeScanner.start(
           { facingMode: "environment" },
           {
-            fps: 10,
-            qrbox: { width: 250, height: 250 }
+            fps: 15,
+            qrbox: qrboxFunction,
+            aspectRatio: 1.0
           },
           (decodedText, decodedResult) => {
             // Handle successful scan

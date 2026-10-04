@@ -3598,4 +3598,108 @@ body:has(.sidebar--open) .header {
   }
 }
 
+/* ============================================================
+   QR Code Scanner — Fullscreen Viewfinder & Square Target Frame
+   ============================================================ */
+#qrScannerModalOverlay {
+  z-index: 10000 !important;
+  background: #000 !important;
+}
+
+#qrScannerModal {
+  max-width: 100% !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  border-radius: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  background: #000 !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+#qr-reader {
+  width: 100% !important;
+  height: 100% !important;
+  flex: 1 !important;
+  position: relative !important;
+  overflow: hidden !important;
+  background: #000 !important;
+  border: none !important;
+}
+
+#qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+/* Force the visual shaded region & corner brackets into an exact 1:1 square */
+#qr-shaded-region {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  bottom: auto !important;
+  right: auto !important;
+  transform: translate(-50%, -50%) !important;
+  width: min(72vw, 260px) !important;
+  height: min(72vw, 260px) !important;
+  max-width: 260px !important;
+  max-height: 260px !important;
+  aspect-ratio: 1 / 1 !important;
+  box-sizing: border-box !important;
+  border: none !important;
+  box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.58) !important;
+  border-radius: 12px !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+}
+
+/* Animated scanning laser line across the square target */
+#qr-shaded-region::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #FFD166, #F59E0B, #FFD166, transparent);
+  box-shadow: 0 0 10px rgba(255, 209, 102, 0.8), 0 0 4px rgba(245, 158, 11, 0.9);
+  border-radius: 2px;
+  animation: qrLaserSquareScan 2.4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes qrLaserSquareScan {
+  0% {
+    top: 6px;
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    top: calc(100% - 8px);
+    opacity: 0.3;
+  }
+}
+
+.qr-scanner-hint {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom, 20px) + 36px);
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  z-index: 3;
+  pointer-events: none;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+
 
