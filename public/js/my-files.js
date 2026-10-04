@@ -107,7 +107,7 @@
       card.innerHTML = `
         <div class="card__title" style="display: flex; justify-content: space-between; align-items: center;">
           <span>${escapeHtml(t.transferName || 'Lab Files')}</span>
-          <span style="background: var(--color-bg-secondary); padding: 4px 8px; border-radius: 4px; font-size: 0.9rem; font-family: monospace; letter-spacing: 2px; color: var(--color-primary);">${t.shortCode}</span>
+          <span style="background: #FEF3C7; border: 1.5px solid #FCD34D; color: #92400E; font-weight: 700; padding: 4px 10px; border-radius: 6px; font-size: 0.95rem; font-family: monospace; letter-spacing: 2.5px; box-shadow: 0 1px 3px rgba(245, 158, 11, 0.15);">${t.shortCode}</span>
         </div>
         <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--space-sm);">
           ${t.fileCount} files · ${formatBytes(t.totalSize)}

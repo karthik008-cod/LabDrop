@@ -7,8 +7,8 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#FDFBF7",
-  "theme_color": "#FDFBF7",
+  "background_color": "#FAF5E8",
+  "theme_color": "#FFD166",
   "lang": "en",
   "dir": "ltr",
   "categories": [
@@ -64,9 +64,57 @@
       "files": [
         {
           "name": "shared_files",
-          "accept": ["*/*", "image/*", "video/*", "audio/*", "text/*", "application/*"]
+          "accept": [
+            "*/*",
+            "image/*",
+            "video/*",
+            "audio/*",
+            "text/*",
+            "application/*",
+            "application/pdf",
+            "application/zip",
+            "application/x-zip-compressed",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
+            ".txt", ".c", ".cpp", ".h", ".hpp", ".py", ".java", ".js", ".ts", ".html", ".css", ".json", ".sql", ".sh",
+            ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".zip", ".rar", ".7z", ".tar", ".gz"
+          ]
         }
       ]
     }
+  },
+  "file_handlers": [
+    {
+      "action": "/?source=file_handler",
+      "name": "LabDrop",
+      "icons": [
+        {
+          "src": "/labdroplogo.png",
+          "sizes": "192x192 512x512",
+          "type": "image/png"
+        }
+      ],
+      "accept": {
+        "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico"],
+        "text/*": [".txt", ".c", ".cpp", ".h", ".hpp", ".java", ".py", ".js", ".ts", ".html", ".css", ".json", ".sql", ".sh", ".r", ".cs", ".md"],
+        "application/pdf": [".pdf"],
+        "application/zip": [".zip", ".rar", ".7z", ".tar", ".gz"],
+        "application/msword": [".doc"],
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+        "application/vnd.ms-powerpoint": [".ppt"],
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+        "application/vnd.ms-excel": [".xls"],
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"]
+      }
+    }
+  ],
+  "launch_handler": {
+    "client_mode": ["focus-existing", "auto"]
   }
 }
+

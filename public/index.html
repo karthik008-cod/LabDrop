@@ -16,7 +16,7 @@
   <link rel="canonical" href="https://labdrop.online/" />
 
   <!-- Google Chrome & Mobile Web App Meta -->
-  <meta name="theme-color" content="#FDFBF7" />
+  <meta name="theme-color" content="#FFD166" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -57,8 +57,7 @@
   <!-- High Performance Stylesheets & Non-blocking Fonts -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" /></noscript>
-  <link rel="stylesheet" href="/css/style.css?v=5.5" />
+  <link rel="stylesheet" href="/css/style.css?v=6.7" />
   <script src="/js/site-config.js" defer></script>
 
   <!-- Structured Data: Schema.org (JSON-LD) - Rich Snippets & Brand Entity Signals -->
@@ -236,12 +235,12 @@
       <!-- Auth Navigation -->
       <nav class="header__nav" id="authNav">
         <div id="authLoggedOut" style="display: flex; gap: var(--space-md); align-items: center;">
-            <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
+          <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
           <button class="nav-link" id="navLoginBtn" style="background:none;border:none;cursor:pointer;">Login</button>
           <button class="nav-link" id="navSignupBtn" style="background:none;border:none;cursor:pointer;">Sign Up</button>
         </div>
         <div id="authLoggedIn" style="display: none; gap: var(--space-md); align-items: center;">
-            <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
+          <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
           <a href="/my-files.html" class="nav-link">
             <span>🗄️</span> Saved Transfers
           </a>
@@ -346,63 +345,44 @@
               </div>
             </div>
 
-            <!-- Code Detected Action Card -->
-            <div id="codeDetectionBanner" class="code-detected-banner" style="display: none;">
-              <div class="code-detected-banner__content">
-                <picture>
-                  <source srcset="/LabDropAILogo-icon.webp" type="image/webp" />
-                  <img src="/LabDropAILogo-icon.png" alt="LabDrop AI" width="42" height="42" style="border-radius: 50%; border: 1.5px solid #fbbf24; flex-shrink: 0; display: block;" />
-                </picture>
-                <div class="code-detected-banner__text">
-                  <div class="code-detected-banner__title">Code File Detected: <strong id="detectedCodeFilename">program</strong></div>
-                  <div class="code-detected-banner__sub">Instantly generate a complete university-grade Lab Record with aim, algorithm, flowchart, and test cases!</div>
-                </div>
-              </div>
-              <div class="code-detected-banner__actions">
-                <button type="button" class="btn btn--ai btn--sm" id="btnTriggerLabRecord" style="display: inline-flex; align-items: center; gap: 6px;">
-                  <img src="/LabDropAILogo-icon.webp" alt="AI" width="18" height="18" style="border-radius: 50%;" />
-                  Generate Lab Record
-                </button>
-              </div>
-            </div>
-
             <div class="file-list-container" id="fileList"></div>
-            <div class="file-list-container" id="linkList" style="margin-top: var(--space-sm);"></div>
+            <div class="file-list-container" id="linkList" style="margin-top: var(--space-xs);"></div>
             
-            <!-- Transfer Options Card -->
-            <div id="transferOptions" class="section--hidden mt-lg">
-              <div class="transfer-options-panel">
-                <!-- Mode Selector -->
-                <div class="mode-selector">
-                  <button class="mode-option active" id="modeQuick" type="button">
-                    <div class="mode-option__title">⚡ Quick Transfer</div>
-                    <div class="mode-option__desc">No login · 30 mins</div>
+            <!-- Transfer Options Card (Ultra-Compact) -->
+            <div id="transferOptions" class="section--hidden" style="margin-top: var(--space-sm);">
+              <div class="transfer-options-panel compact-transfer-panel">
+                <!-- Mode Selector (Segmented Bar) -->
+                <div class="mode-selector compact-mode-selector">
+                  <button class="mode-option compact-mode-btn active" id="modeQuick" type="button" title="No login required · 30 mins expiry">
+                    <span class="compact-mode-title">⚡ Quick Transfer</span>
+                    <span class="compact-mode-tag">30m</span>
                   </button>
-                  <button class="mode-option" id="modeSave" type="button">
-                    <div class="mode-option__title">🗄️ Save for Later</div>
-                    <div class="mode-option__desc">Login required · 7 days</div>
+                  <button class="mode-option compact-mode-btn" id="modeSave" type="button" title="Login required · 7 days expiry">
+                    <span class="compact-mode-title">🗄️ Save for Later</span>
+                    <span class="compact-mode-tag">7d</span>
                   </button>
                 </div>
 
-                <!-- Options Row -->
-                <div class="options-row">
-                  <div class="form-group" style="flex:1; margin-bottom:0;">
-                    <label class="form-label" for="transferName">Transfer Name (Optional)</label>
-                    <input class="form-input" type="text" id="transferName" placeholder="e.g. Physics Lab 3" maxlength="50" />
+                <!-- Inline Options Row -->
+                <div class="options-row compact-options-row">
+                  <div class="form-group compact-name-group" style="flex: 1; margin-bottom: 0;">
+                    <input class="form-input compact-form-input" type="text" id="transferName" placeholder="Transfer Name (Optional, e.g. Lab 3)" maxlength="50" />
                   </div>
-                  <label class="checkbox-label" style="margin-top: 1rem; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="requirePin" />
-                    <span>Protect with PIN</span>
-                  </label>
-                  <div id="customPinContainer" style="overflow: hidden; max-height: 0; opacity: 0; transition: all 0.3s ease; margin-top: 0.5rem; display: flex; flex-direction: column;">
-                    <input class="form-input" type="text" id="customPin" placeholder="Set PIN (Optional)" maxlength="6" pattern="\d*" style="letter-spacing: 2px;" />
-                    <div style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 4px;">Leave empty for auto-generated 6-digit PIN.</div>
+
+                  <div class="compact-pin-wrapper">
+                    <label class="checkbox-label compact-pin-checkbox" style="margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
+                      <input type="checkbox" id="requirePin" />
+                      <span>Protect with PIN</span>
+                    </label>
+                    <div id="customPinContainer" class="compact-pin-container" style="overflow: hidden; max-height: 0; opacity: 0; transition: all 0.25s ease; display: inline-flex; align-items: center;">
+                      <input class="form-input compact-form-input compact-pin-input" type="text" id="customPin" placeholder="6-digit PIN" maxlength="6" pattern="\d*" style="width: 105px; padding: 6px 8px; font-size: 0.82rem; letter-spacing: 2px; text-align: center;" />
+                    </div>
                   </div>
                 </div>
               </div>
 
               <!-- Create Transfer Button -->
-              <button class="btn btn--primary btn--lg btn--block" id="createTransferBtn" type="button" disabled>
+              <button class="btn btn--primary btn--md btn--block compact-create-transfer-btn" id="createTransferBtn" type="button" disabled style="padding: 10px 16px; font-size: 0.95rem; font-weight: 700;">
                 ➤ Create Transfer
               </button>
             </div>
@@ -414,14 +394,56 @@
         <!-- Section 2: Uploading Progress                -->
         <!-- ============================================ -->
         <div id="uploadSection" class="section--hidden">
-          <div class="upload-card">
-            <div style="font-size: 1.5rem; font-weight: 600; margin-bottom: var(--space-md);">
-              <span class="spinner"></span> Uploading Files…
+          <div class="upload-card labdrop-upload-workbench">
+            <h2 class="upload-workbench-title">Uploading Files…</h2>
+
+            <!-- Clean Flight Corridor -->
+            <div class="origami-runway-corridor">
+              <div class="runway-flight-line"></div>
+
+              <!-- Sliding Origami Paper Jet -->
+              <div class="paper-jet-glider" id="paperJetGlider">
+                <svg width="86" height="42" viewBox="0 0 86 42" class="origami-jet-svg">
+                  <!-- Trail Draft Streams -->
+                  <g class="jet-trail-draft">
+                    <path d="M 14 8 C 4 9, -8 11, -22 13" stroke="#FFD166" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round" class="draft-line draft-1" />
+                    <path d="M 18 23 C 8 24, -4 26, -18 29" stroke="#E5BB5A" stroke-width="1.6" stroke-dasharray="4 3" stroke-linecap="round" class="draft-line draft-2" />
+                    <circle cx="-6" cy="10" r="1.5" fill="#F59E0B" class="jet-sparkle sp-1" />
+                    <circle cx="-16" cy="13" r="1.2" fill="#FFD166" class="jet-sparkle sp-2" />
+                  </g>
+
+                  <!-- Origami Paper Jet Body -->
+                  <g class="jet-origami-body">
+                    <!-- Far Wing (Upper Port) -->
+                    <polygon points="76,21 24,6 36,21" fill="#EAE6DE" stroke="#2C2C2C" stroke-width="1.1" stroke-linejoin="round" />
+                    
+                    <!-- Fuselage Keel Underbody -->
+                    <polygon points="76,21 18,25 30,30" fill="#D8D3C8" stroke="#2C2C2C" stroke-width="1.1" stroke-linejoin="round" />
+                    <polygon points="76,21 30,30 20,23" fill="#C9C3B6" stroke="#2C2C2C" stroke-width="0.9" stroke-linejoin="round" />
+
+                    <!-- Near Main Wing (Starboard Primary Surface) -->
+                    <polygon points="76,21 14,8 34,21" fill="#FDFBF7" stroke="#2C2C2C" stroke-width="1.2" stroke-linejoin="round" />
+
+                    <!-- Signature LabDrop Gold Wing Trim -->
+                    <polygon points="14,8 24,10.5 34,21" fill="#FFD166" stroke="#2C2C2C" stroke-width="1" stroke-linejoin="round" opacity="0.95" />
+                    
+                    <!-- Center Spine Fold Ridge -->
+                    <line x1="76" y1="21" x2="20" y2="21" stroke="#2C2C2C" stroke-width="1.3" stroke-linecap="round" />
+
+                    <!-- Nose Cone Gold Tip -->
+                    <polygon points="76,21 64,18 64,24" fill="#E5BB5A" stroke="#2C2C2C" stroke-width="1" stroke-linejoin="round" />
+                  </g>
+                </svg>
+              </div>
             </div>
-            <div class="progress-bar">
-              <div class="progress-bar__fill" id="progressBarFill"></div>
+
+            <!-- Enhanced LabDrop Progress Bar -->
+            <div class="progress-bar labdrop-progress-track">
+              <div class="progress-bar__fill labdrop-progress-fill" id="progressBarFill"></div>
             </div>
-            <p class="text-center" id="progressText" style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">Preparing upload…</p>
+
+            <!-- Simple Clean Status -->
+            <p id="progressText" class="upload-pct-label">Preparing upload…</p>
           </div>
         </div>
 
@@ -575,8 +597,8 @@
     </div>
 
   <!-- Footer -->
-    <footer class="footer" style="margin-top: auto; padding-top: var(--space-2xl); padding-bottom: var(--space-md); text-align: right; color: #4b5563; font-size: 0.85rem;">
-      <div style="display: flex; justify-content: flex-end; gap: 14px; flex-wrap: wrap;">
+    <footer class="footer" style="margin-top: auto; padding-top: var(--space-2xl); padding-bottom: var(--space-md); text-align: left; color: #4b5563; font-size: 0.85rem;">
+      <div style="display: flex; justify-content: flex-start; gap: 14px; flex-wrap: wrap;">
         <a href="/how-to-use.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">How to Use</a>
         <a href="mailto:yuvaankaarthikeyaa.1206@gmail.com" class="nav-link footer-email-link" style="color: #374151; text-decoration: none; font-weight: 600;">Email</a>
         <a href="https://www.linkedin.com/in/yuvaan-kaarthikeyaa-adulapuram-6ba90133b" target="_blank" rel="noopener noreferrer" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">LinkedIn</a>
@@ -644,21 +666,38 @@
     </div>
   </div>
 
-  <!-- Lab Record & Observation Generator Modal -->
-  <div class="modal-overlay" id="labRecordModal">
-    <div class="modal modal--ai modal--lab-record" id="labRecordModalDialog" style="max-width: 820px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
-      <div class="modal__header" style="flex-shrink: 0;">
-        <div class="modal__title" style="display: flex; align-items: center; gap: 8px;">
+  <!-- LabDrop AI Assistant Modal (Unified Lab Record & Viva/Exam Prep) -->
+  <div class="modal-overlay ai-modal-overlay" id="labRecordModal">
+    <div class="modal modal--ai modal--lab-record" id="labRecordModalDialog" style="display: flex; flex-direction: column; overflow: hidden; position: relative; padding: 0;">
+      <!-- Desktop Side Panel Left Resize Handle -->
+      <div class="ai-sidepanel-resize-edge" title="Drag to resize AI Side Panel"></div>
+      
+      <div class="modal__header ai-modal-header" id="homeAiModalHeader" style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(219, 39, 119, 0.08)); border-bottom: 1px solid var(--color-border); padding: 12px 18px; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 8px;">
           <picture>
             <source srcset="/LabDropAILogo-icon.webp" type="image/webp" />
-            <img src="/LabDropAILogo-icon.png" alt="LabDrop AI" width="30" height="30" style="border-radius: 50%; border: 1.5px solid #fbbf24; display: block;" />
+            <img src="/LabDropAILogo-icon.png" alt="LabDrop AI" width="32" height="32" style="border-radius: 50%; border: 1.5px solid #fbbf24; display: block;" />
           </picture>
-          <span>University Lab Record Generator</span>
+          <div>
+            <div class="modal__title" style="font-size: 1.15rem; font-weight: 700; background: linear-gradient(135deg, #f59e0b, #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">LabDrop AI Assistant</div>
+            <div style="font-size: 0.72rem; color: var(--color-text-secondary);">Lab Records · Viva Prep · Summary · Chat</div>
+          </div>
         </div>
-        <button class="modal__close" id="labRecordModalClose" aria-label="Close Lab Record Generator">✕</button>
+        <button class="modal__close" id="labRecordModalClose" aria-label="Close LabDrop AI Assistant">✕</button>
       </div>
 
-      <div class="modal__body" style="padding: var(--space-lg); overflow-y: auto; flex: 1;">
+      <!-- Tab Bar -->
+      <div class="ai-tab-bar" id="homeAiTabBar">
+        <button class="ai-tab-btn active" data-tab="labrecord" id="homeTabBtnLabRecord"><span class="tab-icon">📝</span> Lab Record</button>
+        <button class="ai-tab-btn" data-tab="viva" id="homeTabBtnViva"><span class="tab-icon">🎓</span> Viva & Exam Prep</button>
+      </div>
+
+      <div class="modal__body" id="homeAiModalBody" style="padding: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+        
+        <!-- Tab 1: Lab Record -->
+        <div class="ai-tab-content active" id="homeTabContentLabRecord">
+        <!-- Scrollable Content Area -->
+        <div id="labRecordScrollArea" style="flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-lg); display: flex; flex-direction: column;">
         
         <!-- In-Modal Alert Box (Shown on the popup window instead of background) -->
         <div id="recordModalAlert" style="display: none; margin-bottom: var(--space-md); padding: 12px 16px; border-radius: var(--radius-md); background: #fef2f2; border: 1.5px solid #f87171; color: #991b1b; font-size: 0.88rem; font-weight: 600; align-items: center; justify-content: space-between; gap: 12px;">
@@ -669,8 +708,23 @@
           <button type="button" id="recordModalAlertClose" style="background: none; border: none; font-size: 1.1rem; color: #991b1b; cursor: pointer; padding: 0 4px; line-height: 1;">✕</button>
         </div>
 
-        <!-- View 1: Configuration Form -->
-        <div id="recordConfigView">
+        <!-- View 1: Configuration Form (Collapsible Panel) -->
+        <div id="recordConfigView" class="ai-collapsible-panel">
+          <div class="ai-collapsible-header" id="recordConfigToggleHeader">
+            <div class="ai-collapsible-header-info">
+              <span>⚙️</span>
+              <span class="ai-collapsible-title">Lab Record Setup & Sections</span>
+              <span class="ai-collapsible-badge" id="recordConfigStatusBadge">Full University (12)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="btn btn--ai btn--sm" id="btnRunLabRecordCompact" style="display: none; padding: 4px 10px; font-size: 0.78rem;">🚀 Generate</button>
+              <button type="button" class="ai-collapsible-toggle-btn" id="btnToggleRecordConfig" aria-label="Toggle Configuration Panel">
+                <span id="recordConfigToggleText">▲ Collapse Setup</span>
+              </button>
+            </div>
+          </div>
+          
+          <div class="ai-collapsible-content" id="recordConfigContent">
           
           <!-- Source Code Indicator / Selector -->
           <div class="record-source-bar">
@@ -678,176 +732,146 @@
             <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
               <select id="recordSourceSelect" class="form-input" style="flex: 1; padding: 8px 12px; font-weight: 600;"></select>
               <button type="button" class="btn btn--outline btn--sm" id="recordUploadBtn" style="white-space: nowrap;">📂 Browse Other</button>
-              <input type="file" id="recordFileInput" style="display: none;" accept=".c,.cpp,.h,.hpp,.java,.py,.js,.ts,.sql,.html,.css,.cs,.php,.go,.rs,.sh,.m,.r,.txt" />
+              <input type="file" id="recordFileInput" style="display: none;" />
             </div>
           </div>
 
           <!-- Quick Presets -->
-          <div style="margin-top: var(--space-md);">
-            <div style="font-size: 0.78rem; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+          <div class="ai-presets-row" style="margin-top: var(--space-md);">
+            <div class="ai-presets-label" style="font-size: 0.78rem; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
               ⚡ Quick Presets:
             </div>
-            <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="presetContainer">
-              <button type="button" class="preset-chip active" data-preset="full">🎓 Full University Record (All 12)</button>
-              <button type="button" class="preset-chip" data-preset="observation">⚡ Quick Observation (6 Core)</button>
-              <button type="button" class="preset-chip" data-preset="theory_code">📖 Theory & Code (4 Core)</button>
-              <button type="button" class="preset-chip" data-preset="flowchart_table">📊 Flowchart & Tables Only</button>
-              <button type="button" class="preset-chip" data-preset="custom">✏️ Custom Selection</button>
+            <div class="preset-container" id="presetContainer" style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <button type="button" class="preset-chip active" data-preset="full">🎓 Full Record (12)</button>
+              <button type="button" class="preset-chip" data-preset="observation">⚡ Observation (6)</button>
+              <button type="button" class="preset-chip" data-preset="theory_code">📖 Theory & Code (4)</button>
+              <button type="button" class="preset-chip" data-preset="flowchart_table">📊 Flowchart & Tables</button>
+              <button type="button" class="preset-chip" data-preset="custom">✏️ Custom</button>
             </div>
           </div>
 
           <!-- Section Selection (Interactive Checkbox Grid) -->
-          <div style="margin-top: var(--space-md);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 0.88rem; font-weight: 700; color: var(--color-text);">Select Sections to Include:</span>
-              <span style="font-size: 0.78rem; font-weight: 600; color: var(--color-primary);" id="selectedSectionsCount">12 / 12 selected</span>
+          <div class="ai-sections-wrapper" style="margin-top: var(--space-md);">
+            <div class="ai-sections-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span class="ai-sections-label" style="font-size: 0.82rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Sections to Include:</span>
+              <div class="ai-sections-actions" style="display: flex; align-items: center; gap: 8px;">
+                <span class="ai-sections-badge" id="selectedSectionsCount" style="font-size: 0.76rem; font-weight: 700; color: #7c3aed; background: rgba(124, 58, 237, 0.08); padding: 2px 8px; border-radius: 12px;">12 / 12 selected</span>
+                <button type="button" class="btn-text-action" id="btnSelectAllSections" title="Select all 12 sections">All</button>
+                <span style="color: var(--color-border); font-size: 0.75rem;">|</span>
+                <button type="button" class="btn-text-action" id="btnClearSections" title="Deselect all sections">None</button>
+              </div>
             </div>
 
             <div class="section-checkbox-grid">
               <!-- 1. Aim -->
-              <label class="section-checkbox-card">
+              <label class="section-checkbox-card" title="Aim / Objective: Formal goal statement">
                 <input type="checkbox" name="labSection" value="aim" checked />
                 <span class="section-card-check">✓</span>
                 <span class="section-card-icon">🎯</span>
-                <div class="section-card-text">
-                  <div class="section-card-title">Aim / Objective</div>
-                  <div class="section-card-desc">Formal goal statement</div>
-                </div>
+                <span class="section-card-title">Aim / Objective</span>
               </label>
 
               <!-- 2. Requirements -->
-              <label class="section-checkbox-card">
+              <label class="section-checkbox-card" title="HW & SW Requirements: OS, RAM, Compiler, IDE">
                 <input type="checkbox" name="labSection" value="requirements" checked />
                 <span class="section-card-check">✓</span>
                 <span class="section-card-icon">💻</span>
-                <div class="section-card-text">
-                  <div class="section-card-title">HW & SW Requirements</div>
-                  <div class="section-card-desc">OS, RAM, Compiler, IDE</div>
-                </div>
+                <span class="section-card-title">HW & SW Specs</span>
               </label>
 
               <!-- 3. Apparatus -->
-              <label class="section-checkbox-card">
+              <label class="section-checkbox-card" title="Apparatus & Libraries: Headers, modules & packages">
                 <input type="checkbox" name="labSection" value="apparatus" checked />
                 <span class="section-card-check">✓</span>
                 <span class="section-card-icon">🔬</span>
-                <div class="section-card-text">
-                  <div class="section-card-title">Apparatus & Libraries</div>
-                  <div class="section-card-desc">Headers, modules & packages</div>
-                </div>
+                <span class="section-card-title">Apparatus & Libs</span>
               </label>
 
               <!-- 4. Description -->
-              <label class="section-checkbox-card">
+              <label class="section-checkbox-card" title="Theory & Description: Logic & Big-O Complexity">
                 <input type="checkbox" name="labSection" value="description" checked />
                 <span class="section-card-check">✓</span>
                 <span class="section-card-icon">📖</span>
-                <div class="section-card-text">
-                  <div class="section-card-title">Theory & Description</div>
-                  <div class="section-card-desc">Logic & Big-O Complexity</div>
-                </div>
+                <span class="section-card-title">Theory & Logic</span>
               </label>
 
               <!-- 5. Algorithm -->
-              <label class="section-checkbox-card">
+              <label class="section-checkbox-card" title="Step-by-Step Algorithm: Numbered steps (Start to Stop)">
                 <input type="checkbox" name="labSection" value="algorithm" checked />
                 <span class="section-card-check">✓</span>
                 <span class="section-card-icon">🔢</span>
-                <div class="section-card-text">
-                  <div class="section-card-title">Step-by-Step Algorithm</div>
-                  <div class="section-card-desc">Numbered steps (Start to Stop)</div>
-                </div>
+                <span class="section-card-title">Algorithm</span>
               </label>
 
               <!-- 6. Flowchart -->
-              <label class="section-checkbox-card">
+              <label class="section-checkbox-card" title="Visual Flowchart: Rendered Mermaid Diagram">
                 <input type="checkbox" name="labSection" value="flowchart" checked />
                 <span class="section-card-check">✓</span>
                 <span class="section-card-icon">📊</span>
-                <div class="section-card-text">
-                  <div class="section-card-title">Visual Flowchart</div>
-                  <div class="section-card-desc">Rendered Mermaid Diagram</div>
-                </div>
+                <span class="section-card-title">Flowchart Diagram</span>
               </label>
 
               <!-- 7. Procedure -->
-              <label class="section-checkbox-card">
+              <label class="section-checkbox-card" title="Procedure & Commands: Exact terminal run commands">
                 <input type="checkbox" name="labSection" value="procedure" checked />
                 <span class="section-card-check">✓</span>
                 <span class="section-card-icon">⚙️</span>
-                <div class="section-card-text">
-                  <div class="section-card-title">Procedure & Commands</div>
-                  <div class="section-card-desc">Exact terminal run commands</div>
-                </div>
+                <span class="section-card-title">Procedure & Cmds</span>
               </label>
 
               <!-- 8. Program -->
-              <label class="section-checkbox-card">
+              <label class="section-checkbox-card" title="Source Code (Program): Clean syntax-styled code">
                 <input type="checkbox" name="labSection" value="program" checked />
                 <span class="section-card-check">✓</span>
                 <span class="section-card-icon">💻</span>
-                <div class="section-card-text">
-                  <div class="section-card-title">Source Code (Program)</div>
-                  <div class="section-card-desc">Clean syntax-styled code</div>
-                </div>
+                <span class="section-card-title">Source Code</span>
               </label>
 
               <!-- 9. Table -->
-              <label class="section-checkbox-card">
+              <label class="section-checkbox-card" title="Observation Table: Test inputs & outputs grid">
                 <input type="checkbox" name="labSection" value="table" checked />
                 <span class="section-card-check">✓</span>
                 <span class="section-card-icon">📋</span>
-                <div class="section-card-text">
-                  <div class="section-card-title">Observation Table</div>
-                  <div class="section-card-desc">Test inputs & outputs grid</div>
-                </div>
+                <span class="section-card-title">Observation Table</span>
               </label>
 
               <!-- 10. Precautions -->
-              <label class="section-checkbox-card">
+              <label class="section-checkbox-card" title="Precautions & Boundary: Safety & edge case rules">
                 <input type="checkbox" name="labSection" value="precautions" checked />
                 <span class="section-card-check">✓</span>
                 <span class="section-card-icon">⚠️</span>
-                <div class="section-card-text">
-                  <div class="section-card-title">Precautions & Boundary</div>
-                  <div class="section-card-desc">Safety & edge case rules</div>
-                </div>
+                <span class="section-card-title">Precautions</span>
               </label>
 
               <!-- 11. Output -->
-              <label class="section-checkbox-card">
+              <label class="section-checkbox-card" title="Sample Console Output: Realistic terminal trace">
                 <input type="checkbox" name="labSection" value="output" checked />
                 <span class="section-card-check">✓</span>
                 <span class="section-card-icon">🖥️</span>
-                <div class="section-card-text">
-                  <div class="section-card-title">Sample Console Output</div>
-                  <div class="section-card-desc">Realistic terminal trace</div>
-                </div>
+                <span class="section-card-title">Console Output</span>
               </label>
 
               <!-- 12. Result -->
-              <label class="section-checkbox-card">
+              <label class="section-checkbox-card" title="Result Statement: Formal practical conclusion">
                 <input type="checkbox" name="labSection" value="result" checked />
                 <span class="section-card-check">✓</span>
                 <span class="section-card-icon">🏁</span>
-                <div class="section-card-text">
-                  <div class="section-card-title">Result Statement</div>
-                  <div class="section-card-desc">Formal practical conclusion</div>
-                </div>
+                <span class="section-card-title">Result Statement</span>
               </label>
             </div>
           </div>
 
           <!-- Student & Submission Details (Optional Accordion) -->
-          <details style="margin-top: var(--space-md); background: var(--color-bg); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);" id="studentDetailsAccordion">
-            <summary style="cursor: pointer; font-weight: 600; font-size: 0.88rem; color: var(--color-text);">
-              🎓 Add Student & Lab Details on Record (Optional)
+          <details class="ai-student-details-accordion" id="studentDetailsAccordion" style="margin-top: var(--space-md); background: var(--color-bg); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
+            <summary style="cursor: pointer; font-weight: 600; font-size: 0.85rem; color: var(--color-text); display: flex; justify-content: space-between; align-items: center;">
+              <span>🎓 Add Student & Lab Details (Optional)</span>
+              <span class="accordion-arrow" style="font-size: 0.8rem; color: var(--color-text-secondary); transition: transform 0.2s;">▾</span>
             </summary>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
-              <input type="text" class="form-input" id="recExpNo" placeholder="Experiment No. (e.g. 03)" style="padding: 6px 10px; font-size: 0.85rem;" />
-              <input type="text" class="form-input" id="recSubject" placeholder="Subject / Lab (e.g. OS Lab)" style="padding: 6px 10px; font-size: 0.85rem;" />
-              <input type="text" class="form-input" id="recStudentName" placeholder="Student Name" style="padding: 6px 10px; font-size: 0.85rem;" />
-              <input type="text" class="form-input" id="recRollNo" placeholder="Roll / Reg Number" style="padding: 6px 10px; font-size: 0.85rem;" />
+              <input type="text" class="form-input" id="recExpNo" placeholder="Experiment No. (e.g. 03)" style="padding: 7px 10px; font-size: 0.84rem; height: 36px; border-radius: var(--radius-sm);" />
+              <input type="text" class="form-input" id="recSubject" placeholder="Subject / Lab (e.g. OS Lab)" style="padding: 7px 10px; font-size: 0.84rem; height: 36px; border-radius: var(--radius-sm);" />
+              <input type="text" class="form-input" id="recStudentName" placeholder="Student Name" style="padding: 7px 10px; font-size: 0.84rem; height: 36px; border-radius: var(--radius-sm);" />
+              <input type="text" class="form-input" id="recRollNo" placeholder="Roll / Reg Number" style="padding: 7px 10px; font-size: 0.84rem; height: 36px; border-radius: var(--radius-sm);" />
             </div>
           </details>
 
@@ -857,8 +881,8 @@
               🚀 Generate Full Lab Record
             </button>
           </div>
-
-        </div>
+        </div> <!-- end of recordConfigContent -->
+      </div> <!-- end of recordConfigView -->
 
         <!-- View 2: Generated Document & Print Preview -->
         <div id="recordResultView" style="display: none;">
@@ -946,24 +970,343 @@
 
         </div>
 
-        <!-- Loading State -->
-        <div id="recordLoadingState" style="display: none; text-align: center; padding: 40px 20px;">
-          <div class="spinner" style="width: 42px; height: 42px; border-width: 3px; margin: 0 auto 16px auto;"></div>
-          <div style="font-weight: 700; font-size: 1.15rem; color: var(--color-text);">Synthesizing University Lab Record...</div>
-          <div style="color: var(--color-text-secondary); font-size: 0.88rem; margin-top: 6px;" id="recordLoadingSub">Formulating aim, step-by-step algorithm, observation table, and flowchart...</div>
+        <!-- Loading State (Roaming Rocket Logo Animation & Features Showcase) -->
+        <div id="recordLoadingState" style="display: none;">
+          <div class="labdrop-loading-showcase">
+            <!-- Roaming Rocket Logo Orbit Animation -->
+            <div class="orbit-wrapper">
+              <svg class="orbit-svg" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <radialGradient id="earthGlowModal" cx="42%" cy="38%" r="62%">
+                    <stop offset="0%" stop-color="#FAF8F2" />
+                    <stop offset="65%" stop-color="#E2DDD2" />
+                    <stop offset="100%" stop-color="#CBC4B4" />
+                  </radialGradient>
+                  <linearGradient id="flameGrad1Modal" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#FBBF24" />
+                    <stop offset="50%" stop-color="#F59E0B" />
+                    <stop offset="100%" stop-color="#EA580C" stop-opacity="0" />
+                  </linearGradient>
+                  <linearGradient id="flameGrad2Modal" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#FEF08A" />
+                    <stop offset="60%" stop-color="#F59E0B" />
+                    <stop offset="100%" stop-color="#D97706" stop-opacity="0.1" />
+                  </linearGradient>
+                  <filter id="glowFilterModal" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur stdDeviation="2.5" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                  </filter>
+                </defs>
+
+                <!-- Stardust particles -->
+                <circle class="stardust" cx="30" cy="40" r="1.5" fill="#EAB308" opacity="0.6" style="animation-delay: 0.2s;" />
+                <circle class="stardust" cx="150" cy="35" r="1.2" fill="#EAB308" opacity="0.5" style="animation-delay: 1.1s;" />
+                <circle class="stardust" cx="155" cy="150" r="1.6" fill="#F59E0B" opacity="0.7" style="animation-delay: 0.7s;" />
+                <circle class="stardust" cx="25" cy="140" r="1.2" fill="#EAB308" opacity="0.5" style="animation-delay: 1.6s;" />
+
+                <!-- Orbital Ring -->
+                <path id="orbitRing180Modal" d="M 155 112 A 70 47 26 1 1 25 68 A 70 47 26 1 1 155 112"
+                      fill="none" stroke="#E6AA38" stroke-width="2.2" stroke-linecap="round" opacity="0.85" />
+                <path d="M 155 112 A 70 47 26 1 1 25 68 A 70 47 26 1 1 155 112"
+                      fill="none" stroke="#FBBF24" stroke-width="1" stroke-dasharray="7 5" opacity="0.9" />
+
+                <!-- Satellite Node on Orbit -->
+                <circle cx="94" cy="25" r="4.5" fill="#D97706" filter="url(#glowFilterModal)" />
+                <circle cx="94" cy="25" r="2.8" fill="#FDE047" />
+
+                <!-- Earth Globe in Center -->
+                <g class="earth-globe">
+                  <circle cx="90" cy="90" r="38" fill="url(#earthGlowModal)" stroke="#748366" stroke-width="2" />
+                  <g fill="#88987E" stroke="#728267" stroke-width="0.5" stroke-linejoin="round">
+                    <!-- North America -->
+                    <path d="M 66 66 C 69 61, 76 59, 82 61 C 86 63, 89 67, 86 72 C 84 75, 80 72, 77 76 C 75 79, 79 84, 77 87 C 75 90, 70 91, 67 87 C 65 84, 63 78, 66 73 Z" />
+                    <!-- Greenland -->
+                    <path d="M 85 54 C 87 53, 91 55, 90 58 C 87 60, 85 59, 84 56 Z" />
+                    <!-- South America -->
+                    <path d="M 75 92 C 78 91, 84 93, 86 97 C 87 103, 85 110, 81 114 C 78 118, 74 118, 71 112 C 69 106, 71 98, 75 92 Z" />
+                    <circle cx="88" cy="84" r="1.2" />
+                    <circle cx="93" cy="87" r="1.1" />
+                  </g>
+                  <path d="M 90 52 A 38 38 0 0 1 123 109 A 38 38 0 0 1 90 128 A 38 38 0 0 0 90 52 Z" fill="#556048" opacity="0.1" />
+                </g>
+
+                <!-- Orbiting Rocket -->
+                <g class="orbiting-rocket-group">
+                  <!-- Exhaust Flame -->
+                  <g class="flame-trail" transform="translate(0, 9)">
+                    <path d="M -6 0 C -11 9, -16 22, -9 32 C -14 20, -10 11, -4 2 Z" fill="url(#flameGrad1Modal)" />
+                    <path d="M -3 0 C -6 11, -9 25, -4 38 C -8 23, -5 13, -1 2 Z" fill="url(#flameGrad2Modal)" />
+                    <path d="M 1 0 C 1 11, -2 27, 2 39 C -2 25, 1 13, 3 2 Z" fill="#FDE047" opacity="0.9" />
+                    <path d="M 4 0 C 6 9, 7 20, 5 29 C 3 18, 4 9, 3 2 Z" fill="url(#flameGrad1Modal)" opacity="0.8" />
+                  </g>
+                  <!-- Rocket Body -->
+                  <g transform="translate(0, 0)">
+                    <path d="M -7 1 C -11 4, -14 10, -11 13 C -9 12, -6 8, -4 4 Z" fill="#1C2227" />
+                    <path d="M 7 1 C 11 4, 14 10, 11 13 C 9 12, 6 8, 4 4 Z" fill="#1C2227" />
+                    <path d="M 0 -15 C 4 -10, 7 -3, 7 6 C 7 10, 4 12, 0 12 C -4 12, -7 10, -7 6 C -7 -3, -4 -10, 0 -15 Z"
+                          fill="#22282D" stroke="#121619" stroke-width="1.2" />
+                    <!-- Paper sheet motif -->
+                    <rect x="-4" y="-5" width="8" height="10" rx="1.2" fill="#FDFBF7" stroke="#374151" stroke-width="0.7" />
+                    <line x1="-2.2" y1="-2.5" x2="2.2" y2="-2.5" stroke="#2C2C2C" stroke-width="1" stroke-linecap="round" />
+                    <line x1="-2.2" y1="0" x2="2.2" y2="0" stroke="#2C2C2C" stroke-width="1" stroke-linecap="round" />
+                    <line x1="-2.2" y1="2.5" x2="1" y2="2.5" stroke="#2C2C2C" stroke-width="1" stroke-linecap="round" />
+                  </g>
+                  <animateMotion dur="4s" repeatCount="indefinite" rotate="auto">
+                    <mpath href="#orbitRing180Modal" />
+                  </animateMotion>
+                </g>
+              </svg>
+            </div>
+
+            <!-- Status Headlines -->
+            <h2 class="loading-title">Synthesizing University Lab Record...</h2>
+            <div class="loading-status-pill">
+              <span class="status-dot-pulse"></span>
+              <span id="loadingDynamicMsg">💡 You can share files <strong>without logging in</strong> or signing up</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Messages Feed (Expanded Full-Height Visibility) -->
+        <div id="labRecordChatMessages" class="ai-chat-messages-container" style="display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); flex: 1; min-height: 280px; overflow-y: auto; margin-top: 10px;">
+          <div class="ai-chat-bot-bubble" style="background: rgba(79, 70, 229, 0.05); border-color: rgba(79, 70, 229, 0.15);">
+            <strong>👋 Welcome to LabDrop AI!</strong><br />
+            Select your code or diagram file above and click <strong>🚀 Generate Full Lab Record</strong>, or ask any question about code, algorithms, data structures, or lab experiments below.
+          </div>
         </div>
 
       </div>
+
+      <!-- Docked Bottom Chat Box for Lab Record -->
+      <div class="lab-chat-bottom-bar" id="labRecordChatBar">
+        <div id="labRecordChipsContainer" style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button type="button" class="chip-btn lab-record-chip-home" data-prompt="Describe each diagram separately with its system name, initial trigger, step-by-step flow, decision diamonds, and fork/join concurrency">📊 Describe Each Diagram Separately</button>
+          <button type="button" class="chip-btn lab-record-chip-home" data-prompt="Explain this code step by step">💡 Explain Code</button>
+          <button type="button" class="chip-btn lab-record-chip-home" data-prompt="Rewrite the algorithm in simpler steps">🔢 Simplify Algorithm</button>
+          <button type="button" class="chip-btn lab-record-chip-home" data-prompt="Add more detail to the theory section">📖 Expand Theory</button>
+          <button type="button" class="chip-btn lab-record-chip-home" data-prompt="Generate more test cases for the observation table">📋 More Test Cases</button>
+        </div>
+        <form id="labRecordChatForm" autocomplete="off" style="display: flex; gap: 8px; width: 100%;">
+          <input type="text" id="labRecordChatInput" name="labdrop_record_chat" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="form-input" placeholder="Ask AI about this lab record..." style="flex: 1; font-size: 0.88rem; padding: 9px 12px; border-radius: var(--radius-sm);" required />
+          <button type="submit" class="btn btn--primary" id="labRecordChatSubmitBtn" style="padding: 0 18px; font-weight: 600; white-space: nowrap;">Send</button>
+        </form>
+      </div> <!-- end of labRecordChatBar -->
+    </div> <!-- end of homeTabContentLabRecord -->
+
+        <!-- Tab 2: Viva & Exam Prep -->
+        <div class="ai-tab-content" id="homeTabContentViva">
+          
+          <!-- Scrollable Content Area -->
+          <div id="homeTabContentVivaScroll" style="flex: 1; min-height: 0; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;">
+            
+            <!-- View 1: Configuration Form (Collapsible Panel) -->
+            <div id="homeVivaConfigPanel" class="ai-collapsible-panel">
+              <div class="ai-collapsible-header" id="homeVivaConfigHeader">
+                <div class="ai-collapsible-header-info">
+                  <span>🎓</span>
+                  <span class="ai-collapsible-title">Viva & Exam Prep Options</span>
+                  <span class="ai-collapsible-badge" id="homeVivaConfigBadge">Oral Viva · Medium</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button type="button" class="btn btn--primary btn--sm" id="btnRunVivaCompact" style="display: none; padding: 4px 10px; font-size: 0.78rem;">🎓 Generate</button>
+                  <button type="button" class="ai-collapsible-toggle-btn" id="btnToggleVivaConfig" aria-label="Toggle Viva Options">
+                    <span id="homeVivaConfigToggleText">▲ Collapse Setup</span>
+                  </button>
+                </div>
+              </div>
+              <div class="ai-collapsible-content" id="homeVivaConfigContent">
+                <!-- Compact File Selector Dropdown -->
+                <div style="display: flex; flex-direction: column; gap: 3px;">
+                  <label for="homeAiFileSelect" style="font-size: 0.76rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.03em;">Select File:</label>
+                  <div style="display: flex; gap: 6px; align-items: center;">
+                    <select id="homeAiFileSelect" class="form-input" style="flex: 1; font-size: 0.84rem; padding: 6px 10px; height: 36px; border-radius: var(--radius-sm);"></select>
+                    <button type="button" class="btn btn--outline btn--sm" id="btnHomeAiUpload" style="font-size: 0.76rem; padding: 0 10px; height: 36px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; margin: 0;" title="Upload an additional file from your device">
+                      ➕ Upload
+                    </button>
+                    <input type="file" id="homeAiDirectFileInput" multiple style="display: none;" />
+                  </div>
+                </div>
+
+                <!-- Exam Mode & Dynamic Secondary Option Row -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start; margin-top: 8px;">
+                  <div>
+                    <label for="homeAiExamType" style="font-size: 0.76rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.03em; display: block; margin-bottom: 3px;">Target Action / Prep:</label>
+                    <select id="homeAiExamType" class="form-input" style="width: 100%; font-size: 0.84rem; padding: 6px 8px; height: 36px; border-radius: var(--radius-sm);">
+                      <option value="viva">🎓 Oral Lab Viva (Voce)</option>
+                      <option value="internal_20">📝 20 Marks Internal Test</option>
+                      <option value="semester_100">🏛️ 100 Marks Semester Paper</option>
+                      <option value="rapid_fire">⚡ Rapid-Fire Flashcards</option>
+                      <option value="summarize">📄 Summarize Content</option>
+                    </select>
+                  </div>
+
+                  <!-- Dynamic Secondary Option: Difficulty Level OR Summary Length -->
+                  <div id="homeAiSecondaryContainer">
+                    <label id="homeAiSecondaryLabel" for="homeAiSecondaryOption" style="font-size: 0.76rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.03em; display: block; margin-bottom: 3px;">Difficulty Level:</label>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                      <select id="homeAiSecondaryOption" class="form-input" style="flex: 1; width: 100%; font-size: 0.84rem; padding: 6px 8px; height: 36px; border-radius: var(--radius-sm);">
+                        <option value="easy">🟢 Easy (Fundamentals)</option>
+                        <option value="medium" selected>🟡 Medium (Lab Standard)</option>
+                        <option value="hard">🔴 Hard (Advanced Traps)</option>
+                        <option value="extreme">🔥 Extreme (Compiler & Internals)</option>
+                      </select>
+                      <input type="number" id="homeAiCustomLines" class="form-input" min="1" max="500" value="15" placeholder="Lines..." title="Number of summary lines" style="width: 65px; font-size: 0.84rem; padding: 6px 8px; height: 36px; border-radius: var(--radius-sm); display: none;" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Primary Generate Button -->
+                <button class="btn btn--primary btn--ai" id="homeBtnRunViva" style="width: 100%; padding: 8px 12px; font-size: 0.88rem; font-weight: 700; border-radius: var(--radius-sm); height: 38px; margin-top: 10px;">🎓 Generate Exam & Viva Prep</button>
+              </div>
+            </div>
+
+            <!-- Loading Indicator (Roaming Rocket Logo Animation & Features Showcase) -->
+            <div id="homeAiLoadingSpinner" style="display: none;">
+              <div class="labdrop-loading-showcase">
+                <!-- Roaming Rocket Logo Orbit Animation -->
+                <div class="orbit-wrapper">
+                  <svg class="orbit-svg" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <radialGradient id="earthGlowHomeViva" cx="42%" cy="38%" r="62%">
+                        <stop offset="0%" stop-color="#FAF8F2" />
+                        <stop offset="65%" stop-color="#E2DDD2" />
+                        <stop offset="100%" stop-color="#CBC4B4" />
+                      </radialGradient>
+                      <linearGradient id="flameGrad1HomeViva" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#FBBF24" />
+                        <stop offset="50%" stop-color="#F59E0B" />
+                        <stop offset="100%" stop-color="#EA580C" stop-opacity="0" />
+                      </linearGradient>
+                      <linearGradient id="flameGrad2HomeViva" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#FEF08A" />
+                        <stop offset="60%" stop-color="#F59E0B" />
+                        <stop offset="100%" stop-color="#D97706" stop-opacity="0.1" />
+                      </linearGradient>
+                      <filter id="glowFilterHomeViva" x="-30%" y="-30%" width="160%" height="160%">
+                        <feGaussianBlur stdDeviation="2.5" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                      </filter>
+                    </defs>
+
+                    <!-- Stardust particles -->
+                    <circle class="stardust" cx="30" cy="40" r="1.5" fill="#EAB308" opacity="0.6" style="animation-delay: 0.2s;" />
+                    <circle class="stardust" cx="150" cy="35" r="1.2" fill="#EAB308" opacity="0.5" style="animation-delay: 1.1s;" />
+                    <circle class="stardust" cx="155" cy="150" r="1.6" fill="#F59E0B" opacity="0.7" style="animation-delay: 0.7s;" />
+                    <circle class="stardust" cx="25" cy="140" r="1.2" fill="#EAB308" opacity="0.5" style="animation-delay: 1.6s;" />
+
+                    <!-- Orbital Ring -->
+                    <path id="orbitRing180HomeViva" d="M 155 112 A 70 47 26 1 1 25 68 A 70 47 26 1 1 155 112"
+                          fill="none" stroke="#E6AA38" stroke-width="2.2" stroke-linecap="round" opacity="0.85" />
+                    <path d="M 155 112 A 70 47 26 1 1 25 68 A 70 47 26 1 1 155 112"
+                          fill="none" stroke="#FBBF24" stroke-width="1" stroke-dasharray="7 5" opacity="0.9" />
+
+                    <!-- Satellite Node on Orbit -->
+                    <circle cx="94" cy="25" r="4.5" fill="#D97706" filter="url(#glowFilterHomeViva)" />
+                    <circle cx="94" cy="25" r="2.8" fill="#FDE047" />
+
+                    <!-- Earth Globe in Center -->
+                    <g class="earth-globe">
+                      <circle cx="90" cy="90" r="38" fill="url(#earthGlowHomeViva)" stroke="#748366" stroke-width="2" />
+                      <g fill="#88987E" stroke="#728267" stroke-width="0.5" stroke-linejoin="round">
+                        <path d="M 66 66 C 69 61, 76 59, 82 61 C 86 63, 89 67, 86 72 C 84 75, 80 72, 77 76 C 75 79, 79 84, 77 87 C 75 90, 70 91, 67 87 C 65 84, 63 78, 66 73 Z" />
+                        <path d="M 85 54 C 87 53, 91 55, 90 58 C 87 60, 85 59, 84 56 Z" />
+                        <path d="M 75 92 C 78 91, 84 93, 86 97 C 87 103, 85 110, 81 114 C 78 118, 74 118, 71 112 C 69 106, 71 98, 75 92 Z" />
+                        <circle cx="88" cy="84" r="1.2" />
+                        <circle cx="93" cy="87" r="1.1" />
+                      </g>
+                      <path d="M 90 52 A 38 38 0 0 1 123 109 A 38 38 0 0 1 90 128 A 38 38 0 0 0 90 52 Z" fill="#556048" opacity="0.1" />
+                    </g>
+
+                    <!-- Orbiting Rocket -->
+                    <g class="orbiting-rocket-group">
+                      <g class="flame-trail" transform="translate(0, 9)">
+                        <path d="M -6 0 C -11 9, -16 22, -9 32 C -14 20, -10 11, -4 2 Z" fill="url(#flameGrad1HomeViva)" />
+                        <path d="M -3 0 C -6 11, -9 25, -4 38 C -8 23, -5 13, -1 2 Z" fill="url(#flameGrad2HomeViva)" />
+                        <path d="M 1 0 C 1 11, -2 27, 2 39 C -2 25, 1 13, 3 2 Z" fill="#FDE047" opacity="0.9" />
+                        <path d="M 4 0 C 6 9, 7 20, 5 29 C 3 18, 4 9, 3 2 Z" fill="url(#flameGrad1HomeViva)" opacity="0.8" />
+                      </g>
+                      <g transform="translate(0, 0)">
+                        <path d="M -7 1 C -11 4, -14 10, -11 13 C -9 12, -6 8, -4 4 Z" fill="#1C2227" />
+                        <path d="M 7 1 C 11 4, 14 10, 11 13 C 9 12, 6 8, 4 4 Z" fill="#1C2227" />
+                        <path d="M 0 -15 C 4 -10, 7 -3, 7 6 C 7 10, 4 12, 0 12 C -4 12, -7 10, -7 6 C -7 -3, -4 -10, 0 -15 Z"
+                              fill="#22282D" stroke="#121619" stroke-width="1.2" />
+                        <rect x="-4" y="-5" width="8" height="10" rx="1.2" fill="#FDFBF7" stroke="#374151" stroke-width="0.7" />
+                        <line x1="-2.2" y1="-2.5" x2="2.2" y2="-2.5" stroke="#2C2C2C" stroke-width="1" stroke-linecap="round" />
+                        <line x1="-2.2" y1="0" x2="2.2" y2="0" stroke="#2C2C2C" stroke-width="1" stroke-linecap="round" />
+                        <line x1="-2.2" y1="2.5" x2="1" y2="2.5" stroke="#2C2C2C" stroke-width="1" stroke-linecap="round" />
+                      </g>
+                      <animateMotion dur="4s" repeatCount="indefinite" rotate="auto">
+                        <mpath href="#orbitRing180HomeViva" />
+                      </animateMotion>
+                    </g>
+                  </svg>
+                </div>
+
+                <!-- Status Headlines -->
+                <h2 class="loading-title" id="homeAiLoadingTitle">Synthesizing Academic Intelligence...</h2>
+                <div class="loading-status-pill">
+                  <span class="status-dot-pulse"></span>
+                  <span id="homeAiLoadingDynamicMsg">💡 You can share files <strong>without logging in</strong> or signing up</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Viva Result Output -->
+            <div id="homeVivaResult" style="display: none; margin-top: 4px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                <span id="homeVivaBadge" style="font-size: 0.75rem; font-weight: 700; background: rgba(79, 70, 229, 0.1); color: var(--color-primary); padding: 4px 10px; border-radius: var(--radius-full); border: 1px solid rgba(79, 70, 229, 0.25);">Oral Viva · Medium</span>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn btn--outline btn--sm" id="homeBtnRegenViva">🔄 Regenerate</button>
+                  <button class="btn btn--outline btn--sm" id="homeBtnCopyViva">📋 Copy Output</button>
+                </div>
+              </div>
+              <div id="homeVivaOutput" class="markdown-body" style="font-size: 0.9rem; line-height: 1.6; text-align: left; background: var(--color-bg-secondary); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); max-height: 360px; overflow-y: auto;"></div>
+            </div>
+
+            <!-- Messages Feed (Spacious Chat Container) -->
+            <div id="homeVivaChatMessages" class="ai-chat-messages-container" style="display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); flex: 1; min-height: 280px; overflow-y: auto; margin-top: 10px;">
+              <div class="ai-chat-bot-bubble" style="background: rgba(79, 70, 229, 0.05); border-color: rgba(79, 70, 229, 0.15);">
+                <strong>🎓 Welcome to LabDrop Viva & Exam Prep!</strong><br />
+                Select your study, code, or diagram file above and click <strong>🎓 Generate Exam & Viva Prep</strong>, or chat below with AI to get oral viva drills, rapid-fire questions, and concept explanations.
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Docked Bottom Chat Box -->
+          <div id="homeVivaChatBottomBar" class="lab-chat-bottom-bar" style="flex-shrink: 0; background: var(--color-bg-secondary); border-top: 1px solid var(--color-border); padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -2px 10px rgba(0,0,0,0.03); z-index: 10;">
+            <!-- Quick Prompt Chips -->
+            <div id="homeVivaChipsContainer" style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button type="button" class="chip-btn viva-chip-home" data-prompt="Describe each diagram separately with its system name, initial trigger, step-by-step flow, decision diamonds, and fork/join concurrency">📊 Describe Each Diagram Separately</button>
+              <button type="button" class="chip-btn viva-chip-home" data-prompt="Summarize this in 5 lines">⚡ Summarize in 5 lines</button>
+              <button type="button" class="chip-btn viva-chip-home" data-prompt="What is this document about?">❓ What is this document about?</button>
+              <button type="button" class="chip-btn viva-chip-home" data-prompt="Give me a 3-bullet quick overview of key concepts.">📋 3-Bullet Overview</button>
+              <button type="button" class="chip-btn viva-chip-home" data-prompt="Explain how this works in simple words.">💡 Explain Simply</button>
+            </div>
+
+            <!-- Chat Input Form -->
+            <form id="homeVivaChatForm" autocomplete="off" style="display: flex; gap: 8px; width: 100%;">
+              <input type="text" id="homeVivaChatInput" name="labdrop_viva_chat" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="form-input" placeholder="Ask AI a question or request a summary..." style="flex: 1; font-size: 0.88rem; padding: 9px 12px; border-radius: var(--radius-sm);" required />
+              <button type="submit" class="btn btn--primary" id="homeVivaChatSubmitBtn" style="padding: 0 18px; font-weight: 600; white-space: nowrap;">Send</button>
+            </form>
+          </div>
+
+        </div> <!-- end of homeTabContentViva -->
+
+      </div>
+
     </div>
   </div>
 
   <!-- Floating Circular AI Bot Button on Homepage -->
-  <button class="ai-fab-btn" id="aiFloatingBtn" title="LabDrop AI Assistant (Lab Records, Viva Prep &amp; Code Tutor)" aria-label="Open Lab Record AI">
+  <button class="ai-fab-btn" id="aiFloatingBtn" title="LabDrop AI Assistant (Lab Records, Viva Prep &amp; Code Tutor)" aria-label="Open LabDrop AI Assistant">
     <div class="ai-fab-pulse"></div>
+    <span class="ai-fab-badge">AI</span>
     <picture>
       <source srcset="/LabDropAILogo-icon.webp" type="image/webp" />
       <img src="/LabDropAILogo-icon.png" alt="LabDrop AI" width="60" height="60" loading="eager" />
     </picture>
+    <div class="ai-fab-tooltip">✨ LabDrop AI</div>
   </button>
 
   <!-- External Visual Libraries (Deferred) -->
@@ -972,7 +1315,7 @@
   <!-- Core App Scripts (Non-blocking & Deferred) -->
   <script src="/js/dialogs.js" defer></script>
   <script src="/js/bg.js" defer></script>
-  <script src="/js/main.js?v=5.4" defer></script>
+  <script src="/js/main.js?v=7.2" defer></script>
   
 </body>
 </html>

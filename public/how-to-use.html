@@ -16,7 +16,7 @@
   <link rel="canonical" href="https://labdrop.online/how-to-use.html" />
 
   <!-- Google Chrome & Mobile Web App Meta -->
-  <meta name="theme-color" content="#FDFBF7" />
+  <meta name="theme-color" content="#FFD166" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -55,7 +55,7 @@
   <link rel="manifest" href="/manifest.json" />
 
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/style.css?v=6.7" />
   <script src="/js/site-config.js"></script>
 
   <!-- Structured Data: Schema.org FAQPage & BreadcrumbList (JSON-LD) -->
@@ -153,15 +153,17 @@
       gap: var(--space-md);
     }
     .accordion-item {
-      border: 1px solid var(--color-border-dark);
+      border: 1.5px solid var(--color-border);
+      border-top: 3px solid var(--color-primary);
       border-radius: var(--radius-lg);
-      background: #FFF;
+      background: var(--color-surface, #FFFDF8);
       overflow: hidden;
-      box-shadow: 2px 4px 0 rgba(0, 0, 0, 0.05);
-      transition: box-shadow var(--transition-fast);
+      box-shadow: 0 4px 16px rgba(217, 119, 6, 0.05);
+      transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
     }
     .accordion-item:hover {
-      box-shadow: 2px 4px 0 rgba(0, 0, 0, 0.1);
+      border-color: var(--color-primary-dark);
+      box-shadow: 0 6px 20px rgba(217, 119, 6, 0.1);
     }
     .accordion-header {
       width: 100%;
@@ -310,8 +312,8 @@
     </main>
   </div>
 
-  <footer class="footer" style="margin-top: auto; padding-top: var(--space-2xl); padding-bottom: var(--space-md); text-align: right; color: #4b5563; font-size: 0.85rem;">
-      <div style="display: flex; justify-content: flex-end; gap: 14px; flex-wrap: wrap;">
+  <footer class="footer" style="margin-top: auto; padding-top: var(--space-2xl); padding-bottom: var(--space-md); text-align: left; color: #4b5563; font-size: 0.85rem;">
+      <div style="display: flex; justify-content: flex-start; gap: 14px; flex-wrap: wrap;">
         <a href="/how-to-use.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">How to Use</a>
         <a href="mailto:yuvaankaarthikeyaa.1206@gmail.com" class="nav-link footer-email-link" style="color: #374151; text-decoration: none; font-weight: 600;">Email</a>
         <a href="https://www.linkedin.com/in/yuvaan-kaarthikeyaa-adulapuram-6ba90133b" target="_blank" rel="noopener noreferrer" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">LinkedIn</a>

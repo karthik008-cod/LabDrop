@@ -47,6 +47,7 @@
 
   const progressBarFill = $('#progressBarFill');
   const progressText = $('#progressText');
+  const paperJetGlider = $('#paperJetGlider');
 
   const qrImage = $('#qrImage');
   const transferCode = $('#transferCode');
@@ -409,8 +410,8 @@
       totalSize += file.size;
       const cat = getFileCategory(file.name);
       const icon = FILE_ICONS[cat] || '📎';
-      const isCode = cat === 'code';
-      const recordBtnHtml = isCode ? `<button type="button" class="file-item__record" data-index="${index}" title="Generate Lab Record" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: var(--radius-sm); color: #7c3aed; font-weight: 600; cursor: pointer;">📄 Record</button>` : '';
+      const isEligibleRecord = cat === 'code' || cat === 'pdf' || cat === 'document' || cat === 'image';
+      const recordBtnHtml = isEligibleRecord ? `<button type="button" class="file-item__record" data-index="${index}" title="Generate Lab Record with AI" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: var(--radius-sm); color: #7c3aed; font-weight: 700; cursor: pointer;">📄 AI Record</button>` : '';
 
       const li = document.createElement('li');
       li.className = 'file-item';
@@ -510,8 +511,14 @@
     // --- Render folder panel ---
     renderFolderPanel();
 
-    // --- Update code detection banner ---
+    // --- Update code detection banner & AI modal dropdowns ---
     updateCodeDetectionBanner();
+    if (typeof populateHomeAiFileSelect === 'function') {
+      populateHomeAiFileSelect();
+    }
+    if (typeof populateRecordSourceSelect === 'function') {
+      populateRecordSourceSelect();
+    }
   }
 
   // ---- Render folder panel ----
@@ -921,6 +928,8 @@
       }
     }
 
+    if (paperJetGlider) paperJetGlider.style.left = '0%';
+    if (progressBarFill) progressBarFill.style.width = '0%';
     showSection(uploadSection);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -969,6 +978,9 @@
         if (e.lengthComputable) {
           const pct = Math.round((e.loaded / e.total) * 100);
           progressBarFill.style.width = pct + '%';
+          if (paperJetGlider) {
+            paperJetGlider.style.left = pct + '%';
+          }
           progressText.textContent = `Uploading… ${pct}%`;
         }
       });
@@ -1266,6 +1278,7 @@
     requirePinCheck.checked = false;
     renderFileList();
     progressBarFill.style.width = '0%';
+    if (paperJetGlider) paperJetGlider.style.left = '0%';
     progressText.textContent = 'Preparing upload…';
     showSection(selectSection);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1301,72 +1314,186 @@
   // ---- Initialize ----
   showSection(selectSection);
 
-  // ---- PWA & Web Share Target Logic ----
+  // ---- PWA, Desktop File Handling & Web Share Target Logic ----
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(err => {
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        if (reg && reg.update) {
+          reg.update();
+        }
+      }).catch(err => {
         console.error('ServiceWorker registration failed: ', err);
       });
     });
+
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'LABDROP_SHARED_FILES_READY') {
+        checkSharedFiles();
+      }
+    });
   }
+
+  // Desktop PWA File Handling API (Windows File Explorer "Open with" -> LabDrop / launchQueue)
+  if ('launchQueue' in window && 'files' in LaunchParams.prototype) {
+    window.launchQueue.setConsumer(async (launchParams) => {
+      if (!launchParams.files || !launchParams.files.length) return;
+      try {
+        const filePromises = launchParams.files.map(handle => handle.getFile());
+        const files = await Promise.all(filePromises);
+        if (files && files.length > 0) {
+          addFiles(files);
+          showAlert(`📥 Added ${files.length} file(s) opened with LabDrop!`, 'success');
+        }
+      } catch (err) {
+        console.error('Error handling files from launchQueue:', err);
+      }
+    });
+  }
+
+  let isCheckingSharedFiles = false;
 
   // Check if we arrived via Web Share Target (or check IndexedDB regardless)
   function checkSharedFiles(retries = 0) {
+    if (isCheckingSharedFiles) return;
     const urlParams = new URLSearchParams(window.location.search);
     
     if (urlParams.has('share_error')) {
-      window.history.replaceState({}, document.title, '/');
-      showAlert('Failed to process shared files. They might be too large or unsupported.', 'error');
+      window.history.replaceState({}, document.title, window.location.pathname);
+      showAlert('Failed to process shared files. They might be unsupported or restricted by the OS.', 'error');
       return;
     }
-    
-    if (!urlParams.has('shared')) return;
 
-    const request = indexedDB.open('LabDropSharedFiles', 1);
+    const hasSharedParam = urlParams.has('shared');
+
+    isCheckingSharedFiles = true;
+    const request = indexedDB.open('LabDropSharedFiles', 2);
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
       if (!db.objectStoreNames.contains('files')) {
         db.createObjectStore('files', { autoIncrement: true });
       }
+      if (!db.objectStoreNames.contains('meta')) {
+        db.createObjectStore('meta', { keyPath: 'id' });
+      }
     };
 
     request.onsuccess = (event) => {
       const db = event.target.result;
+      if (!db.objectStoreNames.contains('files')) {
+        db.close();
+        isCheckingSharedFiles = false;
+        return;
+      }
 
-      const transaction = db.transaction('files', 'readwrite');
+      const storeNames = Array.from(db.objectStoreNames);
+      const transaction = db.transaction(storeNames, 'readwrite');
       const store = transaction.objectStore('files');
       const getAllRequest = store.getAll();
 
       getAllRequest.onsuccess = () => {
-        const files = getAllRequest.result;
-        if (files && files.length > 0) {
-          addFiles(files);
-          showAlert(`Received ${files.length} file(s) from share! Please review and click Create Transfer.`, 'success');
-          store.clear();
-          window.history.replaceState({}, document.title, '/');
-        } else {
-          // Store exists but files might not be saved yet, retry
-          db.close();
-          if (retries < 20) {
-            setTimeout(() => checkSharedFiles(retries + 1), 500);
-          } else {
-            window.history.replaceState({}, document.title, '/');
+        const rawItems = getAllRequest.result || [];
+        const normalizedFiles = [];
+
+        rawItems.forEach(item => {
+          if (!item) return;
+          if (item instanceof File) {
+            normalizedFiles.push(item);
+          } else if (item.blob instanceof Blob) {
+            normalizedFiles.push(new File([item.blob], item.name || 'shared_file', {
+              type: item.type || item.blob.type || 'application/octet-stream',
+              lastModified: item.lastModified || Date.now()
+            }));
+          } else if (item.file instanceof File) {
+            normalizedFiles.push(item.file);
+          } else if (item.file instanceof Blob) {
+            normalizedFiles.push(new File([item.file], item.name || 'shared_file', {
+              type: item.type || item.file.type || 'application/octet-stream',
+              lastModified: item.lastModified || Date.now()
+            }));
+          } else if (item instanceof Blob) {
+            normalizedFiles.push(new File([item], item.name || 'shared_file', {
+              type: item.type || 'application/octet-stream',
+              lastModified: Date.now()
+            }));
           }
+        });
+
+        // Check meta store for any shared link
+        let sharedLink = null;
+        if (storeNames.includes('meta')) {
+          const metaStore = transaction.objectStore('meta');
+          const getMetaReq = metaStore.get('share_meta');
+          getMetaReq.onsuccess = () => {
+            if (getMetaReq.result && getMetaReq.result.url) {
+              sharedLink = getMetaReq.result.url;
+            }
+          };
         }
+
+        transaction.oncomplete = () => {
+          db.close();
+          isCheckingSharedFiles = false;
+
+          let hasAddedAnything = false;
+          if (normalizedFiles.length > 0) {
+            addFiles(normalizedFiles);
+            showAlert(`📥 Received ${normalizedFiles.length} file(s) from WhatsApp / Share! Ready to transfer.`, 'success');
+            hasAddedAnything = true;
+          }
+
+          if (sharedLink) {
+            const activeFolder = getActiveFolder();
+            const targetLinks = activeFolder ? activeFolder.links : selectedLinks;
+            if (targetLinks.length < 20) {
+              targetLinks.push(sharedLink);
+              renderFileList();
+              showAlert(`🔗 Received shared link from WhatsApp / Share!`, 'success');
+              hasAddedAnything = true;
+            }
+          }
+
+          if (hasSharedParam) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+
+          if (!hasAddedAnything && hasSharedParam && retries < 10) {
+            setTimeout(() => checkSharedFiles(retries + 1), 400);
+          }
+        };
+
+        // Clear stores immediately once read
+        store.clear();
+        if (storeNames.includes('meta')) {
+          const metaStore = transaction.objectStore('meta');
+          metaStore.clear();
+        }
+      };
+
+      getAllRequest.onerror = () => {
+        db.close();
+        isCheckingSharedFiles = false;
       };
     };
 
     request.onerror = (err) => {
       console.error('Failed to open IndexedDB for shared files', err);
-      if (retries < 20) {
-        setTimeout(() => checkSharedFiles(retries + 1), 500);
+      isCheckingSharedFiles = false;
+      if (hasSharedParam && retries < 10) {
+        setTimeout(() => checkSharedFiles(retries + 1), 400);
       }
     };
   }
 
+  // Re-check when user switches back to LabDrop app window
+  window.addEventListener('focus', () => checkSharedFiles());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkSharedFiles();
+  });
+
   // Run on load
   checkAuth();
+  checkSharedFiles();
   
   const urlParams = new URLSearchParams(window.location.search);
   const action = urlParams.get('action');
@@ -1422,23 +1549,160 @@
   let externalRecordFiles = [];
   let currentGeneratedRecord = null;
 
-  // Find all code files from workspace or upload
-  function findCodeFiles() {
-    const all = getAllFiles();
-    const codeFiles = all.filter(f => getFileCategory(f.name) === 'code');
-    externalRecordFiles.forEach(f => {
-      if (!codeFiles.some(cf => cf.name === f.name)) {
-        codeFiles.push(f);
+  // Unified AI Session File Cache (Persists across tab switching & follow-on chat questions)
+  let aiSessionFiles = [];
+
+  function getAiFileIcon(fileName) {
+    if (!fileName) return '📄';
+    const cat = typeof getFileCategory === 'function' ? getFileCategory(fileName) : 'other';
+    if (cat === 'code') return '💻';
+    if (cat === 'pdf') return '📑';
+    if (cat === 'image') return '🖼️';
+    if (cat === 'document') return '📖';
+    return '📄';
+  }
+
+  // Pre-reads and caches complete file payload so it is immediately available throughout the session
+  // Pre-reads and caches complete file payload so it is immediately available throughout the session
+  async function cacheAiFilePayload(file) {
+    if (!file) return null;
+    if (file.docxBase64 || file.pdfBase64 || file.imageBase64 || (file.content !== undefined && typeof file.slice !== 'function')) {
+      file.codeContent = file.codeContent || file.content || '';
+      file.content = file.content || file.codeContent || '';
+      file.filename = file.filename || file.name || 'file';
+      file.name = file.name || file.filename || 'file';
+      return file;
+    }
+
+    const fileName = file.name || '';
+    const isPdf = fileName.toLowerCase().endsWith('.pdf');
+    const isImg = /\.(png|jpe?g|webp|gif|svg)$/i.test(fileName);
+    const isDocx = /\.(docx|doc)$/i.test(fileName);
+
+    if (isPdf || isImg || isDocx) {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const base64 = (typeof dataUrl === 'string' && dataUrl.includes(',')) ? dataUrl.split(',')[1] : dataUrl;
+      const mimeType = isPdf ? 'application/pdf' : (isDocx ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : (file.type || 'image/png'));
+      const placeholder = isDocx ? `[Attached Word Document: ${fileName}]` : (isPdf ? `[Attached Document/Diagram File: ${fileName}]` : `[Attached Diagram Image: ${fileName}]`);
+
+      return {
+        fileRef: file,
+        name: fileName,
+        filename: fileName,
+        size: file.size,
+        type: file.type,
+        isPdf,
+        isImage: isImg,
+        isDocx,
+        pdfBase64: isPdf ? base64 : undefined,
+        imageBase64: isImg ? base64 : undefined,
+        docxBase64: isDocx ? base64 : undefined,
+        mimeType,
+        content: placeholder,
+        codeContent: placeholder
+      };
+    } else {
+      const textContent = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result || '');
+        reader.onerror = reject;
+        reader.readAsText(file.slice(0, 100 * 1024));
+      });
+      return {
+        fileRef: file,
+        name: fileName,
+        filename: fileName,
+        size: file.size,
+        type: file.type,
+        isPdf: false,
+        isImage: false,
+        isDocx: false,
+        content: textContent,
+        codeContent: textContent
+      };
+    }
+  }
+
+  function addUnifiedAiSessionFile(cachedFile) {
+    if (!cachedFile || !cachedFile.name) return;
+    const existingIdx = aiSessionFiles.findIndex(f => f.name === cachedFile.name);
+    if (existingIdx >= 0) {
+      aiSessionFiles[existingIdx] = cachedFile;
+    } else {
+      aiSessionFiles.push(cachedFile);
+    }
+    const originalFile = cachedFile.fileRef || cachedFile;
+    if (!externalRecordFiles.some(f => f.name === cachedFile.name)) {
+      externalRecordFiles.push(originalFile);
+    }
+    if (typeof homeDirectVivaFiles !== 'undefined' && !homeDirectVivaFiles.some(f => f.name === cachedFile.name)) {
+      homeDirectVivaFiles.push(originalFile);
+    }
+  }
+
+  function getUnifiedAiFiles() {
+    const list = [];
+    const seen = new Set();
+
+    // 1. Session uploaded files first (highest priority)
+    aiSessionFiles.forEach(f => {
+      if (!seen.has(f.name)) {
+        seen.add(f.name);
+        list.push(f);
       }
     });
-    return codeFiles;
+
+    // 2. Direct viva files
+    if (typeof homeDirectVivaFiles !== 'undefined' && Array.isArray(homeDirectVivaFiles)) {
+      homeDirectVivaFiles.forEach(f => {
+        if (!seen.has(f.name)) {
+          seen.add(f.name);
+          list.push(f);
+        }
+      });
+    }
+
+    // 3. External record files
+    externalRecordFiles.forEach(f => {
+      if (!seen.has(f.name)) {
+        seen.add(f.name);
+        list.push(f);
+      }
+    });
+
+    // 4. All workspace / dropped files
+    const all = typeof getAllFiles === 'function' ? getAllFiles() : [];
+    all.forEach(f => {
+      if (f && f.name && !seen.has(f.name)) {
+        seen.add(f.name);
+        list.push(f);
+      }
+    });
+
+    return list;
+  }
+
+  // Find all eligible files (code, pdfs, documents, diagrams) from workspace or upload
+  function findCodeFiles() {
+    return getUnifiedAiFiles();
   }
 
   function updateCodeDetectionBanner() {
     if (!codeDetectionBanner) return;
-    const codeFiles = findCodeFiles();
-    if (codeFiles.length > 0) {
-      detectedCodeFilename.textContent = codeFiles[0].name + (codeFiles.length > 1 ? ` (+${codeFiles.length - 1} more)` : '');
+    const files = findCodeFiles();
+    if (files.length > 0) {
+      const f = files[0];
+      const cat = getFileCategory(f.name);
+      const typeLabel = cat === 'code' ? 'Code File' : (cat === 'pdf' ? 'PDF / Diagram File' : 'Document File');
+      const titleEl = codeDetectionBanner.querySelector('.code-detected-banner__title');
+      if (titleEl) {
+        titleEl.innerHTML = `${typeLabel} Detected: <strong id="detectedCodeFilename">${escapeHtml(f.name + (files.length > 1 ? ` (+${files.length - 1} more)` : ''))}</strong>`;
+      }
       codeDetectionBanner.style.display = 'flex';
     } else {
       codeDetectionBanner.style.display = 'none';
@@ -1449,20 +1713,18 @@
   function populateRecordSourceSelect(preferredName) {
     if (!recordSourceSelect) return;
     recordSourceSelect.innerHTML = '';
-    const codeFiles = findCodeFiles();
-    const allFiles = getAllFiles();
-    const list = codeFiles.length > 0 ? codeFiles : allFiles;
+    const allFiles = getUnifiedAiFiles();
 
-    list.forEach(f => {
+    allFiles.forEach(f => {
       const opt = document.createElement('option');
       opt.value = f.name;
-      opt.textContent = `${getFileCategory(f.name) === 'code' ? '💻' : '📄'} ${f.name} (${formatBytes(f.size)})`;
+      opt.textContent = `${getAiFileIcon(f.name)} ${f.name} (${formatBytes(f.size || 0)})`;
       if (preferredName && f.name === preferredName) opt.selected = true;
       recordSourceSelect.appendChild(opt);
     });
 
     // Also offer link text if user entered snippet
-    const links = getAllLinks();
+    const links = typeof getAllLinks === 'function' ? getAllLinks() : [];
     links.forEach((link, idx) => {
       const opt = document.createElement('option');
       opt.value = `__link_${idx}`;
@@ -1501,22 +1763,160 @@
     recordModalAlertClose.addEventListener('click', clearRecordModalError);
   }
 
-  // Open modal
-  function openLabRecordModal(preferredFile) {
+  // Open modal / side panel
+  function openLabRecordModal(preferredFile, targetTab = 'labrecord') {
     clearRecordModalError();
     const prefName = typeof preferredFile === 'string' ? preferredFile : (preferredFile ? preferredFile.name : null);
     populateRecordSourceSelect(prefName);
-    
-    recordConfigView.style.display = 'block';
-    recordResultView.style.display = 'none';
-    recordLoadingState.style.display = 'none';
+    if (typeof populateHomeAiFileSelect === 'function') {
+      populateHomeAiFileSelect(prefName);
+    }
+    if (typeof switchHomeAiTab === 'function') {
+      switchHomeAiTab(targetTab);
+    }
     
     labRecordModal.classList.add('active');
+    document.body.classList.add('ai-sidepanel-open');
   }
 
   function closeLabRecordModal() {
     clearRecordModalError();
     labRecordModal.classList.remove('active');
+    document.body.classList.remove('ai-sidepanel-open');
+  }
+
+  /**
+   * Convert LaTeX math markup and raw ASCII symbol tokens into clean, authentic Unicode characters
+   * (e.g. $\rightarrow$, \rightarrow, -> become →, \Rightarrow becomes ⇒, \leq becomes ≤, \mathcal{O}(N) becomes O(N))
+   * Preserves code inside ```...``` code blocks and inline code `...`.
+   */
+  function convertLatexAndTextSymbolsToUnicode(text) {
+    if (!text || typeof text !== 'string') return text || '';
+
+    const parts = text.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
+
+    return parts.map((part, idx) => {
+      if (idx % 2 === 1) return part;
+
+      let s = part;
+
+      // 1. Arrows (LaTeX and text)
+      s = s.replace(/\$?\s*\\(?:rightarrow|to|longrightarrow)\s*\$?/g, '→');
+      s = s.replace(/\$?\s*\\(?:leftarrow|gets|longleftarrow)\s*\$?/g, '←');
+      s = s.replace(/\$?\s*\\(?:leftrightarrow|longleftrightarrow)\s*\$?/g, '↔');
+      s = s.replace(/\$?\s*\\(?:Rightarrow|implies|Longrightarrow)\s*\$?/g, '⇒');
+      s = s.replace(/\$?\s*\\(?:Leftarrow|Longleftarrow)\s*\$?/g, '⇐');
+      s = s.replace(/\$?\s*\\(?:Leftrightarrow|iff|Longleftrightarrow)\s*\$?/g, '⇔');
+      s = s.replace(/\$?\s*\\(?:uparrow)\s*\$?/g, '↑');
+      s = s.replace(/\$?\s*\\(?:downarrow)\s*\$?/g, '↓');
+      s = s.replace(/\$?\s*\\(?:updownarrow)\s*\$?/g, '↕');
+      s = s.replace(/\$?\s*\\(?:mapsto)\s*\$?/g, '↦');
+      s = s.replace(/\$?\s*\\(?:hookrightarrow)\s*\$?/g, '↪');
+      s = s.replace(/\$?\s*\\(?:hookleftarrow)\s*\$?/g, '↩');
+      s = s.replace(/\$?\s*\\(?:nearrow)\s*\$?/g, '↗');
+      s = s.replace(/\$?\s*\\(?:searrow)\s*\$?/g, '↘');
+      s = s.replace(/\$?\s*\\(?:swarrow)\s*\$?/g, '↙');
+      s = s.replace(/\$?\s*\\(?:nwarrow)\s*\$?/g, '↖');
+
+      // Text arrows with spacing (outside code blocks)
+      s = s.replace(/(\s+)-->(\s+)/g, '$1→$2');
+      s = s.replace(/(\s+)->(\s+)/g, '$1→$2');
+      s = s.replace(/(\s+)<--(\s+)/g, '$1←$2');
+      s = s.replace(/(\s+)<-(\s+)/g, '$1←$2');
+      s = s.replace(/(\s+)<->(\s+)/g, '$1↔$2');
+      s = s.replace(/(\s+)==>(\s+)/g, '$1⇒$2');
+      s = s.replace(/(\s+)=>(\s+)/g, '$1⇒$2');
+      s = s.replace(/(\s+)<=(\s+)/g, '$1⇐$2');
+      s = s.replace(/(\s+)<=>(\s+)/g, '$1⇔$2');
+
+      // 2. Comparisons & Relations
+      s = s.replace(/\$?\s*\\(?:leq?|le)\s*\$?/g, '≤');
+      s = s.replace(/\$?\s*\\(?:geq?|ge)\s*\$?/g, '≥');
+      s = s.replace(/\$?\s*\\(?:neq?|ne)\s*\$?/g, '≠');
+      s = s.replace(/\$?\s*\\(?:approx)\s*\$?/g, '≈');
+      s = s.replace(/\$?\s*\\(?:equiv)\s*\$?/g, '≡');
+      s = s.replace(/\$?\s*\\(?:sim)\s*\$?/g, '∼');
+      s = s.replace(/\$?\s*\\(?:propto)\s*\$?/g, '∝');
+      s = s.replace(/\$?\s*\\(?:ll)\s*\$?/g, '≪');
+      s = s.replace(/\$?\s*\\(?:gg)\s*\$?/g, '≫');
+
+      // 3. Arithmetic & Operations
+      s = s.replace(/\$?\s*\\(?:times)\s*\$?/g, '×');
+      s = s.replace(/\$?\s*\\(?:div)\s*\$?/g, '÷');
+      s = s.replace(/\$?\s*\\(?:pm)\s*\$?/g, '±');
+      s = s.replace(/\$?\s*\\(?:mp)\s*\$?/g, '∓');
+      s = s.replace(/\$?\s*\\(?:cdot|bullet)\s*\$?/g, '•');
+      s = s.replace(/\$?\s*\\(?:dots|cdots|ldots)\s*\$?/g, '…');
+      s = s.replace(/\$?\s*\\(?:circ|degree)\s*\$?/g, '°');
+      s = s.replace(/\$?\s*\\sqrt\{([^}]+)\}\s*\$?|\$?\s*\\sqrt\(([^)]+)\)\s*\$?/g, '√($1$2)');
+      s = s.replace(/\$?\s*\\(?:sqrt)\s*\$?/g, '√');
+      s = s.replace(/\$?\s*\\frac\{([^}]+)\}\{([^}]+)\}\s*\$?/g, '($1 / $2)');
+
+      // 4. Sets & Logic
+      s = s.replace(/\$?\s*\\(?:in)\s*\$?/g, '∈');
+      s = s.replace(/\$?\s*\\(?:notin)\s*\$?/g, '∉');
+      s = s.replace(/\$?\s*\\(?:subset)\s*\$?/g, '⊂');
+      s = s.replace(/\$?\s*\\(?:subseteq)\s*\$?/g, '⊆');
+      s = s.replace(/\$?\s*\\(?:supset)\s*\$?/g, '⊃');
+      s = s.replace(/\$?\s*\\(?:supseteq)\s*\$?/g, '⊇');
+      s = s.replace(/\$?\s*\\(?:cap)\s*\$?/g, '∩');
+      s = s.replace(/\$?\s*\\(?:cup)\s*\$?/g, '∪');
+      s = s.replace(/\$?\s*\\(?:forall)\s*\$?/g, '∀');
+      s = s.replace(/\$?\s*\\(?:exists)\s*\$?/g, '∃');
+      s = s.replace(/\$?\s*\\(?:nexists)\s*\$?/g, '∄');
+      s = s.replace(/\$?\s*\\(?:emptyset|varnothing)\s*\$?/g, '∅');
+      s = s.replace(/\$?\s*\\(?:infty)\s*\$?/g, '∞');
+      s = s.replace(/\$?\s*\\(?:neg|lnot)\s*\$?/g, '¬');
+      s = s.replace(/\$?\s*\\(?:land|wedge)\s*\$?/g, '∧');
+      s = s.replace(/\$?\s*\\(?:lor|vee)\s*\$?/g, '∨');
+
+      // 5. Complexity & Notation
+      s = s.replace(/\$?\s*\\mathcal\{O\}\((.*?)\)\s*\$?|\$?\s*\\mathcal\{O\}\s*\$?|\$?\s*\\mathcal\s*O\s*\$?/g, (m, p1) => p1 ? `O(${p1})` : 'O');
+      s = s.replace(/\$?\s*\\Omega\((.*?)\)\s*\$?|\$?\s*\\Omega\s*\$?/g, (m, p1) => p1 ? `Ω(${p1})` : 'Ω');
+      s = s.replace(/\$?\s*\\Theta\((.*?)\)\s*\$?|\$?\s*\\Theta\s*\$?/g, (m, p1) => p1 ? `Θ(${p1})` : 'Θ');
+
+      // 6. Greek Letters
+      s = s.replace(/\$?\s*\\(?:alpha)\s*\$?/g, 'α');
+      s = s.replace(/\$?\s*\\(?:beta)\s*\$?/g, 'β');
+      s = s.replace(/\$?\s*\\(?:gamma)\s*\$?/g, 'γ');
+      s = s.replace(/\$?\s*\\(?:Gamma)\s*\$?/g, 'Γ');
+      s = s.replace(/\$?\s*\\(?:delta)\s*\$?/g, 'δ');
+      s = s.replace(/\$?\s*\\(?:Delta)\s*\$?/g, 'Δ');
+      s = s.replace(/\$?\s*\\(?:epsilon|varepsilon)\s*\$?/g, 'ε');
+      s = s.replace(/\$?\s*\\(?:theta)\s*\$?/g, 'θ');
+      s = s.replace(/\$?\s*\\(?:Theta)\s*\$?/g, 'Θ');
+      s = s.replace(/\$?\s*\\(?:lambda)\s*\$?/g, 'λ');
+      s = s.replace(/\$?\s*\\(?:Lambda)\s*\$?/g, 'Λ');
+      s = s.replace(/\$?\s*\\(?:mu)\s*\$?/g, 'µ');
+      s = s.replace(/\$?\s*\\(?:pi)\s*\$?/g, 'π');
+      s = s.replace(/\$?\s*\\(?:Pi)\s*\$?/g, 'Π');
+      s = s.replace(/\$?\s*\\(?:sigma)\s*\$?/g, 'σ');
+      s = s.replace(/\$?\s*\\(?:Sigma|sum)\s*\$?/g, 'Σ');
+      s = s.replace(/\$?\s*\\(?:prod)\s*\$?/g, '∏');
+      s = s.replace(/\$?\s*\\(?:tau)\s*\$?/g, 'τ');
+      s = s.replace(/\$?\s*\\(?:phi)\s*\$?/g, 'φ');
+      s = s.replace(/\$?\s*\\(?:Phi)\s*\$?/g, 'Φ');
+      s = s.replace(/\$?\s*\\(?:omega)\s*\$?/g, 'ω');
+      s = s.replace(/\$?\s*\\(?:Omega)\s*\$?/g, 'Ω');
+
+      // 7. Unwrap simple residual inline math: e.g. `$N$` -> `N`, `$E$` -> `E`, `$k = 1$` -> `k = 1`
+      s = s.replace(/\$([^$\n]+)\$/g, '$1');
+
+      return s;
+    }).join('');
+  }
+
+  // Client-side ad & promotional text stripping safeguard with Unicode symbol translation
+  function stripAiAdsClient(text) {
+    if (!text || typeof text !== 'string') return text || '';
+    const cleaned = text
+      .replace(/(?:---\s*)?(?:Support\s+Pollinations(?:\.AI)?|🌸\s*Ad\s*🌸|Powered by Pollinations(?:\.AI)?|Support our mission to keep AI accessible)[\s\S]*$/gi, '')
+      .replace(/\n\s*(?:🌸\s*)?(?:Ad|Sponsored|Advertisement)[:\s][^\n]*/gi, '')
+      .replace(/\n\s*Powered by [^\n]*/gi, '')
+      .replace(/\n\s*Support [A-Za-z0-9_.-]+ AI[^\n]*/gi, '')
+      .trim();
+
+    return convertLatexAndTextSymbolsToUnicode(cleaned);
   }
 
   // Section Checkbox Presets
@@ -1573,21 +1973,95 @@
     });
   });
 
+  // Select All and Clear buttons
+  const btnSelectAllSections = document.getElementById('btnSelectAllSections');
+  const btnClearSections = document.getElementById('btnClearSections');
+  if (btnSelectAllSections) {
+    btnSelectAllSections.addEventListener('click', () => {
+      applySectionPreset('full');
+    });
+  }
+  if (btnClearSections) {
+    btnClearSections.addEventListener('click', () => {
+      document.querySelectorAll('input[name="labSection"]').forEach(cb => { cb.checked = false; });
+      document.querySelectorAll('#presetContainer .preset-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.preset === 'custom');
+      });
+      updateSelectedCount();
+    });
+  }
+
   // Browse Other Code File button
   if (recordUploadBtn && recordFileInput) {
-    recordUploadBtn.addEventListener('click', () => recordFileInput.click());
-    recordFileInput.addEventListener('change', (e) => {
+    recordUploadBtn.addEventListener('click', () => {
+      recordFileInput.value = '';
+      recordFileInput.click();
+    });
+    recordFileInput.addEventListener('change', async (e) => {
       const files = Array.from(e.target.files || []);
       if (files.length > 0) {
-        const file = files[0];
-        externalRecordFiles.push(file);
+        let lastCached = null;
+        for (const file of files) {
+          lastCached = await cacheAiFilePayload(file);
+          addUnifiedAiSessionFile(lastCached);
+        }
+        const file = files[files.length - 1];
+        lastCodePayload = lastCached;
+        lastHomeVivaDirectFilePayload = lastCached;
         populateRecordSourceSelect(file.name);
-        showToast(`Loaded "${escapeHtml(file.name)}" into Record Generator.`);
+        populateHomeAiFileSelect(file.name);
+        showToast(`Loaded "${escapeHtml(file.name)}" into AI Assistant.`);
       }
     });
   }
 
-  // Read code content from File object or link
+  // Collapsible Lab Record Setup Panel Logic
+  const btnToggleRecordConfig = document.getElementById('btnToggleRecordConfig');
+  const recordConfigToggleHeader = document.getElementById('recordConfigToggleHeader');
+  const recordConfigToggleText = document.getElementById('recordConfigToggleText');
+  const btnRunLabRecordCompact = document.getElementById('btnRunLabRecordCompact');
+  const recordConfigStatusBadge = document.getElementById('recordConfigStatusBadge');
+
+  function setRecordConfigCollapsed(shouldCollapse) {
+    if (!recordConfigView) return;
+    if (shouldCollapse) {
+      recordConfigView.classList.add('collapsed');
+      if (recordConfigToggleText) recordConfigToggleText.textContent = '▼ Expand Setup';
+      if (btnRunLabRecordCompact) btnRunLabRecordCompact.style.display = 'inline-flex';
+      const checked = document.querySelectorAll('input[name="labSection"]:checked');
+      if (recordConfigStatusBadge) recordConfigStatusBadge.textContent = `${checked.length} / 12 Sections`;
+    } else {
+      recordConfigView.classList.remove('collapsed');
+      if (recordConfigToggleText) recordConfigToggleText.textContent = '▲ Collapse Setup';
+      if (btnRunLabRecordCompact) btnRunLabRecordCompact.style.display = 'none';
+    }
+  }
+
+  function toggleRecordConfig() {
+    if (!recordConfigView) return;
+    const isCurrentlyCollapsed = recordConfigView.classList.contains('collapsed');
+    setRecordConfigCollapsed(!isCurrentlyCollapsed);
+  }
+
+  if (btnToggleRecordConfig) {
+    btnToggleRecordConfig.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleRecordConfig();
+    });
+  }
+  if (recordConfigToggleHeader) {
+    recordConfigToggleHeader.addEventListener('click', () => {
+      toggleRecordConfig();
+    });
+  }
+  if (btnRunLabRecordCompact) {
+    btnRunLabRecordCompact.addEventListener('click', (e) => {
+      e.stopPropagation();
+      runLabRecord();
+    });
+  }
+
+  // Read code content from File object, cache, or link
   async function getSelectedCodePayload() {
     const selectedVal = recordSourceSelect.value;
     if (!selectedVal) {
@@ -1599,21 +2073,72 @@
       const links = getAllLinks();
       return {
         codeContent: links[idx] || '',
-        filename: 'snippet.txt'
+        content: links[idx] || '',
+        filename: 'snippet.txt',
+        name: 'snippet.txt'
       };
     }
 
-    const all = [...getAllFiles(), ...externalRecordFiles];
-    const fileObj = all.find(f => f.name === selectedVal);
+    const all = [...getUnifiedAiFiles(), ...getAllFiles(), ...externalRecordFiles];
+    const fileObj = all.find(f => f && (f.name === selectedVal || f.filename === selectedVal));
     if (!fileObj) {
       throw new Error(`Could not locate file "${selectedVal}".`);
     }
 
+    // If it's already an active cached payload with base64 / content
+    if (fileObj.docxBase64 || fileObj.pdfBase64 || fileObj.imageBase64 || (fileObj.content && typeof fileObj.slice !== 'function')) {
+      return {
+        codeContent: fileObj.codeContent || fileObj.content || '',
+        content: fileObj.content || fileObj.codeContent || '',
+        filename: fileObj.filename || fileObj.name || selectedVal,
+        name: fileObj.name || fileObj.filename || selectedVal,
+        pdfBase64: fileObj.pdfBase64 || null,
+        imageBase64: fileObj.imageBase64 || null,
+        docxBase64: fileObj.docxBase64 || null,
+        isDocx: !!fileObj.isDocx,
+        mimeType: fileObj.mimeType || null
+      };
+    }
+
+    const rawFile = fileObj.fileRef || fileObj;
+    const fileName = rawFile.name || selectedVal;
+    const isPdf = fileName.toLowerCase().endsWith('.pdf');
+    const isImg = /\.(png|jpe?g|webp)$/i.test(fileName);
+    const isDocx = /\.(docx|doc)$/i.test(fileName);
+
     return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve({ codeContent: reader.result, filename: fileObj.name });
-      reader.onerror = () => reject(new Error(`Failed to read file "${fileObj.name}".`));
-      reader.readAsText(fileObj);
+      if (isPdf || isImg || isDocx) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const res = reader.result || '';
+          const base64 = (typeof res === 'string' && res.includes(',')) ? res.split(',')[1] : res;
+          const mimeType = isPdf ? 'application/pdf' : (isDocx ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : (rawFile.type || 'image/png'));
+          const placeholder = isDocx ? `[Attached Word Document: ${fileName}]` : (isPdf ? `[Attached Document/Diagram File: ${fileName}]` : `[Attached Diagram Image: ${fileName}]`);
+          resolve({
+            codeContent: placeholder,
+            content: placeholder,
+            filename: fileName,
+            name: fileName,
+            pdfBase64: isPdf ? base64 : null,
+            imageBase64: isImg ? base64 : null,
+            docxBase64: isDocx ? base64 : null,
+            isDocx,
+            mimeType
+          });
+        };
+        reader.onerror = () => reject(new Error(`Failed to read file "${fileName}".`));
+        reader.readAsDataURL(rawFile);
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => resolve({
+          codeContent: reader.result || '',
+          content: reader.result || '',
+          filename: fileName,
+          name: fileName
+        });
+        reader.onerror = () => reject(new Error(`Failed to read file "${fileName}".`));
+        reader.readAsText(rawFile);
+      }
     });
   }
 
@@ -1750,7 +2275,11 @@
     const data = currentGeneratedRecord;
     const variants = data.sectionVariants;
     if (!variants || Object.keys(variants).length === 0) {
-      return data.markdown || '';
+      let md = data.markdown || '';
+      if (data.mermaidCode && !md.includes(data.mermaidCode)) {
+        md += `\n\n## 📊 Visual Flowchart / Diagram\n\`\`\`mermaid\n${data.mermaidCode}\n\`\`\`\n`;
+      }
+      return md;
     }
 
     const titles = data.sectionTitles || {};
@@ -1769,10 +2298,16 @@
       parts.push(`## ${title}\n${secMd}\n`);
     });
 
+    // Ensure Mermaid diagram / flowchart code is explicitly included for AI chat analysis
+    if (data.mermaidCode && !parts.some(p => p.includes(data.mermaidCode))) {
+      parts.push(`## 📊 Visual Flowchart / Architecture Diagram\n\`\`\`mermaid\n${data.mermaidCode}\n\`\`\`\n`);
+    }
+
     return parts.join('\n');
   }
 
   async function runLabRecord(isReRun = false) {
+    const isRealReRun = typeof isReRun === 'boolean' && isReRun;
     clearRecordModalError();
     const checkedBoxes = Array.from(document.querySelectorAll('input[name="labSection"]:checked')).map(cb => cb.value);
     if (checkedBoxes.length === 0) {
@@ -1781,7 +2316,7 @@
     }
 
     let payloadData;
-    if (isReRun && lastCodePayload) {
+    if (isRealReRun && lastCodePayload) {
       payloadData = lastCodePayload;
     } else {
       try {
@@ -1806,12 +2341,54 @@
       date: new Date().toLocaleDateString('en-GB')
     };
 
-    if (isReRun) {
+    let recordLoadingTimer = null;
+    const loadingStatusMessages = [
+      '💡 You can share files <strong>without logging in</strong> or signing up',
+      '⚡ <strong>Instant Transfer:</strong> Send files to your lab PC using a <strong>6-digit PIN</strong> or <strong>QR code</strong>',
+      '🔒 <strong>Zero-Trace Privacy:</strong> Uploaded files are <strong>automatically deleted after 30 minutes</strong>',
+      '📄 <strong>1-Click Lab Records:</strong> Turn code or diagrams into full <strong>academic lab observation sheets</strong>',
+      '🎓 <strong>Oral Viva Voce Prep:</strong> Get <strong>60-second elevator pitches</strong>, viva traps & model answers',
+      '📊 <strong>Auto Mermaid Flowcharts:</strong> Automatically draw <strong>interactive visual SVG diagrams</strong>',
+      '🧠 <strong>Multi-Diagram Vision:</strong> PDF scanner detects & breaks down <strong>every diagram separately</strong>',
+      '🎯 <strong>Custom Sizing:</strong> Generate <strong>Brief (1-page)</strong>, Standard, or Detailed academic reports',
+      '📱 <strong>Cross-Device Sync:</strong> Seamless transfer across your <strong>phone, tablet, and lab PC</strong>',
+      '📑 <strong>Word & Docs Ready:</strong> Copy formatted academic tables and code with <strong>1 single click</strong>',
+      '💻 <strong>Zero Setup:</strong> Native support for <strong>C, C++, Java, Python, SQL</strong> & multi-page PDFs',
+      '🖨️ <strong>University A4 Print:</strong> Pre-formatted with <strong>Aim, Algorithm, Tables & Precautions</strong>'
+    ];
+
+    function startRecordLoadingMessages() {
+      stopRecordLoadingMessages();
+      const dynamicMsgEl = document.getElementById('loadingDynamicMsg');
+      if (!dynamicMsgEl) return;
+      let idx = 0;
+      dynamicMsgEl.innerHTML = loadingStatusMessages[0];
+      recordLoadingTimer = setInterval(() => {
+        idx = (idx + 1) % loadingStatusMessages.length;
+        if (dynamicMsgEl) {
+          dynamicMsgEl.style.opacity = '0.3';
+          setTimeout(() => {
+            dynamicMsgEl.innerHTML = loadingStatusMessages[idx];
+            dynamicMsgEl.style.opacity = '1';
+          }, 200);
+        }
+      }, 2600);
+    }
+
+    function stopRecordLoadingMessages() {
+      if (recordLoadingTimer) {
+        clearInterval(recordLoadingTimer);
+        recordLoadingTimer = null;
+      }
+    }
+
+    if (isRealReRun) {
       if (labRecordContent) labRecordContent.style.opacity = '0.5';
     } else {
       recordConfigView.style.display = 'none';
       recordResultView.style.display = 'none';
       recordLoadingState.style.display = 'block';
+      startRecordLoadingMessages();
     }
 
     try {
@@ -1819,11 +2396,15 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          codeContent: payloadData.codeContent,
-          filename: payloadData.filename,
+          codeContent: payloadData.codeContent || payloadData.content || '',
+          filename: payloadData.filename || payloadData.name || 'program',
           selectedSections: checkedBoxes,
           studentDetails,
-          engine: selectedEngine
+          engine: selectedEngine,
+          pdfBase64: payloadData.pdfBase64 || null,
+          imageBase64: payloadData.imageBase64 || null,
+          docxBase64: payloadData.docxBase64 || null,
+          mimeType: payloadData.mimeType || null
         })
       });
 
@@ -1882,13 +2463,30 @@
         labRecordMermaidArea.style.display = 'none';
       }
 
+      stopRecordLoadingMessages();
       recordLoadingState.style.display = 'none';
       recordResultView.style.display = 'block';
       if (!isReRun) {
         recordResultView.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
+      // Initialize chatbot with context from generated record
+      const chatMsgContainer = document.getElementById('labRecordChatMessages');
+      if (chatMsgContainer) {
+        chatMsgContainer.style.display = 'flex';
+        // Clear previous messages
+        chatMsgContainer.innerHTML = '';
+        const notice = document.createElement('div');
+        notice.className = 'ai-chat-bot-bubble';
+        notice.innerHTML = '<strong>✅ Lab Record generated!</strong> Ask me anything — expand theory, simplify algorithm, add test cases, or explain any section.';
+        chatMsgContainer.appendChild(notice);
+      }
+      labRecordConversationHistory = [
+        { role: 'model', content: getCurrentRecordMarkdown() }
+      ];
+
     } catch (err) {
+      stopRecordLoadingMessages();
       if (labRecordContent) labRecordContent.style.opacity = '1';
       recordLoadingState.style.display = 'none';
       if (!isReRun) {
@@ -1898,13 +2496,69 @@
     }
   }
 
-  if (btnRunLabRecord) btnRunLabRecord.addEventListener('click', runLabRecord);
+  if (btnRunLabRecord) btnRunLabRecord.addEventListener('click', () => runLabRecord(false));
 
   // Trigger buttons
   if (btnTriggerLabRecord) btnTriggerLabRecord.addEventListener('click', () => openLabRecordModal());
+  if (navLabRecordBtn) navLabRecordBtn.addEventListener('click', () => openLabRecordModal());
+  if (navLabRecordBtnLoggedIn) navLabRecordBtnLoggedIn.addEventListener('click', () => openLabRecordModal());
+  if (mobileRecordBtn) mobileRecordBtn.addEventListener('click', () => openLabRecordModal());
   const aiFloatingBtn = document.getElementById('aiFloatingBtn');
-  if (aiFloatingBtn) aiFloatingBtn.addEventListener('click', () => openLabRecordModal());
+  if (aiFloatingBtn) {
+    aiFloatingBtn.addEventListener('click', () => {
+      if (labRecordModal.classList.contains('active')) {
+        closeLabRecordModal();
+      } else {
+        openLabRecordModal();
+      }
+    });
+  }
   if (labRecordModalClose) labRecordModalClose.addEventListener('click', closeLabRecordModal);
+
+  // Close sidepanel on Escape key
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && labRecordModal.classList.contains('active')) {
+      closeLabRecordModal();
+    }
+  });
+
+  // Desktop Side Panel Left-Edge Resize Handler
+  (function initDesktopSidepanelResize() {
+    const dialog = document.getElementById('labRecordModalDialog');
+    if (!dialog) return;
+    const resizer = dialog.querySelector('.ai-sidepanel-resize-edge');
+    if (!resizer) return;
+
+    let isResizing = false;
+
+    resizer.addEventListener('mousedown', (e) => {
+      if (window.innerWidth < 1024) return;
+      isResizing = true;
+      resizer.classList.add('resizing');
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+
+      function onMouseMove(ev) {
+        if (!isResizing) return;
+        const newWidth = Math.max(380, Math.min(window.innerWidth * 0.65, window.innerWidth - ev.clientX));
+        document.documentElement.style.setProperty('--ai-sidepanel-width', `${newWidth}px`);
+      }
+
+      function onMouseUp() {
+        if (isResizing) {
+          isResizing = false;
+          resizer.classList.remove('resizing');
+          document.body.style.userSelect = '';
+          document.body.style.cursor = '';
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('mouseup', onMouseUp);
+        }
+      }
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    });
+  })();
 
   // Print / Save as PDF
   if (btnPrintRecord) {
@@ -1981,6 +2635,7 @@
     btnReconfigureRecord.addEventListener('click', () => {
       recordResultView.style.display = 'none';
       recordConfigView.style.display = 'block';
+      setRecordConfigCollapsed(false);
     });
   }
 
@@ -2084,6 +2739,631 @@
       document.querySelectorAll('#configScaleGroup button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       applyReportScale(parseFloat(btn.dataset.configScale));
+    });
+  });
+
+
+  // ============================================================
+  // Lab Record Chatbot (Homepage Modal)
+  // ============================================================
+  const labRecordChatMessages = document.getElementById('labRecordChatMessages');
+  const labRecordChatForm = document.getElementById('labRecordChatForm');
+  const labRecordChatInput = document.getElementById('labRecordChatInput');
+  if (labRecordChatInput) {
+    labRecordChatInput.setAttribute('autocomplete', 'off');
+    labRecordChatInput.setAttribute('autocorrect', 'off');
+    labRecordChatInput.setAttribute('autocapitalize', 'off');
+    labRecordChatInput.setAttribute('spellcheck', 'false');
+    labRecordChatInput.setAttribute('data-lpignore', 'true');
+  }
+  const labRecordChatSubmitBtn = document.getElementById('labRecordChatSubmitBtn');
+  let labRecordConversationHistory = [];
+
+  async function sendLabRecordChatMessage(customPrompt = null) {
+    const text = (customPrompt || (labRecordChatInput ? labRecordChatInput.value : '')).trim();
+    if (!text) return;
+    if (labRecordChatInput) labRecordChatInput.value = '';
+
+    // Auto-collapse setup panel to provide maximum chat room
+    setRecordConfigCollapsed(true);
+
+    if (labRecordChatMessages) {
+      labRecordChatMessages.style.display = 'flex';
+    }
+
+    // User bubble
+    const userMsg = document.createElement('div');
+    userMsg.className = 'ai-chat-user-bubble';
+    userMsg.textContent = text;
+    if (labRecordChatMessages) labRecordChatMessages.appendChild(userMsg);
+
+    // Bot thinking bubble
+    const botMsg = document.createElement('div');
+    botMsg.className = 'ai-chat-bot-bubble';
+    botMsg.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></span> Thinking...';
+    if (labRecordChatMessages) {
+      labRecordChatMessages.appendChild(botMsg);
+      labRecordChatMessages.scrollTop = labRecordChatMessages.scrollHeight;
+    }
+
+    if (labRecordChatSubmitBtn) labRecordChatSubmitBtn.disabled = true;
+
+    try {
+      if (!lastCodePayload && recordSourceSelect && recordSourceSelect.value) {
+        try {
+          lastCodePayload = await getSelectedCodePayload();
+        } catch (_) {}
+      }
+
+      const currentMarkdown = currentGeneratedRecord ? getCurrentRecordMarkdown() : '';
+
+      const directFilesPayload = lastCodePayload ? [{
+        name: lastCodePayload.filename || lastCodePayload.name || 'file',
+        content: lastCodePayload.codeContent || lastCodePayload.content || '',
+        pdfBase64: lastCodePayload.pdfBase64 || null,
+        imageBase64: lastCodePayload.imageBase64 || null,
+        docxBase64: lastCodePayload.docxBase64 || null,
+        isDocx: !!lastCodePayload.isDocx,
+        mimeType: lastCodePayload.mimeType || null
+      }] : [];
+
+      const res = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'chat',
+          prompt: text,
+          conversationHistory: labRecordConversationHistory,
+          previousOutput: currentMarkdown,
+          directFiles: directFilesPayload
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Chat failed.');
+
+      const cleanedResult = stripAiAdsClient(data.result);
+      labRecordConversationHistory.push({ role: 'user', content: text });
+      labRecordConversationHistory.push({ role: 'model', content: cleanedResult });
+
+      if (window.marked) {
+        botMsg.innerHTML = window.marked.parse(cleanedResult);
+      } else {
+        botMsg.textContent = cleanedResult;
+      }
+    } catch (err) {
+      botMsg.innerHTML = `<span style="color: #ef4444;">Error: ${escapeHtml(err.message)}</span>`;
+    } finally {
+      if (labRecordChatSubmitBtn) labRecordChatSubmitBtn.disabled = false;
+      if (labRecordChatMessages) labRecordChatMessages.scrollTop = labRecordChatMessages.scrollHeight;
+    }
+  }
+
+  if (labRecordChatForm) {
+    labRecordChatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      sendLabRecordChatMessage();
+    });
+  }
+
+  // Lab Record chat chips
+  document.querySelectorAll('.lab-record-chip-home').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prompt = btn.dataset.prompt;
+      if (prompt) {
+        if (labRecordChatInput) labRecordChatInput.value = prompt;
+        sendLabRecordChatMessage(prompt);
+      }
+    });
+  });
+
+  // ============================================================
+  // Tab Switching Logic (Homepage AI Modal)
+  // ============================================================
+  const homeTabBtnLabRecord = document.getElementById('homeTabBtnLabRecord');
+  const homeTabBtnViva = document.getElementById('homeTabBtnViva');
+  const homeTabContentLabRecord = document.getElementById('homeTabContentLabRecord');
+  const homeTabContentViva = document.getElementById('homeTabContentViva');
+
+  function switchHomeAiTab(tabName) {
+    if (tabName === 'labrecord') {
+      if (homeTabBtnLabRecord) homeTabBtnLabRecord.classList.add('active');
+      if (homeTabBtnViva) homeTabBtnViva.classList.remove('active');
+      if (homeTabContentLabRecord) homeTabContentLabRecord.classList.add('active');
+      if (homeTabContentViva) homeTabContentViva.classList.remove('active');
+      const activeName = lastHomeVivaDirectFilePayload ? lastHomeVivaDirectFilePayload.name : null;
+      populateRecordSourceSelect(activeName);
+    } else {
+      if (homeTabBtnViva) homeTabBtnViva.classList.add('active');
+      if (homeTabBtnLabRecord) homeTabBtnLabRecord.classList.remove('active');
+      if (homeTabContentViva) homeTabContentViva.classList.add('active');
+      if (homeTabContentLabRecord) homeTabContentLabRecord.classList.remove('active');
+      const activeName = (recordSourceSelect && recordSourceSelect.value && !recordSourceSelect.value.startsWith('__link_'))
+        ? recordSourceSelect.value
+        : (lastCodePayload ? (lastCodePayload.name || lastCodePayload.filename) : null);
+      populateHomeAiFileSelect(activeName);
+    }
+  }
+
+  if (homeTabBtnLabRecord) homeTabBtnLabRecord.addEventListener('click', () => switchHomeAiTab('labrecord'));
+  if (homeTabBtnViva) homeTabBtnViva.addEventListener('click', () => switchHomeAiTab('viva'));
+
+  // ============================================================
+  // Homepage AI Modal: Viva & Exam Prep Tab
+  // ============================================================
+  const homeAiFileSelect = document.getElementById('homeAiFileSelect');
+  const homeAiDirectFileInput = document.getElementById('homeAiDirectFileInput');
+  const homeAiExamType = document.getElementById('homeAiExamType');
+  const homeAiSecondaryLabel = document.getElementById('homeAiSecondaryLabel');
+  const homeAiSecondaryOption = document.getElementById('homeAiSecondaryOption');
+  const homeAiCustomLines = document.getElementById('homeAiCustomLines');
+  const homeBtnRunViva = document.getElementById('homeBtnRunViva');
+  const homeAiLoadingSpinner = document.getElementById('homeAiLoadingSpinner');
+  const homeAiLoadingTitle = document.getElementById('homeAiLoadingTitle');
+  const homeAiLoadingDynamicMsg = document.getElementById('homeAiLoadingDynamicMsg');
+  const homeVivaResult = document.getElementById('homeVivaResult');
+  const homeVivaBadge = document.getElementById('homeVivaBadge');
+  const homeBtnRegenViva = document.getElementById('homeBtnRegenViva');
+  const homeBtnCopyViva = document.getElementById('homeBtnCopyViva');
+  const homeVivaOutput = document.getElementById('homeVivaOutput');
+  const homeVivaChatMessages = document.getElementById('homeVivaChatMessages');
+  const homeVivaChatForm = document.getElementById('homeVivaChatForm');
+  const homeVivaChatInput = document.getElementById('homeVivaChatInput');
+  if (homeVivaChatInput) {
+    homeVivaChatInput.setAttribute('autocomplete', 'off');
+    homeVivaChatInput.setAttribute('autocorrect', 'off');
+    homeVivaChatInput.setAttribute('autocapitalize', 'off');
+    homeVivaChatInput.setAttribute('spellcheck', 'false');
+    homeVivaChatInput.setAttribute('data-lpignore', 'true');
+  }
+  const homeVivaChatSubmitBtn = document.getElementById('homeVivaChatSubmitBtn');
+  let lastHomeVivaDirectFilePayload = null;
+
+  // Collapsible Viva Config Panel Logic
+  const homeVivaConfigPanel = document.getElementById('homeVivaConfigPanel');
+  const homeVivaConfigHeader = document.getElementById('homeVivaConfigHeader');
+  const homeVivaConfigToggleText = document.getElementById('homeVivaConfigToggleText');
+  const btnToggleVivaConfig = document.getElementById('btnToggleVivaConfig');
+  const btnRunVivaCompact = document.getElementById('btnRunVivaCompact');
+  const homeVivaConfigBadge = document.getElementById('homeVivaConfigBadge');
+
+  function setHomeVivaConfigCollapsed(shouldCollapse) {
+    if (!homeVivaConfigPanel) return;
+    if (shouldCollapse) {
+      homeVivaConfigPanel.classList.add('collapsed');
+      if (homeVivaConfigToggleText) homeVivaConfigToggleText.textContent = '▼ Expand Setup';
+      if (btnRunVivaCompact) btnRunVivaCompact.style.display = 'inline-flex';
+      const examVal = homeAiExamType ? homeAiExamType.value : 'viva';
+      const secVal = homeAiSecondaryOption ? homeAiSecondaryOption.value : 'medium';
+      if (homeVivaConfigBadge) homeVivaConfigBadge.textContent = `${examVal.toUpperCase()} · ${secVal.toUpperCase()}`;
+    } else {
+      homeVivaConfigPanel.classList.remove('collapsed');
+      if (homeVivaConfigToggleText) homeVivaConfigToggleText.textContent = '▲ Collapse Setup';
+      if (btnRunVivaCompact) btnRunVivaCompact.style.display = 'none';
+    }
+  }
+
+  function toggleHomeVivaConfig() {
+    if (!homeVivaConfigPanel) return;
+    const isCurrentlyCollapsed = homeVivaConfigPanel.classList.contains('collapsed');
+    setHomeVivaConfigCollapsed(!isCurrentlyCollapsed);
+  }
+
+  if (btnToggleVivaConfig) {
+    btnToggleVivaConfig.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleHomeVivaConfig();
+    });
+  }
+  if (homeVivaConfigHeader) {
+    homeVivaConfigHeader.addEventListener('click', () => {
+      toggleHomeVivaConfig();
+    });
+  }
+  if (btnRunVivaCompact) {
+    btnRunVivaCompact.addEventListener('click', (e) => {
+      e.stopPropagation();
+      runHomeViva();
+    });
+  }
+
+  let homeDirectVivaFiles = [];
+  let lastGeneratedHomeVivaOutput = null;
+  let homeVivaConversationHistory = [];
+  let homeAiLoadingTimer = null;
+
+  const homeAiLoadingQuotes = [
+    '💡 You can share files <strong>without logging in</strong> or signing up',
+    '⚡ <strong>Instant Transfer:</strong> Send files to your lab PC using a <strong>6-digit PIN</strong> or <strong>QR code</strong>',
+    '🔒 <strong>Zero-Trace Privacy:</strong> Uploaded files are <strong>automatically deleted after 30 minutes</strong>',
+    '📄 <strong>1-Click Lab Records:</strong> Turn code or diagrams into full <strong>academic lab observation sheets</strong>',
+    '🎓 <strong>Oral Viva Voce Prep:</strong> Get <strong>60-second elevator pitches</strong>, viva traps & model answers',
+    '📊 <strong>Auto Mermaid Flowcharts:</strong> Automatically draw <strong>interactive visual SVG diagrams</strong>',
+    '🧠 <strong>Multi-Diagram Vision:</strong> PDF scanner detects & breaks down <strong>every diagram separately</strong>',
+    '🎯 <strong>Custom Sizing:</strong> Generate <strong>Brief (1-page)</strong>, Standard, or Detailed academic reports',
+    '📱 <strong>Cross-Device Sync:</strong> Seamless transfer across your <strong>phone, tablet, and lab PC</strong>',
+    '📑 <strong>Word & Docs Ready:</strong> Copy formatted academic tables and code with <strong>1 single click</strong>',
+    '💻 <strong>Zero Setup:</strong> Native support for <strong>C, C++, Java, Python, SQL</strong> & multi-page PDFs',
+    '🖨️ <strong>University A4 Print:</strong> Pre-formatted with <strong>Aim, Algorithm, Tables & Precautions</strong>'
+  ];
+
+  function startHomeAiLoadingMessages(isSummarize = false) {
+    stopHomeAiLoadingMessages();
+    if (homeAiLoadingTitle) {
+      homeAiLoadingTitle.textContent = isSummarize ? 'Summarizing Document & Diagrams...' : 'Synthesizing Exam & Viva Prep...';
+    }
+    if (!homeAiLoadingDynamicMsg) return;
+    let idx = 0;
+    homeAiLoadingDynamicMsg.innerHTML = homeAiLoadingQuotes[0];
+    homeAiLoadingTimer = setInterval(() => {
+      idx = (idx + 1) % homeAiLoadingQuotes.length;
+      if (homeAiLoadingDynamicMsg) {
+        homeAiLoadingDynamicMsg.style.opacity = '0.3';
+        setTimeout(() => {
+          homeAiLoadingDynamicMsg.innerHTML = homeAiLoadingQuotes[idx];
+          homeAiLoadingDynamicMsg.style.opacity = '1';
+        }, 200);
+      }
+    }, 2600);
+  }
+
+  function stopHomeAiLoadingMessages() {
+    if (homeAiLoadingTimer) {
+      clearInterval(homeAiLoadingTimer);
+      homeAiLoadingTimer = null;
+    }
+  }
+
+  const btnHomeAiUpload = document.getElementById('btnHomeAiUpload');
+  if (btnHomeAiUpload && homeAiDirectFileInput) {
+    btnHomeAiUpload.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      homeAiDirectFileInput.value = '';
+      homeAiDirectFileInput.click();
+    });
+  }
+
+  function populateHomeAiFileSelect(preferredName = null) {
+    if (!homeAiFileSelect) return;
+    const previousVal = homeAiFileSelect.value;
+    homeAiFileSelect.innerHTML = '';
+
+    const allFiles = getUnifiedAiFiles();
+    if (allFiles.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '📂 No files queued yet — Click ➕ Upload';
+      homeAiFileSelect.appendChild(opt);
+      return;
+    }
+
+    let selectedIndex = -1;
+    allFiles.forEach((file, index) => {
+      const opt = document.createElement('option');
+      opt.value = index;
+      opt.textContent = `${getAiFileIcon(file.name)} ${file.name} (${formatBytes(file.size || 0)})`;
+      if (preferredName && file.name === preferredName) {
+        opt.selected = true;
+        selectedIndex = index;
+      }
+      homeAiFileSelect.appendChild(opt);
+    });
+
+    if (selectedIndex === -1) {
+      const prevIdx = parseInt(previousVal, 10);
+      if (!isNaN(prevIdx) && prevIdx >= 0 && prevIdx < allFiles.length) {
+        homeAiFileSelect.selectedIndex = prevIdx;
+        selectedIndex = prevIdx;
+      } else {
+        homeAiFileSelect.selectedIndex = 0;
+        selectedIndex = 0;
+      }
+    }
+
+    const currentTarget = allFiles[selectedIndex];
+    if (currentTarget) {
+      cacheAiFilePayload(currentTarget.fileRef || currentTarget).then(p => {
+        lastHomeVivaDirectFilePayload = p;
+        lastCodePayload = p;
+      }).catch(() => {});
+    }
+  }
+
+  if (homeAiFileSelect) {
+    homeAiFileSelect.addEventListener('change', async () => {
+      const allFiles = getUnifiedAiFiles();
+      const selectedIdx = parseInt(homeAiFileSelect.value, 10);
+      const target = allFiles[selectedIdx];
+      if (target) {
+        const payload = await cacheAiFilePayload(target.fileRef || target);
+        lastHomeVivaDirectFilePayload = payload;
+        lastCodePayload = payload;
+      }
+    });
+  }
+
+  if (homeAiDirectFileInput) {
+    homeAiDirectFileInput.addEventListener('click', () => {
+      homeAiDirectFileInput.value = '';
+    });
+
+    homeAiDirectFileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length > 0) {
+        let lastCached = null;
+        for (const file of files) {
+          lastCached = await cacheAiFilePayload(file);
+          addUnifiedAiSessionFile(lastCached);
+        }
+        const file = files[files.length - 1];
+        lastHomeVivaDirectFilePayload = lastCached;
+        lastCodePayload = lastCached;
+        populateHomeAiFileSelect(file.name);
+        populateRecordSourceSelect(file.name);
+        showToast(`Loaded "${escapeHtml(file.name)}" into AI Assistant.`);
+      }
+    });
+  }
+
+  function updateHomeAiSecondaryDropdown(action) {
+    if (!homeAiSecondaryOption || !homeAiSecondaryLabel) return;
+    if (action === 'summarize') {
+      homeAiSecondaryLabel.textContent = 'Summary Length:';
+      homeAiSecondaryOption.innerHTML = `
+        <option value="brief">⚡ Brief (8 Lines - Fast Review)</option>
+        <option value="standard" selected>📄 Standard (25 Lines - Balanced)</option>
+        <option value="detailed">📚 Detailed (60 Lines - In-Depth)</option>
+        <option value="custom">✏️ Custom Exact Lines</option>
+      `;
+      if (homeAiCustomLines) homeAiCustomLines.style.display = 'none';
+    } else {
+      homeAiSecondaryLabel.textContent = 'Difficulty Level:';
+      homeAiSecondaryOption.innerHTML = `
+        <option value="easy">🟢 Easy (Fundamentals)</option>
+        <option value="medium" selected>🟡 Medium (Lab Standard)</option>
+        <option value="hard">🔴 Hard (Advanced Traps)</option>
+        <option value="extreme">🔥 Extreme (Compiler & Internals)</option>
+      `;
+      if (homeAiCustomLines) homeAiCustomLines.style.display = 'none';
+    }
+  }
+
+  if (homeAiExamType) {
+    homeAiExamType.addEventListener('change', () => {
+      updateHomeAiSecondaryDropdown(homeAiExamType.value);
+    });
+  }
+
+  if (homeAiSecondaryOption) {
+    homeAiSecondaryOption.addEventListener('change', () => {
+      if (homeAiExamType && homeAiExamType.value === 'summarize' && homeAiSecondaryOption.value === 'custom') {
+        if (homeAiCustomLines) homeAiCustomLines.style.display = 'inline-block';
+      } else {
+        if (homeAiCustomLines) homeAiCustomLines.style.display = 'none';
+      }
+    });
+  }
+
+  async function runHomeViva() {
+    const allFiles = getUnifiedAiFiles();
+    const selectedIdx = homeAiFileSelect ? parseInt(homeAiFileSelect.value, 10) : 0;
+    const targetFile = allFiles[selectedIdx] || allFiles[0];
+
+    if (!targetFile) {
+      alert('Please upload or select a file to prepare for viva or exam questions.');
+      return;
+    }
+
+    const examType = homeAiExamType ? homeAiExamType.value : 'viva';
+    const isSummarize = examType === 'summarize';
+    const secondaryVal = homeAiSecondaryOption ? homeAiSecondaryOption.value : 'medium';
+    const customLinesVal = homeAiCustomLines ? parseInt(homeAiCustomLines.value, 10) : 15;
+
+    // Use or build cached payload
+    let directFilePayload = lastHomeVivaDirectFilePayload;
+    if (!directFilePayload || directFilePayload.name !== targetFile.name) {
+      try {
+        directFilePayload = await cacheAiFilePayload(targetFile.fileRef || targetFile);
+      } catch (err) {
+        alert('Could not read the selected file: ' + err.message);
+        return;
+      }
+    }
+
+    lastHomeVivaDirectFilePayload = directFilePayload;
+    lastCodePayload = directFilePayload;
+
+    // Show loading
+    if (homeAiLoadingSpinner) homeAiLoadingSpinner.style.display = 'block';
+    if (homeVivaResult) homeVivaResult.style.display = 'none';
+    if (homeBtnRunViva) homeBtnRunViva.disabled = true;
+    startHomeAiLoadingMessages(isSummarize);
+
+    try {
+      const res = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'viva',
+          examType: examType,
+          difficulty: !isSummarize ? secondaryVal : 'medium',
+          lengthType: isSummarize ? secondaryVal : 'medium',
+          customLines: customLinesVal,
+          directFiles: [directFilePayload]
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Failed to generate prep.');
+
+      const cleanedViva = stripAiAdsClient(data.result);
+      lastGeneratedHomeVivaOutput = cleanedViva;
+
+      if (homeVivaOutput) {
+        if (window.marked) {
+          homeVivaOutput.innerHTML = window.marked.parse(cleanedViva);
+        } else {
+          homeVivaOutput.textContent = cleanedViva;
+        }
+      }
+
+      if (homeVivaBadge) {
+        const modeLabels = {
+          viva: 'Oral Lab Viva',
+          internal_20: '20 Marks Internal',
+          semester_100: '100 Marks Semester',
+          rapid_fire: 'Rapid-Fire Flashcards',
+          summarize: 'Summary'
+        };
+        homeVivaBadge.textContent = `${modeLabels[examType] || 'Exam Prep'} · ${secondaryVal.toUpperCase()}`;
+      }
+
+      if (homeVivaResult) {
+        homeVivaResult.style.display = 'block';
+        homeVivaResult.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      // Initialize chat context
+      homeVivaConversationHistory = [
+        { role: 'user', content: `Please analyze ${targetFile.name} and provide ${examType} preparation.` },
+        { role: 'model', content: data.result }
+      ];
+
+      if (homeVivaChatMessages) {
+        homeVivaChatMessages.style.display = 'flex';
+        homeVivaChatMessages.innerHTML = '';
+        const botNotice = document.createElement('div');
+        botNotice.className = 'ai-chat-bot-bubble';
+        botNotice.style.background = 'rgba(79, 70, 229, 0.06)';
+        botNotice.style.borderColor = 'rgba(79, 70, 229, 0.2)';
+        botNotice.innerHTML = `<strong>🎓 Exam & Viva Prep Generated!</strong><br/>You can now chat with LabDrop AI to ask follow-up questions, request deeper explanations, or prepare customized answers.`;
+        homeVivaChatMessages.appendChild(botNotice);
+      }
+
+    } catch (err) {
+      if (homeVivaResult && homeVivaOutput) {
+        homeVivaOutput.innerHTML = `<span style="color: #ef4444; font-weight: 600;">Error: ${escapeHtml(err.message)}</span>`;
+        homeVivaResult.style.display = 'block';
+      } else {
+        alert(err.message || 'Generation failed.');
+      }
+    } finally {
+      stopHomeAiLoadingMessages();
+      if (homeAiLoadingSpinner) homeAiLoadingSpinner.style.display = 'none';
+      if (homeBtnRunViva) homeBtnRunViva.disabled = false;
+    }
+  }
+
+  if (homeBtnRunViva) homeBtnRunViva.addEventListener('click', runHomeViva);
+  if (homeBtnRegenViva) homeBtnRegenViva.addEventListener('click', runHomeViva);
+
+  if (homeBtnCopyViva) {
+    homeBtnCopyViva.addEventListener('click', async () => {
+      if (!lastGeneratedHomeVivaOutput) return;
+      try {
+        await navigator.clipboard.writeText(lastGeneratedHomeVivaOutput);
+        const originalText = homeBtnCopyViva.textContent;
+        homeBtnCopyViva.textContent = '✅ Copied!';
+        setTimeout(() => homeBtnCopyViva.textContent = originalText, 2000);
+      } catch (e) {
+        alert('Could not copy to clipboard.');
+      }
+    });
+  }
+
+  // Viva Chatbot
+  async function sendHomeVivaChatMessage(customPrompt = null) {
+    const text = (customPrompt || (homeVivaChatInput ? homeVivaChatInput.value : '')).trim();
+    if (!text) return;
+    if (homeVivaChatInput) homeVivaChatInput.value = '';
+
+    // Auto-collapse setup panel to provide maximum chat room
+    setHomeVivaConfigCollapsed(true);
+
+    if (homeVivaChatMessages) {
+      homeVivaChatMessages.style.display = 'flex';
+    }
+
+    // User bubble
+    const userMsg = document.createElement('div');
+    userMsg.className = 'ai-chat-user-bubble';
+    userMsg.textContent = text;
+    if (homeVivaChatMessages) homeVivaChatMessages.appendChild(userMsg);
+
+    // Bot thinking bubble
+    const botMsg = document.createElement('div');
+    botMsg.className = 'ai-chat-bot-bubble';
+    botMsg.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></span> Thinking...';
+    if (homeVivaChatMessages) {
+      homeVivaChatMessages.appendChild(botMsg);
+      homeVivaChatMessages.scrollTop = homeVivaChatMessages.scrollHeight;
+    }
+
+    if (homeVivaChatSubmitBtn) homeVivaChatSubmitBtn.disabled = true;
+
+    try {
+      let vivaDirectFilePayload = lastHomeVivaDirectFilePayload;
+      if (!vivaDirectFilePayload) {
+        const allFiles = getUnifiedAiFiles();
+        const selectedIdx = homeAiFileSelect ? parseInt(homeAiFileSelect.value, 10) : 0;
+        const targetFile = allFiles[selectedIdx] || allFiles[0];
+        if (targetFile) {
+          try {
+            vivaDirectFilePayload = await cacheAiFilePayload(targetFile.fileRef || targetFile);
+            lastHomeVivaDirectFilePayload = vivaDirectFilePayload;
+            lastCodePayload = vivaDirectFilePayload;
+          } catch (_) {}
+        }
+      }
+
+      const res = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'chat',
+          prompt: text,
+          conversationHistory: homeVivaConversationHistory,
+          previousOutput: lastGeneratedHomeVivaOutput || '',
+          directFiles: vivaDirectFilePayload ? [vivaDirectFilePayload] : []
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Chat failed.');
+
+      const cleanedVivaChat = stripAiAdsClient(data.result);
+      homeVivaConversationHistory.push({ role: 'user', content: text });
+      homeVivaConversationHistory.push({ role: 'model', content: cleanedVivaChat });
+
+      if (window.marked) {
+        botMsg.innerHTML = window.marked.parse(cleanedVivaChat);
+      } else {
+        botMsg.textContent = cleanedVivaChat;
+      }
+    } catch (err) {
+      botMsg.innerHTML = `<span style="color: #ef4444;">Error: ${escapeHtml(err.message)}</span>`;
+    } finally {
+      if (homeVivaChatSubmitBtn) homeVivaChatSubmitBtn.disabled = false;
+      if (homeVivaChatMessages) homeVivaChatMessages.scrollTop = homeVivaChatMessages.scrollHeight;
+    }
+  }
+
+  if (homeVivaChatForm) {
+    homeVivaChatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      sendHomeVivaChatMessage();
+    });
+  }
+
+  // Viva Prompt Chips
+  document.querySelectorAll('.viva-chip-home').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prompt = btn.dataset.prompt;
+      if (prompt) {
+        if (homeVivaChatInput) homeVivaChatInput.value = prompt;
+        sendHomeVivaChatMessage(prompt);
+      }
     });
   });
 

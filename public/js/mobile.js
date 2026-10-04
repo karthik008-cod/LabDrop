@@ -851,10 +851,65 @@
   const vivaChatMessages = document.getElementById('vivaChatMessages');
   const vivaChatForm = document.getElementById('vivaChatForm');
   const vivaChatInput = document.getElementById('vivaChatInput');
+  if (vivaChatInput) {
+    vivaChatInput.setAttribute('autocomplete', 'off');
+    vivaChatInput.setAttribute('autocorrect', 'off');
+    vivaChatInput.setAttribute('autocapitalize', 'off');
+    vivaChatInput.setAttribute('spellcheck', 'false');
+    vivaChatInput.setAttribute('data-lpignore', 'true');
+  }
   const vivaChatSubmitBtn = document.getElementById('vivaChatSubmitBtn');
 
   const aiLoadingSpinner = document.getElementById('aiLoadingSpinner');
   const aiLoadingText = document.getElementById('aiLoadingText');
+
+  // Collapsible Viva Setup Panel (Transfer Page)
+  const vivaConfigPanelTransfer = document.getElementById('vivaConfigPanelTransfer');
+  const vivaConfigHeaderTransfer = document.getElementById('vivaConfigHeaderTransfer');
+  const vivaConfigToggleTextTransfer = document.getElementById('vivaConfigToggleTextTransfer');
+  const btnToggleVivaConfigTransfer = document.getElementById('btnToggleVivaConfigTransfer');
+  const btnRunVivaCompactTransfer = document.getElementById('btnRunVivaCompactTransfer');
+  const vivaConfigBadgeTransfer = document.getElementById('vivaConfigBadgeTransfer');
+
+  function setVivaConfigCollapsedTransfer(shouldCollapse) {
+    if (!vivaConfigPanelTransfer) return;
+    if (shouldCollapse) {
+      vivaConfigPanelTransfer.classList.add('collapsed');
+      if (vivaConfigToggleTextTransfer) vivaConfigToggleTextTransfer.textContent = '▼ Expand Setup';
+      if (btnRunVivaCompactTransfer) btnRunVivaCompactTransfer.style.display = 'inline-flex';
+      const examVal = aiExamType ? aiExamType.value : 'viva';
+      const secVal = aiSecondaryOption ? aiSecondaryOption.value : 'medium';
+      if (vivaConfigBadgeTransfer) vivaConfigBadgeTransfer.textContent = `${examVal.toUpperCase()} · ${secVal.toUpperCase()}`;
+    } else {
+      vivaConfigPanelTransfer.classList.remove('collapsed');
+      if (vivaConfigToggleTextTransfer) vivaConfigToggleTextTransfer.textContent = '▲ Collapse Setup';
+      if (btnRunVivaCompactTransfer) btnRunVivaCompactTransfer.style.display = 'none';
+    }
+  }
+
+  function toggleVivaConfigTransfer() {
+    if (!vivaConfigPanelTransfer) return;
+    const isCurrentlyCollapsed = vivaConfigPanelTransfer.classList.contains('collapsed');
+    setVivaConfigCollapsedTransfer(!isCurrentlyCollapsed);
+  }
+
+  if (btnToggleVivaConfigTransfer) {
+    btnToggleVivaConfigTransfer.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleVivaConfigTransfer();
+    });
+  }
+  if (vivaConfigHeaderTransfer) {
+    vivaConfigHeaderTransfer.addEventListener('click', () => {
+      toggleVivaConfigTransfer();
+    });
+  }
+  if (btnRunVivaCompactTransfer) {
+    btnRunVivaCompactTransfer.addEventListener('click', (e) => {
+      e.stopPropagation();
+      runViva(false);
+    });
+  }
 
   let directUploadedFiles = []; // array of { name, content, size, isMedia }
   let lastGeneratedExamOutput = '';
@@ -1052,15 +1107,36 @@
     aiFileSelect.addEventListener('change', checkSelectedMediaWarning);
   }
 
-  // Local file upload directly into AI modal
+  // Local file upload directly into AI modal (supports text, PDF, and diagram images)
   if (aiDirectFileInput) {
     aiDirectFileInput.addEventListener('change', async (e) => {
       const files = Array.from(e.target.files || []);
       if (files.length === 0) return;
 
       for (const file of files) {
-        const isMedia = isMediaFilename(file.name);
-        if (isMedia) {
+        const isPdf = file.name.toLowerCase().endsWith('.pdf');
+        const isImg = /\.(png|jpe?g|webp)$/i.test(file.name);
+        const isMedia = isMediaFilename(file.name) && !isImg;
+
+        if (isPdf || isImg) {
+          try {
+            const dataUrl = await readFileAsDataURL(file);
+            const base64 = dataUrl.split(',')[1] || '';
+            directUploadedFiles.push({
+              name: file.name,
+              content: '',
+              size: file.size,
+              isPdf,
+              pdfBase64: isPdf ? base64 : null,
+              isImage: isImg,
+              imageBase64: isImg ? base64 : null,
+              mimeType: isPdf ? 'application/pdf' : file.type || 'image/png',
+              isMedia: false
+            });
+          } catch (err) {
+            console.error('Failed to read visual file:', err);
+          }
+        } else if (isMedia) {
           directUploadedFiles.push({
             name: file.name,
             content: '',
@@ -1091,6 +1167,15 @@
     });
   }
 
+  function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result || '');
+      reader.onerror = () => reject(new Error('Failed to read file as DataURL'));
+      reader.readAsDataURL(file);
+    });
+  }
+
   function readFileAsText(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -1098,6 +1183,140 @@
       reader.onerror = () => resolve('');
       reader.readAsText(file.slice(0, 50 * 1024));
     });
+  }
+
+  /**
+   * Convert LaTeX math markup and raw ASCII symbol tokens into clean, authentic Unicode characters
+   * (e.g. $\rightarrow$, \rightarrow, -> become →, \Rightarrow becomes ⇒, \leq becomes ≤, \mathcal{O}(N) becomes O(N))
+   * Preserves code inside ```...``` code blocks and inline code `...`.
+   */
+  function convertLatexAndTextSymbolsToUnicode(text) {
+    if (!text || typeof text !== 'string') return text || '';
+
+    const parts = text.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
+
+    return parts.map((part, idx) => {
+      if (idx % 2 === 1) return part;
+
+      let s = part;
+
+      // 1. Arrows (LaTeX and text)
+      s = s.replace(/\$?\s*\\(?:rightarrow|to|longrightarrow)\s*\$?/g, '→');
+      s = s.replace(/\$?\s*\\(?:leftarrow|gets|longleftarrow)\s*\$?/g, '←');
+      s = s.replace(/\$?\s*\\(?:leftrightarrow|longleftrightarrow)\s*\$?/g, '↔');
+      s = s.replace(/\$?\s*\\(?:Rightarrow|implies|Longrightarrow)\s*\$?/g, '⇒');
+      s = s.replace(/\$?\s*\\(?:Leftarrow|Longleftarrow)\s*\$?/g, '⇐');
+      s = s.replace(/\$?\s*\\(?:Leftrightarrow|iff|Longleftrightarrow)\s*\$?/g, '⇔');
+      s = s.replace(/\$?\s*\\(?:uparrow)\s*\$?/g, '↑');
+      s = s.replace(/\$?\s*\\(?:downarrow)\s*\$?/g, '↓');
+      s = s.replace(/\$?\s*\\(?:updownarrow)\s*\$?/g, '↕');
+      s = s.replace(/\$?\s*\\(?:mapsto)\s*\$?/g, '↦');
+      s = s.replace(/\$?\s*\\(?:hookrightarrow)\s*\$?/g, '↪');
+      s = s.replace(/\$?\s*\\(?:hookleftarrow)\s*\$?/g, '↩');
+      s = s.replace(/\$?\s*\\(?:nearrow)\s*\$?/g, '↗');
+      s = s.replace(/\$?\s*\\(?:searrow)\s*\$?/g, '↘');
+      s = s.replace(/\$?\s*\\(?:swarrow)\s*\$?/g, '↙');
+      s = s.replace(/\$?\s*\\(?:nwarrow)\s*\$?/g, '↖');
+
+      // Text arrows with spacing (outside code blocks)
+      s = s.replace(/(\s+)-->(\s+)/g, '$1→$2');
+      s = s.replace(/(\s+)->(\s+)/g, '$1→$2');
+      s = s.replace(/(\s+)<--(\s+)/g, '$1←$2');
+      s = s.replace(/(\s+)<-(\s+)/g, '$1←$2');
+      s = s.replace(/(\s+)<->(\s+)/g, '$1↔$2');
+      s = s.replace(/(\s+)==>(\s+)/g, '$1⇒$2');
+      s = s.replace(/(\s+)=>(\s+)/g, '$1⇒$2');
+      s = s.replace(/(\s+)<=(\s+)/g, '$1⇐$2');
+      s = s.replace(/(\s+)<=>(\s+)/g, '$1⇔$2');
+
+      // 2. Comparisons & Relations
+      s = s.replace(/\$?\s*\\(?:leq?|le)\s*\$?/g, '≤');
+      s = s.replace(/\$?\s*\\(?:geq?|ge)\s*\$?/g, '≥');
+      s = s.replace(/\$?\s*\\(?:neq?|ne)\s*\$?/g, '≠');
+      s = s.replace(/\$?\s*\\(?:approx)\s*\$?/g, '≈');
+      s = s.replace(/\$?\s*\\(?:equiv)\s*\$?/g, '≡');
+      s = s.replace(/\$?\s*\\(?:sim)\s*\$?/g, '∼');
+      s = s.replace(/\$?\s*\\(?:propto)\s*\$?/g, '∝');
+      s = s.replace(/\$?\s*\\(?:ll)\s*\$?/g, '≪');
+      s = s.replace(/\$?\s*\\(?:gg)\s*\$?/g, '≫');
+
+      // 3. Arithmetic & Operations
+      s = s.replace(/\$?\s*\\(?:times)\s*\$?/g, '×');
+      s = s.replace(/\$?\s*\\(?:div)\s*\$?/g, '÷');
+      s = s.replace(/\$?\s*\\(?:pm)\s*\$?/g, '±');
+      s = s.replace(/\$?\s*\\(?:mp)\s*\$?/g, '∓');
+      s = s.replace(/\$?\s*\\(?:cdot|bullet)\s*\$?/g, '•');
+      s = s.replace(/\$?\s*\\(?:dots|cdots|ldots)\s*\$?/g, '…');
+      s = s.replace(/\$?\s*\\(?:circ|degree)\s*\$?/g, '°');
+      s = s.replace(/\$?\s*\\sqrt\{([^}]+)\}\s*\$?|\$?\s*\\sqrt\(([^)]+)\)\s*\$?/g, '√($1$2)');
+      s = s.replace(/\$?\s*\\(?:sqrt)\s*\$?/g, '√');
+      s = s.replace(/\$?\s*\\frac\{([^}]+)\}\{([^}]+)\}\s*\$?/g, '($1 / $2)');
+
+      // 4. Sets & Logic
+      s = s.replace(/\$?\s*\\(?:in)\s*\$?/g, '∈');
+      s = s.replace(/\$?\s*\\(?:notin)\s*\$?/g, '∉');
+      s = s.replace(/\$?\s*\\(?:subset)\s*\$?/g, '⊂');
+      s = s.replace(/\$?\s*\\(?:subseteq)\s*\$?/g, '⊆');
+      s = s.replace(/\$?\s*\\(?:supset)\s*\$?/g, '⊃');
+      s = s.replace(/\$?\s*\\(?:supseteq)\s*\$?/g, '⊇');
+      s = s.replace(/\$?\s*\\(?:cap)\s*\$?/g, '∩');
+      s = s.replace(/\$?\s*\\(?:cup)\s*\$?/g, '∪');
+      s = s.replace(/\$?\s*\\(?:forall)\s*\$?/g, '∀');
+      s = s.replace(/\$?\s*\\(?:exists)\s*\$?/g, '∃');
+      s = s.replace(/\$?\s*\\(?:nexists)\s*\$?/g, '∄');
+      s = s.replace(/\$?\s*\\(?:emptyset|varnothing)\s*\$?/g, '∅');
+      s = s.replace(/\$?\s*\\(?:infty)\s*\$?/g, '∞');
+      s = s.replace(/\$?\s*\\(?:neg|lnot)\s*\$?/g, '¬');
+      s = s.replace(/\$?\s*\\(?:land|wedge)\s*\$?/g, '∧');
+      s = s.replace(/\$?\s*\\(?:lor|vee)\s*\$?/g, '∨');
+
+      // 5. Complexity & Notation
+      s = s.replace(/\$?\s*\\mathcal\{O\}\((.*?)\)\s*\$?|\$?\s*\\mathcal\{O\}\s*\$?|\$?\s*\\mathcal\s*O\s*\$?/g, (m, p1) => p1 ? `O(${p1})` : 'O');
+      s = s.replace(/\$?\s*\\Omega\((.*?)\)\s*\$?|\$?\s*\\Omega\s*\$?/g, (m, p1) => p1 ? `Ω(${p1})` : 'Ω');
+      s = s.replace(/\$?\s*\\Theta\((.*?)\)\s*\$?|\$?\s*\\Theta\s*\$?/g, (m, p1) => p1 ? `Θ(${p1})` : 'Θ');
+
+      // 6. Greek Letters
+      s = s.replace(/\$?\s*\\(?:alpha)\s*\$?/g, 'α');
+      s = s.replace(/\$?\s*\\(?:beta)\s*\$?/g, 'β');
+      s = s.replace(/\$?\s*\\(?:gamma)\s*\$?/g, 'γ');
+      s = s.replace(/\$?\s*\\(?:Gamma)\s*\$?/g, 'Γ');
+      s = s.replace(/\$?\s*\\(?:delta)\s*\$?/g, 'δ');
+      s = s.replace(/\$?\s*\\(?:Delta)\s*\$?/g, 'Δ');
+      s = s.replace(/\$?\s*\\(?:epsilon|varepsilon)\s*\$?/g, 'ε');
+      s = s.replace(/\$?\s*\\(?:theta)\s*\$?/g, 'θ');
+      s = s.replace(/\$?\s*\\(?:Theta)\s*\$?/g, 'Θ');
+      s = s.replace(/\$?\s*\\(?:lambda)\s*\$?/g, 'λ');
+      s = s.replace(/\$?\s*\\(?:Lambda)\s*\$?/g, 'Λ');
+      s = s.replace(/\$?\s*\\(?:mu)\s*\$?/g, 'µ');
+      s = s.replace(/\$?\s*\\(?:pi)\s*\$?/g, 'π');
+      s = s.replace(/\$?\s*\\(?:Pi)\s*\$?/g, 'Π');
+      s = s.replace(/\$?\s*\\(?:sigma)\s*\$?/g, 'σ');
+      s = s.replace(/\$?\s*\\(?:Sigma|sum)\s*\$?/g, 'Σ');
+      s = s.replace(/\$?\s*\\(?:prod)\s*\$?/g, '∏');
+      s = s.replace(/\$?\s*\\(?:tau)\s*\$?/g, 'τ');
+      s = s.replace(/\$?\s*\\(?:phi)\s*\$?/g, 'φ');
+      s = s.replace(/\$?\s*\\(?:Phi)\s*\$?/g, 'Φ');
+      s = s.replace(/\$?\s*\\(?:omega)\s*\$?/g, 'ω');
+      s = s.replace(/\$?\s*\\(?:Omega)\s*\$?/g, 'Ω');
+
+      // 7. Unwrap simple residual inline math: e.g. `$N$` -> `N`, `$E$` -> `E`, `$k = 1$` -> `k = 1`
+      s = s.replace(/\$([^$\n]+)\$/g, '$1');
+
+      return s;
+    }).join('');
+  }
+
+  // Client-side ad & promotional text stripping safeguard with Unicode symbol translation
+  function stripAiAdsClient(text) {
+    if (!text || typeof text !== 'string') return text || '';
+    const cleaned = text
+      .replace(/(?:---\s*)?(?:Support\s+Pollinations(?:\.AI)?|🌸\s*Ad\s*🌸|Powered by Pollinations(?:\.AI)?|Support our mission to keep AI accessible)[\s\S]*$/gi, '')
+      .replace(/\n\s*(?:🌸\s*)?(?:Ad|Sponsored|Advertisement)[:\s][^\n]*/gi, '')
+      .replace(/\n\s*Powered by [^\n]*/gi, '')
+      .replace(/\n\s*Support [A-Za-z0-9_.-]+ AI[^\n]*/gi, '')
+      .trim();
+
+    return convertLatexAndTextSymbolsToUnicode(cleaned);
   }
 
   function openAiModal(tabOrFileId = null, maybeFileId = null) {
@@ -1110,22 +1329,580 @@
     if (typeof renderVivaChips === 'function') {
       renderVivaChips(lastGeneratedExamOutput ? (aiExamType && aiExamType.value === 'summarize' ? 'summarize' : 'viva') : 'initial');
     }
+    // Also populate lab record file select
+    if (typeof populateLabRecordSourceSelect === 'function') {
+      populateLabRecordSourceSelect();
+    }
     aiModal.classList.add('active');
+    document.body.classList.add('ai-sidepanel-open');
   }
 
   function closeAiModal() {
     aiModal.classList.remove('active');
+    document.body.classList.remove('ai-sidepanel-open');
   }
 
-  // Open modal from all trigger buttons (Action bar circular button & Floating bot button)
+  // Open / toggle modal from trigger buttons (Action bar circular button & Floating bot button)
   const openModalBtns = document.querySelectorAll('.open-ai-modal-btn');
   openModalBtns.forEach(btn => {
-    btn.addEventListener('click', () => openAiModal());
+    btn.addEventListener('click', () => {
+      if (aiModal && aiModal.classList.contains('active')) {
+        closeAiModal();
+      } else {
+        openAiModal();
+      }
+    });
   });
 
   if (aiModalClose) {
     aiModalClose.addEventListener('click', closeAiModal);
   }
+
+  // Close sidepanel on Escape key
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && aiModal && aiModal.classList.contains('active')) {
+      closeAiModal();
+    }
+  });
+
+  // Desktop Side Panel Left-Edge Resize Handler
+  (function initDesktopTransferSidepanelResize() {
+    const dialog = document.getElementById('aiModalWindow');
+    if (!dialog) return;
+    const resizer = dialog.querySelector('.ai-sidepanel-resize-edge');
+    if (!resizer) return;
+
+    let isResizing = false;
+
+    resizer.addEventListener('mousedown', (e) => {
+      if (window.innerWidth < 1024) return;
+      isResizing = true;
+      resizer.classList.add('resizing');
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+
+      function onMouseMove(ev) {
+        if (!isResizing) return;
+        const newWidth = Math.max(380, Math.min(window.innerWidth * 0.65, window.innerWidth - ev.clientX));
+        document.documentElement.style.setProperty('--ai-sidepanel-width', `${newWidth}px`);
+      }
+
+      function onMouseUp() {
+        if (isResizing) {
+          isResizing = false;
+          resizer.classList.remove('resizing');
+          document.body.style.userSelect = '';
+          document.body.style.cursor = '';
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('mouseup', onMouseUp);
+        }
+      }
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    });
+  })();
+
+  // ============================================================
+  // Tab Switching Logic (Lab Record vs Viva & Exam Prep)
+  // ============================================================
+  const tabBtnLabRecord = document.getElementById('tabBtnLabRecord');
+  const tabBtnViva = document.getElementById('tabBtnViva');
+  const tabContentLabRecord = document.getElementById('tabContentLabRecord');
+  const tabContentViva = document.getElementById('tabContentViva');
+
+  function switchAiTab(tabName) {
+    // Update buttons
+    document.querySelectorAll('.ai-tab-bar .ai-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+    // Update content
+    document.querySelectorAll('#aiModalBody > .ai-tab-content').forEach(panel => {
+      panel.classList.remove('active');
+    });
+    if (tabName === 'labrecord' && tabContentLabRecord) {
+      tabContentLabRecord.classList.add('active');
+    } else if (tabContentViva) {
+      tabContentViva.classList.add('active');
+    }
+  }
+
+  if (tabBtnLabRecord) tabBtnLabRecord.addEventListener('click', () => switchAiTab('labrecord'));
+  if (tabBtnViva) tabBtnViva.addEventListener('click', () => switchAiTab('viva'));
+
+  // ============================================================
+  // Lab Record Tab — Full Functionality (Transfer Page)
+  // ============================================================
+  const labRecordConfigView = document.getElementById('labRecordConfigViewTransfer');
+  const labRecordLoadingState = document.getElementById('labRecordLoadingStateTransfer');
+  const labRecordResultView = document.getElementById('labRecordResultViewTransfer');
+  const labRecordOutput = document.getElementById('labRecordOutputTransfer');
+  const labRecordAlert = document.getElementById('labRecordAlertTransfer');
+  const labRecordAlertText = document.getElementById('labRecordAlertTextTransfer');
+  const labRecordAlertClose = document.getElementById('labRecordAlertCloseTransfer');
+  const labRecordSourceSelect = document.getElementById('labRecordSourceSelectTransfer');
+  const labRecordUploadBtn = document.getElementById('labRecordUploadBtnTransfer');
+  const labRecordFileInput = document.getElementById('labRecordFileInputTransfer');
+  const btnRunLabRecordT = document.getElementById('btnRunLabRecordTransfer');
+  const btnCopyLabRecordMdT = document.getElementById('btnCopyLabRecordMdTransfer');
+  const btnCopyLabRecordRichT = document.getElementById('btnCopyLabRecordRichTransfer');
+  const btnReconfigureLabRecordT = document.getElementById('btnReconfigureLabRecordTransfer');
+  const labRecordChatMessages = document.getElementById('labRecordChatMessagesTransfer');
+  const labRecordChatForm = document.getElementById('labRecordChatFormTransfer');
+  const labRecordChatInput = document.getElementById('labRecordChatInputTransfer');
+  if (labRecordChatInput) {
+    labRecordChatInput.setAttribute('autocomplete', 'off');
+    labRecordChatInput.setAttribute('autocorrect', 'off');
+    labRecordChatInput.setAttribute('autocapitalize', 'off');
+    labRecordChatInput.setAttribute('spellcheck', 'false');
+    labRecordChatInput.setAttribute('data-lpignore', 'true');
+  }
+  const labRecordChatSubmitBtn = document.getElementById('labRecordChatSubmitBtnTransfer');
+  const selectedSectionsCountT = document.getElementById('selectedSectionsCountTransfer');
+
+  // Collapsible Lab Record Setup Panel (Transfer Page)
+  const labRecordConfigHeaderTransfer = document.getElementById('labRecordConfigHeaderTransfer');
+  const labRecordConfigToggleTextTransfer = document.getElementById('labRecordConfigToggleTextTransfer');
+  const btnToggleLabRecordConfigTransfer = document.getElementById('btnToggleLabRecordConfigTransfer');
+  const btnRunLabRecordCompactTransfer = document.getElementById('btnRunLabRecordCompactTransfer');
+  const labRecordConfigBadgeTransfer = document.getElementById('labRecordConfigBadgeTransfer');
+
+  function setLabRecordConfigCollapsedTransfer(shouldCollapse) {
+    if (!labRecordConfigView) return;
+    if (shouldCollapse) {
+      labRecordConfigView.classList.add('collapsed');
+      if (labRecordConfigToggleTextTransfer) labRecordConfigToggleTextTransfer.textContent = '▼ Expand Setup';
+      if (btnRunLabRecordCompactTransfer) btnRunLabRecordCompactTransfer.style.display = 'inline-flex';
+      const checked = document.querySelectorAll('input[name="labSectionTransfer"]:checked');
+      if (labRecordConfigBadgeTransfer) labRecordConfigBadgeTransfer.textContent = `${checked.length} / 12 Sections`;
+    } else {
+      labRecordConfigView.classList.remove('collapsed');
+      if (labRecordConfigToggleTextTransfer) labRecordConfigToggleTextTransfer.textContent = '▲ Collapse Setup';
+      if (btnRunLabRecordCompactTransfer) btnRunLabRecordCompactTransfer.style.display = 'none';
+    }
+  }
+
+  function toggleLabRecordConfigTransfer() {
+    if (!labRecordConfigView) return;
+    const isCurrentlyCollapsed = labRecordConfigView.classList.contains('collapsed');
+    setLabRecordConfigCollapsedTransfer(!isCurrentlyCollapsed);
+  }
+
+  if (btnToggleLabRecordConfigTransfer) {
+    btnToggleLabRecordConfigTransfer.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleLabRecordConfigTransfer();
+    });
+  }
+  if (labRecordConfigHeaderTransfer) {
+    labRecordConfigHeaderTransfer.addEventListener('click', () => {
+      toggleLabRecordConfigTransfer();
+    });
+  }
+  if (btnRunLabRecordCompactTransfer) {
+    btnRunLabRecordCompactTransfer.addEventListener('click', (e) => {
+      e.stopPropagation();
+      runLabRecordTransfer();
+    });
+  }
+
+  let labRecordExternalFiles = [];
+  let currentLabRecord = null;
+  let currentLabRecordMarkdown = '';
+  let labRecordConversationHistory = [];
+  let labRecordLoadingTimer = null;
+
+  const LAB_SECTION_PRESETS = {
+    full: ['aim', 'requirements', 'apparatus', 'description', 'algorithm', 'flowchart', 'procedure', 'program', 'table', 'precautions', 'output', 'result'],
+    observation: ['aim', 'algorithm', 'flowchart', 'program', 'output', 'result'],
+    theory_code: ['aim', 'description', 'program', 'output'],
+    flowchart_table: ['aim', 'algorithm', 'flowchart', 'table', 'output'],
+    custom: []
+  };
+
+  function updateLabRecordSectionCount() {
+    const checked = document.querySelectorAll('input[name="labSectionTransfer"]:checked');
+    if (selectedSectionsCountT) selectedSectionsCountT.textContent = `${checked.length} / 12 selected`;
+  }
+
+  function applyLabRecordPreset(presetKey) {
+    const checkboxes = document.querySelectorAll('input[name="labSectionTransfer"]');
+    const targets = LAB_SECTION_PRESETS[presetKey] || [];
+    if (presetKey !== 'custom') {
+      checkboxes.forEach(cb => { cb.checked = targets.includes(cb.value); });
+    }
+    document.querySelectorAll('#presetContainerTransfer .preset-chip').forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.preset === presetKey);
+    });
+    updateLabRecordSectionCount();
+  }
+
+  // Preset chips
+  document.querySelectorAll('#presetContainerTransfer .preset-chip').forEach(chip => {
+    chip.addEventListener('click', () => applyLabRecordPreset(chip.dataset.preset));
+  });
+
+  // Checkbox change
+  document.querySelectorAll('input[name="labSectionTransfer"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      document.querySelectorAll('#presetContainerTransfer .preset-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.preset === 'custom');
+      });
+      updateLabRecordSectionCount();
+    });
+  });
+
+  // Populate source select from transfer files
+  function populateLabRecordSourceSelect(preferredName) {
+    if (!labRecordSourceSelect) return;
+    labRecordSourceSelect.innerHTML = '';
+    const allFiles = (activeTransferData.files || []).concat(labRecordExternalFiles.map(f => ({ originalName: f.name, id: '__local__' + f.name })));
+    allFiles.forEach((f, i) => {
+      const opt = document.createElement('option');
+      opt.value = f.id || i;
+      opt.textContent = f.originalName || f.name;
+      opt.dataset.isLocal = f.id && f.id.startsWith('__local__') ? 'true' : 'false';
+      if (preferredName && (f.originalName || f.name) === preferredName) opt.selected = true;
+      labRecordSourceSelect.appendChild(opt);
+    });
+  }
+
+  // Upload button
+  if (labRecordUploadBtn && labRecordFileInput) {
+    labRecordUploadBtn.addEventListener('click', () => labRecordFileInput.click());
+    labRecordFileInput.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length > 0) {
+        labRecordExternalFiles.push(files[0]);
+        populateLabRecordSourceSelect(files[0].name);
+      }
+    });
+  }
+
+  // Show/hide alerts
+  function showLabRecordAlert(msg) {
+    if (labRecordAlert && labRecordAlertText) {
+      labRecordAlertText.textContent = msg;
+      labRecordAlert.style.display = 'flex';
+    }
+  }
+  function clearLabRecordAlert() {
+    if (labRecordAlert) labRecordAlert.style.display = 'none';
+  }
+  if (labRecordAlertClose) labRecordAlertClose.addEventListener('click', clearLabRecordAlert);
+
+  // Read file content
+  async function getLabRecordFilePayload() {
+    if (!labRecordSourceSelect || labRecordSourceSelect.options.length === 0) {
+      throw new Error('No source code file available. Please upload a code file.');
+    }
+    const selectedOpt = labRecordSourceSelect.options[labRecordSourceSelect.selectedIndex];
+    const isLocal = selectedOpt.dataset.isLocal === 'true';
+    const filename = selectedOpt.textContent;
+
+    if (isLocal) {
+      const localFile = labRecordExternalFiles.find(f => f.name === filename);
+      if (!localFile) throw new Error('Uploaded file not found.');
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const isPdf = localFile.name.toLowerCase().endsWith('.pdf');
+          const isImg = /\.(png|jpe?g|webp)$/i.test(localFile.name);
+          const isDocx = /\.(docx|doc)$/i.test(localFile.name);
+          if (isPdf || isImg || isDocx) {
+            const base64 = btoa(new Uint8Array(reader.result).reduce((d, b) => d + String.fromCharCode(b), ''));
+            if (isDocx) {
+              resolve({ codeContent: `[Attached Word Document: ${localFile.name}]`, filename: localFile.name, docxBase64: base64, isDocx: true });
+            } else if (isPdf) {
+              resolve({ codeContent: '', filename: localFile.name, pdfBase64: base64 });
+            } else {
+              resolve({ codeContent: '', filename: localFile.name, imageBase64: base64, mimeType: localFile.type });
+            }
+          } else {
+            resolve({ codeContent: reader.result, filename: localFile.name });
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read file.'));
+        const isPdf = localFile.name.toLowerCase().endsWith('.pdf');
+        const isImg = /\.(png|jpe?g|webp)$/i.test(localFile.name);
+        const isDocx = /\.(docx|doc)$/i.test(localFile.name);
+        if (isPdf || isImg || isDocx) reader.readAsArrayBuffer(localFile);
+        else reader.readAsText(localFile);
+      });
+    } else {
+      // Transfer file — fetch from server
+      const fileId = selectedOpt.value;
+      const tf = (activeTransferData.files || []).find(f => f.id === fileId);
+      if (!tf) throw new Error('Transfer file not found.');
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (currentPin) headers['x-transfer-pin'] = currentPin;
+      
+      const res = await fetch(`/api/download/${activeTransferData.id}/${tf.storageName}`, { headers });
+      if (!res.ok) throw new Error('Failed to download file from transfer.');
+      
+      const blob = await res.blob();
+      const isPdf = tf.originalName.toLowerCase().endsWith('.pdf');
+      const isImg = /\.(png|jpe?g|webp)$/i.test(tf.originalName);
+      const isDocx = /\.(docx|doc)$/i.test(tf.originalName);
+      
+      if (isPdf || isImg || isDocx) {
+        const arrayBuf = await blob.arrayBuffer();
+        const base64 = btoa(new Uint8Array(arrayBuf).reduce((d, b) => d + String.fromCharCode(b), ''));
+        if (isDocx) return { codeContent: `[Attached Word Document: ${tf.originalName}]`, filename: tf.originalName, docxBase64: base64, isDocx: true };
+        if (isPdf) return { codeContent: '', filename: tf.originalName, pdfBase64: base64 };
+        return { codeContent: '', filename: tf.originalName, imageBase64: base64, mimeType: tf.mimeType || blob.type };
+      } else {
+        const text = await blob.text();
+        return { codeContent: text, filename: tf.originalName };
+      }
+    }
+  }
+
+  // Loading messages
+  const labRecordLoadingQuotes = [
+    '💡 You can share files <strong>without logging in</strong> or signing up',
+    '⚡ <strong>Instant Transfer:</strong> Send files to your lab PC using a <strong>6-digit PIN</strong> or <strong>QR code</strong>',
+    '🔒 <strong>Zero-Trace Privacy:</strong> Uploaded files are <strong>automatically deleted after 30 minutes</strong>',
+    '📄 <strong>1-Click Lab Records:</strong> Turn code or diagrams into full <strong>academic lab observation sheets</strong>',
+    '🎓 <strong>Oral Viva Voce Prep:</strong> Get <strong>60-second elevator pitches</strong>, viva traps & model answers',
+    '📊 <strong>Auto Mermaid Flowcharts:</strong> Automatically draw <strong>interactive visual SVG diagrams</strong>',
+    '🧠 <strong>Multi-Diagram Vision:</strong> PDF scanner detects & breaks down <strong>every diagram separately</strong>',
+    '🎯 <strong>Custom Sizing:</strong> Generate <strong>Brief (1-page)</strong>, Standard, or Detailed academic reports',
+    '📱 <strong>Cross-Device Sync:</strong> Seamless transfer across your <strong>phone, tablet, and lab PC</strong>',
+    '📑 <strong>Word & Docs Ready:</strong> Copy formatted academic tables and code with <strong>1 single click</strong>',
+    '💻 <strong>Zero Setup:</strong> Native support for <strong>C, C++, Java, Python, SQL</strong> & multi-page PDFs',
+    '🖨️ <strong>University A4 Print:</strong> Pre-formatted with <strong>Aim, Algorithm, Tables & Precautions</strong>'
+  ];
+
+  function startLabRecordLoadingCycle() {
+    stopLabRecordLoadingCycle();
+    const msgEl = document.getElementById('labRecordLoadingMsgTransfer');
+    if (!msgEl) return;
+    let idx = 0;
+    msgEl.innerHTML = labRecordLoadingQuotes[0];
+    labRecordLoadingTimer = setInterval(() => {
+      idx = (idx + 1) % labRecordLoadingQuotes.length;
+      msgEl.style.opacity = '0.3';
+      setTimeout(() => {
+        msgEl.innerHTML = labRecordLoadingQuotes[idx];
+        msgEl.style.opacity = '1';
+      }, 200);
+    }, 2600);
+  }
+
+  function stopLabRecordLoadingCycle() {
+    if (labRecordLoadingTimer) { clearInterval(labRecordLoadingTimer); labRecordLoadingTimer = null; }
+  }
+
+  // Generate Lab Record
+  async function runLabRecordTransfer() {
+    clearLabRecordAlert();
+    const checkedBoxes = Array.from(document.querySelectorAll('input[name="labSectionTransfer"]:checked')).map(cb => cb.value);
+    if (checkedBoxes.length === 0) {
+      showLabRecordAlert('Please select at least one section.');
+      return;
+    }
+
+    let payloadData;
+    try {
+      payloadData = await getLabRecordFilePayload();
+    } catch (err) {
+      showLabRecordAlert(err.message);
+      return;
+    }
+
+    // Show loading & auto-collapse setup panel
+    setLabRecordConfigCollapsedTransfer(true);
+    if (labRecordResultView) labRecordResultView.style.display = 'none';
+    if (labRecordLoadingState) labRecordLoadingState.style.display = 'block';
+    startLabRecordLoadingCycle();
+
+    try {
+      const res = await fetch('/api/ai/lab-record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          codeContent: payloadData.codeContent || '',
+          filename: payloadData.filename || 'program',
+          selectedSections: checkedBoxes,
+          studentDetails: { expNo: '1', subject: 'Practical Lab', studentName: '', rollNo: '', date: new Date().toLocaleDateString('en-GB') },
+          engine: 'auto',
+          pdfBase64: payloadData.pdfBase64 || null,
+          imageBase64: payloadData.imageBase64 || null,
+          docxBase64: payloadData.docxBase64 || null,
+          mimeType: payloadData.mimeType || null
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to generate Lab Record.');
+
+      currentLabRecord = data;
+      let rawMd = data.markdown || '';
+      if (data.mermaidCode && !rawMd.includes(data.mermaidCode)) {
+        rawMd += `\n\n## 📊 Visual Flowchart / Diagram\n\`\`\`mermaid\n${data.mermaidCode}\n\`\`\`\n`;
+      }
+      currentLabRecordMarkdown = stripAiAdsClient(rawMd);
+
+      // Render result
+      stopLabRecordLoadingCycle();
+      if (labRecordLoadingState) labRecordLoadingState.style.display = 'none';
+      if (labRecordResultView) labRecordResultView.style.display = 'block';
+      if (labRecordOutput) {
+        labRecordOutput.innerHTML = window.marked ? window.marked.parse(currentLabRecordMarkdown) : currentLabRecordMarkdown;
+      }
+
+      // Add generation notice to chat
+      if (labRecordChatMessages) {
+        labRecordChatMessages.style.display = 'flex';
+        const notice = document.createElement('div');
+        notice.className = 'ai-chat-bot-bubble';
+        notice.innerHTML = '<strong>✅ Lab Record generated!</strong> Ask me anything about this record — expand theory, simplify algorithm, add test cases, etc.';
+        labRecordChatMessages.appendChild(notice);
+        labRecordChatMessages.scrollTop = labRecordChatMessages.scrollHeight;
+      }
+
+      labRecordConversationHistory = [
+        { role: 'model', content: currentLabRecordMarkdown }
+      ];
+
+    } catch (err) {
+      stopLabRecordLoadingCycle();
+      if (labRecordLoadingState) labRecordLoadingState.style.display = 'none';
+      if (labRecordConfigView) labRecordConfigView.style.display = 'block';
+      showLabRecordAlert(err.message);
+    }
+  }
+
+  if (btnRunLabRecordT) btnRunLabRecordT.addEventListener('click', runLabRecordTransfer);
+
+  // Reconfigure
+  if (btnReconfigureLabRecordT) {
+    btnReconfigureLabRecordT.addEventListener('click', () => {
+      if (labRecordResultView) labRecordResultView.style.display = 'none';
+      if (labRecordConfigView) labRecordConfigView.style.display = 'block';
+      setLabRecordConfigCollapsedTransfer(false);
+    });
+  }
+
+  // Copy Markdown
+  if (btnCopyLabRecordMdT) {
+    btnCopyLabRecordMdT.addEventListener('click', async () => {
+      if (!currentLabRecordMarkdown) return;
+      try {
+        await navigator.clipboard.writeText(currentLabRecordMarkdown);
+        const orig = btnCopyLabRecordMdT.textContent;
+        btnCopyLabRecordMdT.textContent = '✅ Copied!';
+        setTimeout(() => btnCopyLabRecordMdT.textContent = orig, 2000);
+      } catch (e) {}
+    });
+  }
+
+  // Copy for Word
+  if (btnCopyLabRecordRichT) {
+    btnCopyLabRecordRichT.addEventListener('click', async () => {
+      if (!labRecordOutput) return;
+      try {
+        const html = labRecordOutput.innerHTML;
+        const blob = new Blob([html], { type: 'text/html' });
+        await navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': new Blob([labRecordOutput.innerText], { type: 'text/plain' }) })]);
+        const orig = btnCopyLabRecordRichT.textContent;
+        btnCopyLabRecordRichT.textContent = '✅ Copied!';
+        setTimeout(() => btnCopyLabRecordRichT.textContent = orig, 2000);
+      } catch (e) {}
+    });
+  }
+
+  // Lab Record Chat
+  async function sendLabRecordChatMessage(customPrompt = null) {
+    const text = (customPrompt || (labRecordChatInput ? labRecordChatInput.value : '')).trim();
+    if (!text) return;
+    if (labRecordChatInput) labRecordChatInput.value = '';
+
+    // Auto-collapse setup panel to provide maximum chat room
+    setLabRecordConfigCollapsedTransfer(true);
+
+    if (labRecordChatMessages) {
+      labRecordChatMessages.style.display = 'flex';
+    }
+
+    // User bubble
+    const userMsg = document.createElement('div');
+    userMsg.className = 'ai-chat-user-bubble';
+    userMsg.textContent = text;
+    if (labRecordChatMessages) labRecordChatMessages.appendChild(userMsg);
+
+    // Bot thinking bubble
+    const botMsg = document.createElement('div');
+    botMsg.className = 'ai-chat-bot-bubble';
+    botMsg.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></span> Thinking...';
+    if (labRecordChatMessages) {
+      labRecordChatMessages.appendChild(botMsg);
+      labRecordChatMessages.scrollTop = labRecordChatMessages.scrollHeight;
+    }
+
+    if (labRecordChatSubmitBtn) labRecordChatSubmitBtn.disabled = true;
+
+    try {
+      const selection = getSelectedFiles();
+      let chatDirectFiles = selection.localFiles || [];
+      let chatFileIds = selection.transferFileIds || [];
+
+      if (chatFileIds.length === 0 && chatDirectFiles.length === 0) {
+        try {
+          const payload = await getLabRecordFilePayload();
+          if (payload) {
+            chatDirectFiles = [{
+              name: payload.filename,
+              content: payload.codeContent || '',
+              pdfBase64: payload.pdfBase64 || null,
+              imageBase64: payload.imageBase64 || null,
+              mimeType: payload.mimeType || null
+            }];
+          }
+        } catch (_) {}
+      }
+
+      const data = await callAiAnalyze({
+        action: 'chat',
+        prompt: text,
+        fileIds: chatFileIds,
+        directFiles: chatDirectFiles,
+        conversationHistory: labRecordConversationHistory,
+        previousOutput: currentLabRecordMarkdown
+      });
+
+      const cleanedChat = stripAiAdsClient(data.result);
+      labRecordConversationHistory.push({ role: 'user', content: text });
+      labRecordConversationHistory.push({ role: 'model', content: cleanedChat });
+
+      botMsg.innerHTML = window.marked ? window.marked.parse(cleanedChat) : cleanedChat;
+    } catch (err) {
+      botMsg.innerHTML = `<span style="color: var(--color-danger);">Error: ${err.message}</span>`;
+    } finally {
+      if (labRecordChatSubmitBtn) labRecordChatSubmitBtn.disabled = false;
+      if (labRecordChatMessages) labRecordChatMessages.scrollTop = labRecordChatMessages.scrollHeight;
+    }
+  }
+
+  if (labRecordChatForm) {
+    labRecordChatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      sendLabRecordChatMessage();
+    });
+  }
+
+  // Lab Record chat chips
+  document.querySelectorAll('.lab-record-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prompt = btn.dataset.prompt;
+      if (prompt && labRecordChatInput) {
+        labRecordChatInput.value = prompt;
+        sendLabRecordChatMessage(prompt);
+      }
+    });
+  });
 
   // Helper to call backend AI endpoint with robust non-JSON response handling
   async function callAiAnalyze(payload) {
@@ -1183,10 +1960,61 @@
     if (vivaResult) vivaResult.style.display = 'none';
     const isSummarize = aiExamType && aiExamType.value === 'summarize';
 
-    aiLoadingText.textContent = isForceful 
-      ? '⚡ Forcefully analyzing file & formulating technical questions...' 
-      : (isSummarize ? 'Generating structured summary with Gemini AI...' : 'Consulting Gemini AI to prepare high-scoring Exam & Viva questions...');
+    // Auto-collapse setup panel to provide maximum chat/result room
+    setVivaConfigCollapsedTransfer(true);
+
+    let aiLoadingTimer = null;
+    const aiLoadingQuotes = [
+      '💡 You can share files <strong>without logging in</strong> or signing up',
+      '⚡ <strong>Instant Transfer:</strong> Send files to your lab PC using a <strong>6-digit PIN</strong> or <strong>QR code</strong>',
+      '🔒 <strong>Zero-Trace Privacy:</strong> Uploaded files are <strong>automatically deleted after 30 minutes</strong>',
+      '📄 <strong>1-Click Lab Records:</strong> Turn code or diagrams into full <strong>academic lab observation sheets</strong>',
+      '🎓 <strong>Oral Viva Voce Prep:</strong> Get <strong>60-second elevator pitches</strong>, viva traps & model answers',
+      '📊 <strong>Auto Mermaid Flowcharts:</strong> Automatically draw <strong>interactive visual SVG diagrams</strong>',
+      '🧠 <strong>Multi-Diagram Vision:</strong> PDF scanner detects & breaks down <strong>every diagram separately</strong>',
+      '🎯 <strong>Custom Sizing:</strong> Generate <strong>Brief (1-page)</strong>, Standard, or Detailed academic reports',
+      '📱 <strong>Cross-Device Sync:</strong> Seamless transfer across your <strong>phone, tablet, and lab PC</strong>',
+      '📑 <strong>Word & Docs Ready:</strong> Copy formatted academic tables and code with <strong>1 single click</strong>',
+      '💻 <strong>Zero Setup:</strong> Native support for <strong>C, C++, Java, Python, SQL</strong> & multi-page PDFs',
+      '🖨️ <strong>University A4 Print:</strong> Pre-formatted with <strong>Aim, Algorithm, Tables & Precautions</strong>'
+    ];
+
+    function startAiLoadingCycle() {
+      if (aiLoadingTimer) clearInterval(aiLoadingTimer);
+      const dynamicEl = document.getElementById('aiLoadingDynamicMsg');
+      const titleEl = document.getElementById('aiLoadingTitle');
+      if (titleEl) {
+        titleEl.textContent = isSummarize ? 'Summarizing Document & Diagrams...' : 'Synthesizing Exam & Viva Prep...';
+      }
+      if (!dynamicEl) return;
+      let qIdx = 0;
+      dynamicEl.innerHTML = aiLoadingQuotes[0];
+      aiLoadingTimer = setInterval(() => {
+        qIdx = (qIdx + 1) % aiLoadingQuotes.length;
+        if (dynamicEl) {
+          dynamicEl.style.opacity = '0.3';
+          setTimeout(() => {
+            dynamicEl.innerHTML = aiLoadingQuotes[qIdx];
+            dynamicEl.style.opacity = '1';
+          }, 200);
+        }
+      }, 2600);
+    }
+
+    function stopAiLoadingCycle() {
+      if (aiLoadingTimer) {
+        clearInterval(aiLoadingTimer);
+        aiLoadingTimer = null;
+      }
+    }
+
+    if (aiLoadingText) {
+      aiLoadingText.textContent = isForceful 
+        ? '⚡ Forcefully analyzing file & formulating technical questions...' 
+        : (isSummarize ? 'Generating structured summary with Gemini AI...' : 'Consulting Gemini AI to prepare high-scoring Exam & Viva questions...');
+    }
     aiLoadingSpinner.style.display = 'block';
+    startAiLoadingCycle();
     aiLoadingSpinner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     const examType = aiExamType ? aiExamType.value : 'viva';
@@ -1207,6 +2035,7 @@
         force: !!isForceful
       });
 
+      stopAiLoadingCycle();
       aiLoadingSpinner.style.display = 'none';
 
       if (data.needsForce) {
@@ -1219,7 +2048,8 @@
       }
 
       aiMediaWarningBanner.style.display = 'none';
-      lastGeneratedExamOutput = data.result;
+      const cleanedExam = stripAiAdsClient(data.result);
+      lastGeneratedExamOutput = cleanedExam;
       vivaConversationHistory = [];
 
       // Update badge
@@ -1252,9 +2082,9 @@
       vivaResult.style.display = 'block';
 
       if (window.marked) {
-        vivaOutput.innerHTML = window.marked.parse(data.result);
+        vivaOutput.innerHTML = window.marked.parse(cleanedExam);
       } else {
-        vivaOutput.textContent = data.result;
+        vivaOutput.textContent = cleanedExam;
       }
 
       // Inform chat feed of the generated content without wiping user history
@@ -1277,6 +2107,7 @@
       vivaResult.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     } catch (err) {
+      stopAiLoadingCycle();
       aiLoadingSpinner.style.display = 'none';
       await window.LabDialog.alert((isSummarize ? 'Summary generation failed: ' : 'Exam Prep generation failed: ') + err.message);
     }
@@ -1311,13 +2142,14 @@
     let dragStartX, dragStartY, initialLeft, initialTop;
 
     function resetModalPosition() {
-      modalWindow.style.position = 'relative';
-      modalWindow.style.left = '0px';
-      modalWindow.style.top = '0px';
-      modalWindow.style.width = '720px';
-      modalWindow.style.height = '640px';
-      modalWindow.style.maxWidth = '95vw';
-      modalWindow.style.maxHeight = '92vh';
+      modalWindow.style.left = '';
+      modalWindow.style.top = '';
+      modalWindow.style.width = '';
+      modalWindow.style.height = '';
+      modalWindow.style.position = '';
+      modalWindow.style.maxWidth = '';
+      modalWindow.style.maxHeight = '';
+      document.documentElement.style.setProperty('--ai-sidepanel-width', '480px');
     }
 
     if (resetBtn) {
@@ -1329,6 +2161,7 @@
 
     // Mouse Dragging
     modalHeader.addEventListener('mousedown', (e) => {
+      if (window.innerWidth >= 1024) return;
       if (e.target.closest('.modal__close') || e.target.tagName === 'BUTTON') return;
       isDragging = true;
       modalHeader.style.cursor = 'grabbing';
@@ -1374,6 +2207,7 @@
 
     // Touch Dragging
     modalHeader.addEventListener('touchstart', (e) => {
+      if (window.innerWidth >= 1024) return;
       if (e.target.closest('.modal__close') || e.target.tagName === 'BUTTON') return;
       const touch = e.touches[0];
       isDragging = true;
@@ -1421,6 +2255,7 @@
     const resizers = modalWindow.querySelectorAll('.ai-resizer');
     resizers.forEach(resizer => {
       resizer.addEventListener('mousedown', (e) => {
+        if (window.innerWidth >= 1024) return;
         e.preventDefault();
         e.stopPropagation();
 
@@ -1567,6 +2402,9 @@
     if (!text) return;
     if (vivaChatInput) vivaChatInput.value = '';
 
+    // Auto-collapse setup panel to provide maximum chat room
+    setVivaConfigCollapsedTransfer(true);
+
     // Make messages container visible
     if (vivaChatMessages) {
       vivaChatMessages.style.display = 'flex';
@@ -1605,13 +2443,14 @@
         previousOutput: lastGeneratedExamOutput
       });
 
+      const cleanedVivaChat = stripAiAdsClient(data.result);
       vivaConversationHistory.push({ role: 'user', content: text });
-      vivaConversationHistory.push({ role: 'model', content: data.result });
+      vivaConversationHistory.push({ role: 'model', content: cleanedVivaChat });
 
       if (window.marked) {
-        botMsg.innerHTML = window.marked.parse(data.result);
+        botMsg.innerHTML = window.marked.parse(cleanedVivaChat);
       } else {
-        botMsg.textContent = data.result;
+        botMsg.textContent = cleanedVivaChat;
       }
     } catch (err) {
       botMsg.innerHTML = `<span style="color: var(--color-danger);">Error: ${escapeHtml(err.message)}</span>`;

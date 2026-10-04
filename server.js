@@ -7,7 +7,7 @@ require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const multerS3 = require('multer-s3');
-const { S3Client, GetObjectCommand, DeleteObjectsCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, GetObjectCommand, DeleteObjectsCommand, HeadObjectCommand, ListObjectVersionsCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const archiver = require('archiver');
 const QRCode = require('qrcode');
@@ -22,6 +22,14 @@ const storage = require('./storage');
 const aiService = require('./ai-service');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'labdrop-super-secret-jwt-key';
+
+// Keep process alive across transient DNS/network dropouts (e.g. PC sleep/wake)
+process.on('unhandledRejection', (reason) => {
+  console.warn('[Process] Handled unhandled rejection:', reason && (reason.message || reason));
+});
+process.on('uncaughtException', (err) => {
+  console.error('[Process] Uncaught exception:', err && (err.message || err));
+});
 
 // Initialize S3 Client
 const s3Client = new S3Client({
@@ -298,8 +306,8 @@ app.use(express.static(path.join(__dirname, 'public'), {
     if (/\.(png|jpe?g|webp|svg|ico|woff2?|ttf|eot)$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     } else if (filePath.endsWith('.css') || filePath.endsWith('.js')) {
-      // CSS & JS assets
-      res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+      // CSS & JS assets: immediate revalidation to prevent stale caching during updates
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     } else if (filePath.endsWith('.html') || filePath.endsWith('manifest.json')) {
       // HTML documents revalidate
       res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
@@ -346,6 +354,12 @@ app.use('/api/upload', (req, res, next) => {
   req.transferId = uuidv4();
   next();
 });
+
+// Fallback for Web Share Target (if Service Worker is ever bypassed or inactive)
+app.all('/share-target', (req, res) => {
+  res.redirect(303, '/?shared=1');
+});
+
 
 // ============================================================
 // API Routes
@@ -1215,8 +1229,8 @@ app.post('/api/transfer/:id/extend', async (req, res) => {
   res.json({ success: true, expiresAt: transfer.expiresAt });
 });
 
-// Helper: fetch file text from S3 with automatic PDF & Word (.docx) document extraction
-async function fetchFileTextFromS3(transferId, storageName, maxBytes = 4 * 1024 * 1024, originalName = '') {
+// Helper: fetch file text and binary payload (for PDF and image diagrams) from S3
+async function fetchFilePayloadFromS3(transferId, storageName, maxBytes = 15 * 1024 * 1024, originalName = '') {
   const s3Key = `${transferId}/${storageName}`;
   const command = new GetObjectCommand({
     Bucket: S3_BUCKET_NAME,
@@ -1236,14 +1250,16 @@ async function fetchFileTextFromS3(transferId, storageName, maxBytes = 4 * 1024 
   const rawBuffer = Buffer.concat(chunks);
   const combinedName = `${originalName || ''} ${storageName || ''}`.toLowerCase();
   const isPdf = combinedName.includes('.pdf') || (rawBuffer.length >= 4 && rawBuffer.slice(0, 4).toString() === '%PDF');
+  const isImage = /\.(png|jpe?g|webp|gif|bmp)$/i.test(combinedName);
   const isDocx = combinedName.includes('.docx') || combinedName.includes('.doc') || 
                 (rawBuffer.length >= 4 && rawBuffer[0] === 0x50 && rawBuffer[1] === 0x4B && rawBuffer[2] === 0x03 && rawBuffer[3] === 0x04 && !combinedName.includes('.zip'));
+
+  let extractedText = '';
 
   // 1. PDF Document extraction
   if (isPdf) {
     try {
       const pdfLib = require('pdf-parse');
-      let extractedText = '';
       if (typeof pdfLib === 'function') {
         const pdfData = await pdfLib(rawBuffer);
         extractedText = pdfData?.text || '';
@@ -1256,31 +1272,55 @@ async function fetchFileTextFromS3(transferId, storageName, maxBytes = 4 * 1024 
           await parser.destroy();
         }
       }
-      if (extractedText && extractedText.trim().length > 10) {
-        console.log(`[fetchFileTextFromS3] Successfully extracted ${extractedText.trim().length} chars from PDF: ${originalName || storageName}`);
-        return extractedText.trim();
-      }
     } catch (pdfErr) {
-      console.warn(`[fetchFileTextFromS3] PDF parse warning for ${originalName || storageName}:`, pdfErr.message);
+      console.warn(`[fetchFilePayloadFromS3] PDF parse warning for ${originalName || storageName}:`, pdfErr.message);
     }
+
+    return {
+      text: extractedText.trim(),
+      isPdf: true,
+      pdfBase64: rawBuffer.length <= 15 * 1024 * 1024 ? rawBuffer.toString('base64') : null,
+      mimeType: 'application/pdf'
+    };
   }
 
-  // 2. Word Document (.docx / .doc) extraction
+  // 2. Image files (diagrams, flowcharts, architectures)
+  if (isImage) {
+    let imgMime = 'image/png';
+    if (combinedName.includes('.jpg') || combinedName.includes('.jpeg')) imgMime = 'image/jpeg';
+    else if (combinedName.includes('.webp')) imgMime = 'image/webp';
+
+    return {
+      text: '',
+      isImage: true,
+      imageBase64: rawBuffer.length <= 10 * 1024 * 1024 ? rawBuffer.toString('base64') : null,
+      mimeType: imgMime
+    };
+  }
+
+  // 3. Word Document (.docx / .doc) extraction
   if (isDocx) {
     try {
       const mammoth = require('mammoth');
       const docxResult = await mammoth.extractRawText({ buffer: rawBuffer });
-      if (docxResult && docxResult.value && docxResult.value.trim().length > 10) {
-        console.log(`[fetchFileTextFromS3] Successfully extracted ${docxResult.value.trim().length} chars from DOCX: ${originalName || storageName}`);
-        return docxResult.value.trim();
+      if (docxResult && docxResult.value) {
+        extractedText = docxResult.value.trim();
       }
     } catch (docxErr) {
-      console.warn(`[fetchFileTextFromS3] DOCX parse warning for ${originalName || storageName}:`, docxErr.message);
+      console.warn(`[fetchFilePayloadFromS3] DOCX parse warning for ${originalName || storageName}:`, docxErr.message);
     }
+    return { text: extractedText, isDocx: true };
   }
 
-  // 3. Plain text / code fallback
-  return rawBuffer.toString('utf8').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ');
+  // 4. Plain text / code fallback
+  extractedText = rawBuffer.toString('utf8').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ');
+  return { text: extractedText };
+}
+
+// Backward-compatible helper: fetch file text from S3
+async function fetchFileTextFromS3(transferId, storageName, maxBytes = 4 * 1024 * 1024, originalName = '') {
+  const payload = await fetchFilePayloadFromS3(transferId, storageName, maxBytes, originalName);
+  return payload.text || '';
 }
 
 // Helper to identify media/non-academic assets
@@ -1298,7 +1338,6 @@ function isNonStudyDocument(text = '', filename = '') {
   if (lowerName.includes('omr') || lower.includes('omr sheet') || lower.includes('optical mark')) return true;
   
   // OMR bubble sheet patterns:
-  // e.g. "1 1 2 3 4", "2 1 2 3 4", or "(1) (2) (3) (4)" repeated across many questions
   const bubbleMatches = text.match(/\b\d{1,3}\s+[1-4]\s+[1-4]\s+[1-4]\s+[1-4]\b/g) || text.match(/\b\d{1,3}\s*\([1-4]\)\s*\([1-4]\)\s*\([1-4]\)\s*\([1-4]\)/g);
   if (bubbleMatches && bubbleMatches.length >= 8) return true;
 
@@ -1334,26 +1373,53 @@ app.post('/api/ai/lab-record', async (req, res) => {
       transferId,
       fileId,
       engine = 'instant',
-      contentSize = 'standard'
+      contentSize = 'standard',
+      pdfBase64,
+      imageBase64,
+      docxBase64,
+      mimeType
     } = req.body;
 
     let targetCode = codeContent || '';
     let targetFilename = filename || 'program';
+    let targetPdfBase64 = pdfBase64 || null;
+    let targetImageBase64 = imageBase64 || null;
+    let targetMimeType = mimeType || null;
+
+    // Handle Word Document (.docx / .doc) direct upload via base64
+    const isDocxName = /\.(docx|doc)$/i.test(targetFilename);
+    if (docxBase64 || (isDocxName && targetCode && targetCode.startsWith('data:'))) {
+      try {
+        const rawBase64 = docxBase64 || (targetCode.includes(',') ? targetCode.split(',')[1] : targetCode);
+        const docxBuf = Buffer.from(rawBase64, 'base64');
+        const mammoth = require('mammoth');
+        const docxResult = await mammoth.extractRawText({ buffer: docxBuf });
+        if (docxResult && docxResult.value && docxResult.value.trim()) {
+          targetCode = docxResult.value.trim();
+        }
+      } catch (docxErr) {
+        console.warn('[LabDrop AI Lab Record] DOCX direct parse warning:', docxErr.message);
+      }
+    }
 
     // If transferId and fileId provided, resolve from transfer
-    if ((!targetCode || !targetCode.trim()) && transferId && fileId) {
+    if ((!targetCode || !targetCode.trim() || targetCode.startsWith('[Attached')) && transferId && fileId) {
       const transfer = await storage.transfers.get(transferId);
       if (transfer) {
         const fileObj = (transfer.files || []).find(f => f.id === fileId);
         if (fileObj) {
-          targetCode = await fetchFileTextFromS3(transfer.id, fileObj.storageName, 35 * 1024);
+          const payload = await fetchFilePayloadFromS3(transfer.id, fileObj.storageName, 15 * 1024 * 1024, fileObj.originalName);
+          targetCode = payload.text || '';
           targetFilename = fileObj.originalName;
+          targetPdfBase64 = payload.pdfBase64;
+          targetImageBase64 = payload.imageBase64;
+          targetMimeType = payload.mimeType;
         }
       }
     }
 
-    if (!targetCode || !targetCode.trim()) {
-      return res.status(400).json({ error: 'Please provide code content or upload a code file to generate a Lab Record.' });
+    if (!targetCode && !targetPdfBase64 && !targetImageBase64) {
+      return res.status(400).json({ error: 'Please provide code content or upload a code/diagram file to generate a Lab Record.' });
     }
 
     const recordData = await aiService.generateLabRecord({
@@ -1362,8 +1428,15 @@ app.post('/api/ai/lab-record', async (req, res) => {
       selectedSections,
       studentDetails,
       engine,
-      contentSize
+      contentSize,
+      pdfBase64: targetPdfBase64,
+      imageBase64: targetImageBase64,
+      mimeType: targetMimeType
     });
+
+    if (recordData && recordData.markdown) {
+      recordData.markdown = aiService.stripAiAds(recordData.markdown);
+    }
 
     return res.json({
       success: true,
@@ -1446,26 +1519,24 @@ app.post('/api/ai/analyze', async (req, res) => {
       }
 
       for (const tf of transferFilesToAnalyze) {
-        const isMedia = isMediaAsset(tf.originalName, tf.category);
-        if (isMedia) {
+        try {
+          const payload = await fetchFilePayloadFromS3(transfer.id, tf.storageName, 15 * 1024 * 1024, tf.originalName);
+          const isImg = payload.isImage;
+          const isPdf = payload.isPdf;
+
           filesData.push({
             name: tf.originalName,
-            isMedia: true,
+            isMedia: isImg && examType !== 'summarize',
             size: tf.size,
-            content: ''
+            content: payload.text || '',
+            isPdf: !!isPdf,
+            pdfBase64: payload.pdfBase64,
+            isImage: !!isImg,
+            imageBase64: payload.imageBase64,
+            mimeType: payload.mimeType
           });
-        } else {
-          try {
-            const content = await fetchFileTextFromS3(transfer.id, tf.storageName, 4 * 1024 * 1024, tf.originalName);
-            filesData.push({
-              name: tf.originalName,
-              isMedia: false,
-              size: tf.size,
-              content: content || ''
-            });
-          } catch (err) {
-            console.warn(`[LabDrop AI] Failed to read ${tf.originalName}:`, err.message);
-          }
+        } catch (err) {
+          console.warn(`[LabDrop AI] Failed to read ${tf.originalName}:`, err.message);
         }
       }
 
@@ -1473,17 +1544,42 @@ app.post('/api/ai/analyze', async (req, res) => {
       if (Array.isArray(directFiles)) {
         for (const df of directFiles) {
           if (df && df.name) {
-            const isMedia = isMediaAsset(df.name);
-            const rawContent = isMedia ? '' : (df.content || '').slice(0, 35 * 1024);
-            // Clean up any binary control chars from local file string
-            const safeContent = typeof rawContent === 'string' 
-              ? rawContent.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ') 
-              : '';
+            const isPdf = df.isPdf || df.name.toLowerCase().endsWith('.pdf');
+            const isImg = df.isImage || /\.(png|jpe?g|webp)$/i.test(df.name);
+            const isDocx = df.isDocx || /\.(docx|doc)$/i.test(df.name);
+            const pdfBase64 = df.pdfBase64 || (isPdf && df.base64 ? df.base64 : null);
+            const imageBase64 = df.imageBase64 || (isImg && df.base64 ? df.base64 : null);
+            const docxBase64 = df.docxBase64 || (isDocx && df.base64 ? df.base64 : null);
+
+            let safeContent = '';
+            if (isDocx && docxBase64) {
+              try {
+                const mammoth = require('mammoth');
+                const buf = Buffer.from(docxBase64, 'base64');
+                const docxRes = await mammoth.extractRawText({ buffer: buf });
+                if (docxRes && docxRes.value) {
+                  safeContent = docxRes.value.trim();
+                }
+              } catch (docxErr) {
+                console.warn('[LabDrop AI] Failed to extract direct DOCX text:', docxErr.message);
+              }
+            } else if (!isPdf && !isImg) {
+              const rawContent = (df.content || df.codeContent || '').slice(0, 35 * 1024);
+              safeContent = typeof rawContent === 'string' 
+                ? rawContent.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ') 
+                : '';
+            }
+
             filesData.push({
               name: df.name,
-              isMedia,
+              isMedia: isImg && examType !== 'summarize',
               size: df.size || safeContent.length,
-              content: safeContent
+              content: safeContent,
+              isPdf: !!isPdf,
+              pdfBase64,
+              isImage: !!isImg,
+              imageBase64,
+              mimeType: df.mimeType || (isPdf ? 'application/pdf' : 'image/png')
             });
           }
         }
@@ -1528,7 +1624,7 @@ app.post('/api/ai/analyze', async (req, res) => {
         examType,
         difficulty,
         lengthType,
-        result,
+        result: aiService.stripAiAds(result),
         filenames: filesData.map(f => f.name)
       });
 
@@ -1573,11 +1669,19 @@ app.post('/api/ai/analyze', async (req, res) => {
         }
       }
 
+      const mediaParts = [];
+
       for (const f of filesToRead) {
         try {
-          if (!isMediaAsset(f.originalName, f.category)) {
-            const content = await fetchFileTextFromS3(transfer.id, f.storageName, 4 * 1024 * 1024, f.originalName);
-            filesContext += `\n--- Content of ${f.originalName} ---\n${(content || '').slice(0, 30000)}\n`;
+          const payload = await fetchFilePayloadFromS3(transfer.id, f.storageName, 15 * 1024 * 1024, f.originalName);
+          if (payload.pdfBase64) {
+            mediaParts.push({ inlineData: { mimeType: 'application/pdf', data: payload.pdfBase64 } });
+            filesContext += `\n--- Attached Multimodal PDF: ${f.originalName} ---\n${(payload.text || '').slice(0, 15000)}\n`;
+          } else if (payload.imageBase64) {
+            mediaParts.push({ inlineData: { mimeType: payload.mimeType || 'image/png', data: payload.imageBase64 } });
+            filesContext += `\n--- Attached Multimodal Image/Diagram: ${f.originalName} ---\n`;
+          } else if (!isMediaAsset(f.originalName, f.category)) {
+            filesContext += `\n--- Content of ${f.originalName} ---\n${(payload.text || '').slice(0, 30000)}\n`;
           } else {
             filesContext += `\n--- Media Asset: ${f.originalName} (${(f.size / 1024).toFixed(1)} KB) ---\n`;
           }
@@ -1590,13 +1694,38 @@ app.post('/api/ai/analyze', async (req, res) => {
       if (Array.isArray(directFiles)) {
         for (const df of directFiles) {
           if (df && df.name) {
-            filesContext += `\n--- User Uploaded: ${df.name} ---\n${(df.content || '').slice(0, 8000)}\n`;
+            const isDocx = df.isDocx || /\.(docx|doc)$/i.test(df.name);
+            const docxBase64 = df.docxBase64 || (isDocx && df.base64 ? df.base64 : null);
+            let content = df.content || df.codeContent || '';
+
+            if (isDocx && docxBase64 && (!content || content.startsWith('[Attached Word Document'))) {
+              try {
+                const mammoth = require('mammoth');
+                const buf = Buffer.from(docxBase64, 'base64');
+                const docxRes = await mammoth.extractRawText({ buffer: buf });
+                if (docxRes && docxRes.value) {
+                  content = docxRes.value.trim();
+                }
+              } catch (e) {
+                console.warn('[analyze chat] Failed to extract docx:', e.message);
+              }
+            }
+
+            if (df.pdfBase64) {
+              mediaParts.push({ inlineData: { mimeType: 'application/pdf', data: df.pdfBase64 } });
+              filesContext += `\n--- Attached Multimodal PDF: ${df.name} ---\n${(content || '').slice(0, 15000)}\n`;
+            } else if (df.imageBase64) {
+              mediaParts.push({ inlineData: { mimeType: df.mimeType || 'image/png', data: df.imageBase64 } });
+              filesContext += `\n--- Attached Multimodal Image/Diagram: ${df.name} ---\n`;
+            } else {
+              filesContext += `\n--- User Uploaded: ${df.name} ---\n${(content || '').slice(0, 25000)}\n`;
+            }
           }
         }
       }
 
-      const answer = await aiService.chatWithFiles(prompt.trim(), filesContext, conversationHistory, previousOutput);
-      return res.json({ success: true, type: 'chat', result: answer });
+      const answer = await aiService.chatWithFiles(prompt.trim(), filesContext, conversationHistory, previousOutput, mediaParts);
+      return res.json({ success: true, type: 'chat', result: aiService.stripAiAds(answer) });
     } else {
       return res.status(400).json({ error: `Unsupported AI action: ${action}` });
     }
@@ -1627,27 +1756,62 @@ app.get('/api/info', (req, res) => {
 // Transfer cleanup
 // ============================================================
 
+async function deleteTransferS3ObjectsPermanently(transferId) {
+  try {
+    let keyMarker = undefined;
+    let versionIdMarker = undefined;
+    do {
+      const listRes = await s3Client.send(new ListObjectVersionsCommand({
+        Bucket: S3_BUCKET_NAME,
+        Prefix: `${transferId}/`,
+        KeyMarker: keyMarker,
+        VersionIdMarker: versionIdMarker,
+        MaxKeys: 1000
+      }));
+
+      const objectsToDelete = [];
+      if (listRes.Versions) {
+        for (const v of listRes.Versions) {
+          objectsToDelete.push({ Key: v.Key, VersionId: v.VersionId });
+        }
+      }
+      if (listRes.DeleteMarkers) {
+        for (const dm of listRes.DeleteMarkers) {
+          objectsToDelete.push({ Key: dm.Key, VersionId: dm.VersionId });
+        }
+      }
+
+      if (objectsToDelete.length > 0) {
+        await s3Client.send(new DeleteObjectsCommand({
+          Bucket: S3_BUCKET_NAME,
+          Delete: { Objects: objectsToDelete }
+        }));
+      }
+
+      if (listRes.IsTruncated) {
+        keyMarker = listRes.NextKeyMarker;
+        versionIdMarker = listRes.NextVersionIdMarker;
+      } else {
+        break;
+      }
+    } while (keyMarker);
+
+    return true;
+  } catch (err) {
+    console.error(`[Cleanup] Failed to permanently delete S3 files for transfer ${transferId}:`, err);
+    return false; // Retry later
+  }
+}
+
 async function processExpiredTransfer(transfer) {
   if (transfer.status !== 'EXPIRED') {
     transfer.status = 'EXPIRED';
     await storage.transfers.set(transfer.id, transfer);
   }
 
-  if (transfer.files && transfer.files.length > 0) {
-    const objectsToDelete = transfer.files.map(f => ({
-      Key: `${transfer.id}/${f.storageName}`
-    }));
-    
-    try {
-      const command = new DeleteObjectsCommand({
-        Bucket: S3_BUCKET_NAME,
-        Delete: { Objects: objectsToDelete }
-      });
-      await s3Client.send(command);
-    } catch (err) {
-      console.error(`[Cleanup] Failed to delete S3 files for transfer ${transfer.id}:`, err);
-      return false; // Retry later
-    }
+  const success = await deleteTransferS3ObjectsPermanently(transfer.id);
+  if (!success) {
+    return false; // Retry on next interval
   }
 
   await storage.transfers.delete(transfer.id);
@@ -1655,24 +1819,86 @@ async function processExpiredTransfer(transfer) {
 }
 
 async function cleanupExpiredTransfers() {
-  const now = Date.now();
-  let cleaned = 0;
-  
-  for (const transfer of await storage.transfers.getAll()) {
-    if (now > transfer.expiresAt || transfer.status === 'EXPIRED') {
-      const success = await processExpiredTransfer(transfer);
-      if (success) cleaned++;
+  try {
+    const now = Date.now();
+    let cleaned = 0;
+    
+    const transfers = await storage.transfers.getAll();
+    for (const transfer of transfers) {
+      if (now > transfer.expiresAt || transfer.status === 'EXPIRED') {
+        const success = await processExpiredTransfer(transfer);
+        if (success) cleaned++;
+      }
     }
-  }
 
-  if (cleaned > 0) {
-    console.log(`[Cleanup] Processed and removed ${cleaned} expired transfer(s).`);
+    if (cleaned > 0) {
+      console.log(`[Cleanup] Processed and removed ${cleaned} expired transfer(s).`);
+    }
+  } catch (err) {
+    console.error('[Cleanup] Error during expired transfers cleanup:', err.message || err);
+  }
+}
+
+// Periodic cleanup of orphaned S3 files (e.g. aborted multipart uploads or broken sessions older than 2 hours)
+async function cleanupOrphanedS3Files() {
+  try {
+    const allTransfers = await storage.transfers.getAll();
+    const activeTransferIds = new Set(allTransfers.map(t => t.id));
+    const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000);
+
+    let keyMarker = undefined;
+    let versionIdMarker = undefined;
+    const orphansToDelete = [];
+
+    do {
+      const listRes = await s3Client.send(new ListObjectVersionsCommand({
+        Bucket: S3_BUCKET_NAME,
+        KeyMarker: keyMarker,
+        VersionIdMarker: versionIdMarker,
+        MaxKeys: 1000
+      }));
+
+      const checkItem = (item) => {
+        const transferId = item.Key.split('/')[0];
+        const lastMod = item.LastModified ? new Date(item.LastModified).getTime() : 0;
+        if (!activeTransferIds.has(transferId) && lastMod < twoHoursAgo) {
+          orphansToDelete.push({ Key: item.Key, VersionId: item.VersionId });
+        }
+      };
+
+      if (listRes.Versions) listRes.Versions.forEach(checkItem);
+      if (listRes.DeleteMarkers) listRes.DeleteMarkers.forEach(checkItem);
+
+      if (listRes.IsTruncated) {
+        keyMarker = listRes.NextKeyMarker;
+        versionIdMarker = listRes.NextVersionIdMarker;
+      } else {
+        break;
+      }
+    } while (keyMarker);
+
+    if (orphansToDelete.length > 0) {
+      console.log(`[Cleanup] Found ${orphansToDelete.length} orphaned S3 entries older than 2 hours. Purging...`);
+      for (let i = 0; i < orphansToDelete.length; i += 400) {
+        await s3Client.send(new DeleteObjectsCommand({
+          Bucket: S3_BUCKET_NAME,
+          Delete: { Objects: orphansToDelete.slice(i, i + 400) }
+        }));
+      }
+      console.log(`[Cleanup] Orphaned S3 entries successfully purged.`);
+    }
+  } catch (err) {
+    console.error('[Cleanup] Error during orphaned S3 cleanup:', err);
   }
 }
 
 // Run cleanup on startup, then every minute
 cleanupExpiredTransfers();
 setInterval(cleanupExpiredTransfers, CONFIG.CLEANUP_INTERVAL_MS);
+
+// Run orphaned cleaner every 6 hours, and once 5 minutes after startup
+setTimeout(cleanupOrphanedS3Files, 5 * 60 * 1000);
+setInterval(cleanupOrphanedS3Files, 6 * 60 * 60 * 1000);
 
 // ============================================================
 // Error handling middleware
@@ -1723,7 +1949,9 @@ app.listen(CONFIG.PORT, '0.0.0.0', async () => {
   if (!process.env.RENDER) {
     try {
       const localtunnel = require('localtunnel');
-      const tunnel = await localtunnel({ port: CONFIG.PORT });
+      const tunnelPromise = localtunnel({ port: CONFIG.PORT });
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Tunnel timeout')), 8000));
+      const tunnel = await Promise.race([tunnelPromise, timeoutPromise]);
       publicUrl = tunnel.url;
       process.env.PUBLIC_URL = publicUrl;
       
