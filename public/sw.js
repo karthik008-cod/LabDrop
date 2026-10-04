@@ -1,5 +1,5 @@
-// LabDrop — Service Worker (sw.js v3.0)
-const CACHE_NAME = 'labdrop-v3';
+// LabDrop — Service Worker (sw.js v4.0)
+const CACHE_NAME = 'labdrop-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -55,8 +55,13 @@ self.addEventListener('fetch', (event) => {
         // Standard W3C Web Share Target HTTP 303 redirect
         return Response.redirect('/?shared=1', 303);
       } catch (error) {
-        console.error('[ServiceWorker] Share target error:', error);
-        return Response.redirect('/?share_error=1', 303);
+        console.error('[ServiceWorker] Share target error, falling back to server:', error);
+        // Fall back to server network handling if Service Worker encounters formData streaming issues
+        try {
+          return await fetch(event.request);
+        } catch (netErr) {
+          return Response.redirect('/?shared=1', 303);
+        }
       }
     })());
   }

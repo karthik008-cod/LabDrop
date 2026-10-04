@@ -355,9 +355,86 @@ app.use('/api/upload', (req, res, next) => {
   next();
 });
 
-// Fallback for Web Share Target (if Service Worker is ever bypassed or inactive)
-app.all('/share-target', (req, res) => {
+// In-memory multer storage for Web Share Target fallback (used when Service Worker is bypassed)
+const shareTargetMemoryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: CONFIG.MAX_FILE_SIZE,
+    files: CONFIG.MAX_FILES_PER_TRANSFER,
+  }
+});
+
+// Temporary in-memory cache for shared files received directly by the server
+const serverShareSessions = new Map();
+
+// Periodic sweep of sessions older than 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, session] of serverShareSessions.entries()) {
+    if (session.expiresAt && session.expiresAt < now) {
+      serverShareSessions.delete(id);
+    }
+  }
+}, 60000);
+
+// Fallback POST for Web Share Target (e.g. Android intent or iOS share sheet bypassing SW)
+app.post('/share-target', (req, res) => {
+  shareTargetMemoryUpload.any()(req, res, (err) => {
+    if (err) {
+      console.warn('[ShareTarget Server Fallback] Multer error:', err.message);
+      return res.redirect(303, '/?share_error=1');
+    }
+
+    const files = req.files || [];
+    const text = (req.body && req.body.text) ? String(req.body.text) : '';
+    const title = (req.body && req.body.title) ? String(req.body.title) : '';
+    const url = (req.body && req.body.url) ? String(req.body.url) : '';
+
+    if (files.length === 0 && !text && !url) {
+      return res.redirect(303, '/?shared=1');
+    }
+
+    const sessionId = uuidv4();
+    const storedFiles = files.map(f => ({
+      name: f.originalname || 'shared_file',
+      mimetype: f.mimetype || 'application/octet-stream',
+      size: f.size,
+      base64: f.buffer ? f.buffer.toString('base64') : ''
+    }));
+
+    serverShareSessions.set(sessionId, {
+      files: storedFiles,
+      text,
+      title,
+      url,
+      expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes
+    });
+
+    res.redirect(303, `/?shared_session=${sessionId}`);
+  });
+});
+
+app.get('/share-target', (req, res) => {
   res.redirect(303, '/?shared=1');
+});
+
+// Retrieve and consume shared session data (single-use)
+app.get('/api/share-session/:id', (req, res) => {
+  const sessionId = req.params.id;
+  const session = serverShareSessions.get(sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'Share session not found or expired' });
+  }
+
+  // Consume immediately so it cannot be re-fetched
+  serverShareSessions.delete(sessionId);
+  res.json({
+    success: true,
+    files: session.files,
+    text: session.text,
+    title: session.title,
+    url: session.url
+  });
 });
 
 

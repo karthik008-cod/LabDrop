@@ -16,7 +16,6 @@
   <link rel="canonical" href="https://labdrop.online/" />
 
   <!-- Google Chrome & Mobile Web App Meta -->
-  <meta name="theme-color" content="#FFD166" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -57,7 +56,7 @@
   <!-- High Performance Stylesheets & Non-blocking Fonts -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
-  <link rel="stylesheet" href="/css/style.css?v=6.7" />
+  <link rel="stylesheet" href="/css/style.css?v=6.8" />
   <script src="/js/site-config.js" defer></script>
 
   <!-- Structured Data: Schema.org (JSON-LD) - Rich Snippets & Brand Entity Signals -->
@@ -232,8 +231,8 @@
         </picture>
       </a>
       
-      <!-- Auth Navigation -->
-      <nav class="header__nav" id="authNav">
+      <!-- Auth Navigation (Desktop) -->
+      <nav class="header__nav header__nav--desktop" id="authNav">
         <div id="authLoggedOut" style="display: flex; gap: var(--space-md); align-items: center;">
           <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
           <button class="nav-link" id="navLoginBtn" style="background:none;border:none;cursor:pointer;">Login</button>
@@ -274,8 +273,43 @@
     <!-- Main Workspace Two-Column Grid -->
     <div class="workspace-grid">
       
-      <!-- Sidebar (Left) -->
+      <!-- Sidebar (Left Column on Desktop / Slide Drawer on Mobile) -->
       <aside class="sidebar">
+        <!-- Mobile Drawer Header -->
+        <div class="drawer-header">
+          <a href="/" class="drawer-brand" aria-label="LabDrop Home">
+            <img src="/LabDropTextLogoNoBG.png" alt="LabDrop Logo" width="108" height="43" style="max-height: 38px; width: auto;" />
+          </a>
+          <button type="button" class="drawer-close-btn" id="mobileDrawerCloseBtn" aria-label="Close menu">✕</button>
+        </div>
+
+        <!-- Mobile Drawer Navigation -->
+        <div class="drawer-nav" id="drawerNav">
+          <div class="sidebar__title">MENU</div>
+          <a href="/" class="drawer-nav-item active">
+            <span>🏠</span> Home
+          </a>
+          <a href="/my-files.html" class="drawer-nav-item">
+            <span>🗄️</span> Saved Transfers
+          </a>
+          <a href="/how-to-use.html" class="drawer-nav-item">
+            <span>📖</span> How to Use
+          </a>
+          
+          <div id="drawerAuthLoggedOut" style="display: flex; gap: 8px; margin-top: 6px;">
+            <button type="button" class="btn btn--outline btn--sm" id="drawerNavLoginBtn" style="flex: 1; justify-content: center;">Login</button>
+            <button type="button" class="btn btn--primary btn--sm" id="drawerNavSignupBtn" style="flex: 1; justify-content: center;">Sign Up</button>
+          </div>
+          <div id="drawerAuthLoggedIn" style="display: none; flex-direction: column; gap: 8px; margin-top: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--color-text); padding: 4px 6px;">
+              <span>👤</span>
+              <span id="drawerUserEmail" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;"></span>
+            </div>
+            <button type="button" class="btn btn--ghost btn--sm" id="drawerNavLogoutBtn" style="justify-content: flex-start; color: var(--color-danger); padding: 6px 8px;">Logout</button>
+          </div>
+          <hr class="drawer-divider" />
+        </div>
+
         <!-- Folder Panel -->
         <div id="folderPanel">
           <div class="sidebar__title">WORKSPACE</div>
@@ -292,14 +326,15 @@
           <div id="folderList" class="folder-list"></div>
         </div>
         
-        <!-- Receive Files Section (Moved to sidebar for cleaner UI) -->
-        <div class="receive-section" style="margin-top: var(--space-xl);">
+        <!-- Receive Files Section -->
+        <div class="receive-section" style="margin-top: var(--space-md);">
+          <hr class="drawer-divider" style="margin-bottom: var(--space-md);" />
           <div class="sidebar__title">RECEIVE TRANSFER</div>
           <form id="receiveForm" style="display: flex; gap: 4px;">
-            <input type="text" id="receiveCodeInput" class="form-input" placeholder="Enter code" maxlength="8" minlength="3" required aria-label="Enter transfer code to receive files" style="padding: 0.4rem; font-size: 0.8rem;" />
+            <input type="text" id="receiveCodeInput" class="form-input" placeholder="Enter code" maxlength="8" minlength="3" required aria-label="Enter transfer code to receive files" style="padding: 0.4rem; font-size: 0.85rem;" />
             <button type="submit" class="btn btn--secondary btn--sm">Go →</button>
           </form>
-          <div id="receiveError" style="color: var(--color-danger); font-size: 0.75rem; display: none;"></div>
+          <div id="receiveError" style="color: var(--color-danger); font-size: 0.75rem; display: none; margin-top: 4px;"></div>
         </div>
       </aside>
 
@@ -1315,7 +1350,7 @@
   <!-- Core App Scripts (Non-blocking & Deferred) -->
   <script src="/js/dialogs.js" defer></script>
   <script src="/js/bg.js" defer></script>
-  <script src="/js/main.js?v=7.2" defer></script>
+  <script src="/js/main.js?v=7.3" defer></script>
   
 </body>
 </html>

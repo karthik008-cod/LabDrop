@@ -118,20 +118,64 @@
   const cancelNewFolderBtn = $('#cancelNewFolderBtn');
   const toastContainer = $('#toastContainer');
 
-  // ---- Mobile Menu DOM ----
+  // ---- Mobile Menu & Drawer DOM ----
   const mobileMenuBtn = $('#mobileMenuBtn');
+  const mobileDrawerCloseBtn = $('#mobileDrawerCloseBtn');
   const sidebarOverlay = $('#sidebarOverlay');
   const sidebar = $('.sidebar');
 
+  function openMobileSidebar() {
+    if (sidebar) sidebar.classList.add('sidebar--open');
+    if (sidebarOverlay) sidebarOverlay.classList.add('active');
+    document.body.classList.add('drawer-open');
+  }
+
+  function closeMobileSidebar() {
+    if (sidebar) sidebar.classList.remove('sidebar--open');
+    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+    document.body.classList.remove('drawer-open');
+  }
+
   if (mobileMenuBtn && sidebarOverlay && sidebar) {
     mobileMenuBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('sidebar--open');
-      sidebarOverlay.classList.toggle('active');
+      const isOpen = sidebar.classList.contains('sidebar--open');
+      if (isOpen) {
+        closeMobileSidebar();
+      } else {
+        openMobileSidebar();
+      }
     });
 
-    sidebarOverlay.addEventListener('click', () => {
-      sidebar.classList.remove('sidebar--open');
-      sidebarOverlay.classList.remove('active');
+    sidebarOverlay.addEventListener('click', closeMobileSidebar);
+    if (mobileDrawerCloseBtn) {
+      mobileDrawerCloseBtn.addEventListener('click', closeMobileSidebar);
+    }
+  }
+
+  // Drawer Auth elements
+  const drawerNavLoginBtn = $('#drawerNavLoginBtn');
+  const drawerNavSignupBtn = $('#drawerNavSignupBtn');
+  const drawerNavLogoutBtn = $('#drawerNavLogoutBtn');
+  const drawerAuthLoggedOut = $('#drawerAuthLoggedOut');
+  const drawerAuthLoggedIn = $('#drawerAuthLoggedIn');
+  const drawerUserEmail = $('#drawerUserEmail');
+
+  if (drawerNavLoginBtn) {
+    drawerNavLoginBtn.addEventListener('click', () => {
+      closeMobileSidebar();
+      openAuthModal('login');
+    });
+  }
+  if (drawerNavSignupBtn) {
+    drawerNavSignupBtn.addEventListener('click', () => {
+      closeMobileSidebar();
+      openAuthModal('signup');
+    });
+  }
+  if (drawerNavLogoutBtn) {
+    drawerNavLogoutBtn.addEventListener('click', () => {
+      closeMobileSidebar();
+      if (navLogoutBtn) navLogoutBtn.click();
     });
   }
 
@@ -290,9 +334,16 @@
       authLoggedOut.style.display = 'none';
       authLoggedIn.style.display = 'flex';
       navUserEmail.textContent = authUser.email;
+      if (drawerAuthLoggedOut) drawerAuthLoggedOut.style.display = 'none';
+      if (drawerAuthLoggedIn) {
+        drawerAuthLoggedIn.style.display = 'flex';
+        if (drawerUserEmail) drawerUserEmail.textContent = authUser.email;
+      }
     } else {
       authLoggedOut.style.display = 'flex';
       authLoggedIn.style.display = 'none';
+      if (drawerAuthLoggedOut) drawerAuthLoggedOut.style.display = 'flex';
+      if (drawerAuthLoggedIn) drawerAuthLoggedIn.style.display = 'none';
       // If they were on "Save for Later" but logged out, switch to Quick
       if (transferMode === 'save') {
         setTransferMode('quick');
@@ -1350,10 +1401,25 @@
     });
   }
 
+  function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
+    const byteCharacters = atob(b64Data);
+    const byteArrays = [];
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      const slice = byteCharacters.slice(offset, offset + sliceSize);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    return new Blob(byteArrays, { type: contentType });
+  }
+
   let isCheckingSharedFiles = false;
 
-  // Check if we arrived via Web Share Target (or check IndexedDB regardless)
-  function checkSharedFiles(retries = 0) {
+  // Check if we arrived via Web Share Target (Server fallback session or IndexedDB PWA)
+  async function checkSharedFiles(retries = 0) {
     if (isCheckingSharedFiles) return;
     const urlParams = new URLSearchParams(window.location.search);
     
@@ -1363,7 +1429,67 @@
       return;
     }
 
+    const sharedSessionId = urlParams.get('shared_session');
+
+    // Dual-Path 1: Server-side fallback session (used when ServiceWorker is inactive or bypassed by OS share)
+    if (sharedSessionId) {
+      isCheckingSharedFiles = true;
+      try {
+        const res = await fetch(`/api/share-session/${encodeURIComponent(sharedSessionId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const incomingFiles = [];
+          if (data.files && Array.isArray(data.files)) {
+            data.files.forEach(f => {
+              if (f.base64) {
+                const blob = b64toBlob(f.base64, f.mimetype || 'application/octet-stream');
+                const fileObj = new File([blob], f.name || 'shared_file', {
+                  type: f.mimetype || 'application/octet-stream',
+                  lastModified: Date.now()
+                });
+                incomingFiles.push(fileObj);
+              }
+            });
+          }
+
+          let hasAddedAnything = false;
+          if (incomingFiles.length > 0) {
+            addFiles(incomingFiles);
+            showAlert(`📥 Received ${incomingFiles.length} file(s) from WhatsApp / Share! Ready to transfer.`, 'success');
+            hasAddedAnything = true;
+          }
+
+          const shareUrl = data.url || (data.text && /^https?:\/\//i.test(data.text.trim()) ? data.text.trim() : null);
+          if (shareUrl) {
+            const activeFolder = getActiveFolder();
+            const targetLinks = activeFolder ? activeFolder.links : selectedLinks;
+            if (targetLinks.length < 20) {
+              targetLinks.push(shareUrl);
+              renderFileList();
+              showAlert(`🔗 Received shared link from WhatsApp / Share!`, 'success');
+              hasAddedAnything = true;
+            }
+          } else if (data.text && data.text.trim()) {
+            const blob = new Blob([data.text], { type: 'text/plain;charset=utf-8' });
+            const textFile = new File([blob], 'shared-note.txt', { type: 'text/plain;charset=utf-8' });
+            addFiles([textFile]);
+            showAlert(`📥 Received shared text from WhatsApp! Ready to transfer.`, 'success');
+            hasAddedAnything = true;
+          }
+
+          window.history.replaceState({}, document.title, window.location.pathname);
+          isCheckingSharedFiles = false;
+          return;
+        }
+      } catch (err) {
+        console.warn('[ShareTarget] Error retrieving server share session:', err);
+      }
+      isCheckingSharedFiles = false;
+    }
+
     const hasSharedParam = urlParams.has('shared');
+
+    if (!window.indexedDB) return;
 
     isCheckingSharedFiles = true;
     const request = indexedDB.open('LabDropSharedFiles', 2);
@@ -1431,6 +1557,15 @@
           };
         }
 
+        // Only clear stores if files or links were actually present!
+        if (normalizedFiles.length > 0 || rawItems.length > 0) {
+          store.clear();
+          if (storeNames.includes('meta')) {
+            const metaStore = transaction.objectStore('meta');
+            metaStore.clear();
+          }
+        }
+
         transaction.oncomplete = () => {
           db.close();
           isCheckingSharedFiles = false;
@@ -1457,17 +1592,11 @@
             window.history.replaceState({}, document.title, window.location.pathname);
           }
 
+          // Safe retry if URL had ?shared=1 and files haven't arrived yet
           if (!hasAddedAnything && hasSharedParam && retries < 10) {
             setTimeout(() => checkSharedFiles(retries + 1), 400);
           }
         };
-
-        // Clear stores immediately once read
-        store.clear();
-        if (storeNames.includes('meta')) {
-          const metaStore = transaction.objectStore('meta');
-          metaStore.clear();
-        }
       };
 
       getAllRequest.onerror = () => {
@@ -1490,6 +1619,15 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') checkSharedFiles();
   });
+
+  // Listen for ServiceWorker background postMessage signal
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'LABDROP_SHARED_FILES_READY') {
+        checkSharedFiles();
+      }
+    });
+  }
 
   // Run on load
   checkAuth();
