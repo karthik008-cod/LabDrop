@@ -489,22 +489,6 @@ app.get('/admin/stats', async (req, res) => {
     return res.status(403).send('Forbidden');
   }
 
-  // Handle explicit reset to zero request
-  if (req.query.reset === '1' || req.query.reset === 'true') {
-    analytics.totalTransfersCreated = 0;
-    analytics.totalFilesUploaded = 0;
-    analytics.totalDownloads = 0;
-    analytics.uniqueDevices.clear();
-    await storage.analytics.set({
-      id: 'global',
-      totalTransfersCreated: 0,
-      totalFilesUploaded: 0,
-      totalDownloads: 0,
-      uniqueDevices: [],
-      resetMigration: RESET_MIGRATION_VERSION
-    });
-    return res.redirect(`/admin/stats?pass=${encodeURIComponent(adminPass)}&resetSuccess=1`);
-  }
 
   try {
     const stats = await storage.analytics.get();
@@ -655,15 +639,6 @@ app.get('/admin/stats', async (req, res) => {
                 <span>Active Files:</span>
                 <strong>${activeFilesCount}</strong>
               </div>
-            </div>
-            <div style="margin-top: 1.5rem; text-align: center;">
-              <form method="GET" action="/admin/stats" onsubmit="return confirm('Are you sure you want to reset all active counters to 0?');">
-                <input type="hidden" name="pass" value="${adminPass}" />
-                <input type="hidden" name="reset" value="1" />
-                <button type="submit" style="background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 9px 16px; border-radius: 8px; font-size: 0.82rem; cursor: pointer; font-weight: 600; width: 100%; transition: all 0.2s;">
-                  Reset Active Counters to 0
-                </button>
-              </form>
             </div>
             <div class="footer-info">
               <span>Uptime: ${Math.round(process.uptime() / 60)} mins</span>
