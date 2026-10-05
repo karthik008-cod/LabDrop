@@ -7,7 +7,7 @@ require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const multerS3 = require('multer-s3');
-const { S3Client, GetObjectCommand, DeleteObjectsCommand, HeadObjectCommand, ListObjectVersionsCommand } = require('@aws-sdk/client-s3');
+const { S3Client, GetObjectCommand, DeleteObjectsCommand, HeadObjectCommand, ListObjectVersionsCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const archiver = require('archiver');
 const QRCode = require('qrcode');
@@ -349,9 +349,11 @@ const upload = multer({
   },
 });
 
-// Middleware: set transferId for this upload session
-app.use('/api/upload', (req, res, next) => {
-  req.transferId = uuidv4();
+// Middleware: set transferId for legacy server-relayed upload session
+app.use((req, res, next) => {
+  if (req.path === '/api/upload') {
+    req.transferId = uuidv4();
+  }
   next();
 });
 
@@ -801,7 +803,304 @@ app.get('/api/my-transfers', optionalAuth, async (req, res) => {
   res.json({ transfers: userTransfers });
 });
 
-// --- Upload files and create a transfer ---
+// ============================================================
+// Direct-to-S3 Presigned Upload API (10,000+ Concurrent Capacity)
+// ============================================================
+
+// --- 1. Initiate Direct-to-S3 Presigned Upload ---
+app.post('/api/upload/initiate', optionalAuth, async (req, res) => {
+  try {
+    const rawFiles = Array.isArray(req.body.files) ? req.body.files : [];
+    let links = [];
+    if (Array.isArray(req.body.links)) {
+      links = req.body.links
+        .filter(link => typeof link === 'string' && link.trim() !== '')
+        .slice(0, 20)
+        .map(link => link.substring(0, 5000));
+    }
+
+    if (rawFiles.length === 0 && links.length === 0) {
+      return res.status(400).json({ error: 'No files or links selected.' });
+    }
+
+    if (rawFiles.length > CONFIG.MAX_FILES_PER_TRANSFER) {
+      return res.status(400).json({
+        error: `Too many files. Maximum is ${CONFIG.MAX_FILES_PER_TRANSFER} files per transfer.`
+      });
+    }
+
+    // Validate blocked extensions and individual file sizes
+    let totalSize = 0;
+    for (const f of rawFiles) {
+      if (!f || typeof f.name !== 'string') {
+        return res.status(400).json({ error: 'Invalid file payload.' });
+      }
+      const ext = path.extname(f.name).toLowerCase();
+      if (BLOCKED_EXTENSIONS.has(ext)) {
+        return res.status(400).json({ error: `File type "${ext}" is not allowed for security reasons.` });
+      }
+      const size = Number(f.size) || 0;
+      if (size > CONFIG.MAX_FILE_SIZE) {
+        return res.status(413).json({
+          error: `File "${f.name}" is too large. Maximum size is ${Math.round(CONFIG.MAX_FILE_SIZE / (1024 * 1024))}MB per file.`
+        });
+      }
+      totalSize += size;
+    }
+
+    if (totalSize > CONFIG.MAX_TOTAL_SIZE) {
+      return res.status(413).json({
+        error: `Total size exceeds the ${Math.round(CONFIG.MAX_TOTAL_SIZE / (1024 * 1024))}MB limit.`
+      });
+    }
+
+    const transferId = uuidv4();
+    const now = Date.now();
+    const d = new Date(now);
+    const daysSinceEpoch = Math.floor(now / (1000 * 60 * 60 * 24));
+    const dayCycle = (daysSinceEpoch % 9) + 1; // 1 to 9
+    
+    const startOfDay = new Date(d).setHours(0,0,0,0);
+    const secondsOfDay = Math.floor((now - startOfDay) / 1000);
+    const timeBlock = Math.floor(secondsOfDay / 900);
+    
+    const timeBlockId = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}-block-${timeBlock}`;
+    const sequence = await storage.transfers.getNextSequence(timeBlockId);
+    const shortCode = `${dayCycle}${timeBlock}${sequence}`;
+
+    let expiresAt = now + CONFIG.TRANSFER_EXPIRY_MINUTES * 60 * 1000;
+    let isSavedForLater = false;
+    let userId = null;
+
+    if (req.user && req.body.saveForLater === true) {
+      expiresAt = now + (7 * 24 * 60 * 60 * 1000); // 7 days
+      isSavedForLater = true;
+      userId = req.user.userId;
+    }
+
+    const transferName = req.body.transferName ? String(req.body.transferName).trim().substring(0, 50) : null;
+    let pin = null;
+    let pinHash = null;
+
+    if (req.body.requirePin === true) {
+      if (req.body.customPin && req.body.customPin.length === 6 && /^\d+$/.test(req.body.customPin)) {
+        pin = req.body.customPin;
+      } else {
+        pin = generatePin();
+      }
+      pinHash = hashPin(pin);
+    }
+
+    let folderStructure = {};
+    if (req.body.folderStructure && typeof req.body.folderStructure === 'object') {
+      for (const [k, v] of Object.entries(req.body.folderStructure)) {
+        if (typeof k === 'string' && typeof v === 'string') {
+          folderStructure[k.substring(0, 1000)] = v.substring(0, 100);
+        }
+      }
+    }
+
+    // Generate S3 presigned PUT URLs for each file
+    const files = [];
+    const presignedFiles = [];
+
+    for (const f of rawFiles) {
+      const fileId = uuidv4();
+      const sanitized = sanitizeFilename(f.name);
+      const storageName = `${fileId}__${sanitized}`;
+      const s3Key = `${transferId}/${storageName}`;
+      const contentType = f.type || 'application/octet-stream';
+
+      const putCommand = new PutObjectCommand({
+        Bucket: S3_BUCKET_NAME,
+        Key: s3Key,
+        ContentType: contentType,
+      });
+
+      const uploadUrl = await getSignedUrl(s3Client, putCommand, { expiresIn: 900 }); // 15 mins
+
+      files.push({
+        id: fileId,
+        originalName: sanitized,
+        storageName,
+        size: Number(f.size) || 0,
+        mimetype: contentType,
+        category: getFileCategory(sanitized),
+      });
+
+      presignedFiles.push({
+        id: fileId,
+        name: sanitized,
+        storageName,
+        uploadUrl,
+        type: contentType,
+        size: Number(f.size) || 0
+      });
+    }
+
+    const isPending = files.length > 0;
+    const initialStatus = isPending ? 'PENDING' : 'ACTIVE';
+
+    const transfer = {
+      id: transferId,
+      shortCode,
+      transferName,
+      pinHash,
+      failedPinAttempts: 0,
+      files,
+      links,
+      folderStructure,
+      createdAt: now,
+      expiresAt,
+      totalSize,
+      downloadCount: 0,
+      isSavedForLater,
+      userId,
+      status: initialStatus
+    };
+
+    await storage.transfers.set(transferId, transfer);
+
+    // If there are no files (links only), activate immediately and return QR code
+    if (!isPending) {
+      analytics.totalTransfersCreated++;
+      scheduleAnalyticsSave();
+
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.get('host');
+      let baseUrl = `${protocol}://${host}`;
+      if (host.includes('localhost') || host.includes('127.0.0.1')) {
+        const localIP = getLocalIPv4();
+        if (localIP) baseUrl = `http://${localIP}:${CONFIG.PORT}`;
+      } else {
+        baseUrl = process.env.PUBLIC_URL || 'https://labdrop.online';
+      }
+      const transferUrl = `${baseUrl}/t/${transferId}`;
+
+      const qrDataUrl = await QRCode.toDataURL(transferUrl, {
+        width: 400,
+        margin: 2,
+        color: { dark: '#000000', light: '#ffffff' },
+        errorCorrectionLevel: 'M',
+      });
+
+      return res.json({
+        isComplete: true,
+        transferId,
+        shortCode,
+        transferName: transfer.transferName,
+        url: transferUrl,
+        qrCode: qrDataUrl,
+        files: [],
+        links,
+        totalSize: 0,
+        fileCount: 0,
+        linkCount: links.length,
+        expiresAt,
+        expiryMinutes: CONFIG.TRANSFER_EXPIRY_MINUTES,
+        pin,
+        folderStructure
+      });
+    }
+
+    res.json({
+      isComplete: false,
+      transferId,
+      shortCode,
+      files: presignedFiles,
+      pin,
+      expiresAt
+    });
+  } catch (err) {
+    console.error('[Upload Initiate Error]:', err);
+    res.status(500).json({ error: err.message || 'Failed to initiate transfer.' });
+  }
+});
+
+// --- 2. Complete Direct-to-S3 Presigned Upload ---
+app.post('/api/upload/complete', optionalAuth, async (req, res) => {
+  try {
+    const { transferId, pin } = req.body;
+    if (!transferId) {
+      return res.status(400).json({ error: 'Missing transferId.' });
+    }
+
+    const transfer = await storage.transfers.get(transferId);
+    if (!transfer) {
+      return res.status(404).json({ error: 'Transfer not found or expired.' });
+    }
+
+    // Verify files in S3 and update actual sizes if available
+    for (const f of transfer.files) {
+      try {
+        const head = await s3Client.send(new HeadObjectCommand({
+          Bucket: S3_BUCKET_NAME,
+          Key: `${transfer.id}/${f.storageName}`
+        }));
+        if (head.ContentLength) {
+          f.size = head.ContentLength;
+        }
+      } catch (err) {
+        console.warn(`[Upload Complete] Note: Could not head-check ${f.storageName}:`, err.message);
+      }
+    }
+
+    transfer.status = 'ACTIVE';
+    transfer.totalSize = transfer.files.reduce((sum, f) => sum + (f.size || 0), 0);
+    await storage.transfers.set(transfer.id, transfer);
+
+    // Update analytics
+    analytics.totalTransfersCreated++;
+    analytics.totalFilesUploaded += transfer.files.length;
+    scheduleAnalyticsSave();
+
+    // Generate QR code
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.get('host');
+    let baseUrl = `${protocol}://${host}`;
+    if (host.includes('localhost') || host.includes('127.0.0.1')) {
+      const localIP = getLocalIPv4();
+      if (localIP) baseUrl = `http://${localIP}:${CONFIG.PORT}`;
+    } else {
+      baseUrl = process.env.PUBLIC_URL || 'https://labdrop.online';
+    }
+    const transferUrl = `${baseUrl}/t/${transfer.id}`;
+
+    const qrDataUrl = await QRCode.toDataURL(transferUrl, {
+      width: 400,
+      margin: 2,
+      color: { dark: '#000000', light: '#ffffff' },
+      errorCorrectionLevel: 'M',
+    });
+
+    res.json({
+      transferId: transfer.id,
+      shortCode: transfer.shortCode,
+      transferName: transfer.transferName,
+      url: transferUrl,
+      qrCode: qrDataUrl,
+      files: transfer.files.map((f) => ({
+        id: f.id,
+        name: f.originalName,
+        size: f.size,
+        category: f.category,
+      })),
+      links: transfer.links || [],
+      totalSize: transfer.totalSize,
+      fileCount: transfer.files.length,
+      linkCount: transfer.links ? transfer.links.length : 0,
+      expiresAt: transfer.expiresAt,
+      expiryMinutes: CONFIG.TRANSFER_EXPIRY_MINUTES,
+      pin: pin || null,
+      folderStructure: transfer.folderStructure || {}
+    });
+  } catch (err) {
+    console.error('[Upload Complete Error]:', err);
+    res.status(500).json({ error: err.message || 'Failed to complete transfer.' });
+  }
+});
+
+// --- Legacy Server-Relayed Upload (Fallback) ---
 app.post('/api/upload', optionalAuth, (req, res) => {
   const uploadHandler = upload.array('files', CONFIG.MAX_FILES_PER_TRANSFER);
 
@@ -1019,6 +1318,10 @@ app.get('/api/transfer/:id', async (req, res) => {
     return res.status(404).json({ error: 'Transfer not found or has expired.' });
   }
 
+  if (transfer.status === 'PENDING') {
+    return res.status(409).json({ error: 'Transfer upload in progress. Please wait.' });
+  }
+
   if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
     return res.status(410).json({ error: 'This transfer has expired.' });
   }
@@ -1216,6 +1519,9 @@ app.get('/api/transfer/code/:code', async (req, res) => {
   const shortCode = req.params.code.toUpperCase();
   for (const transfer of await storage.transfers.getAll()) {
     if (transfer.shortCode === shortCode) {
+      if (transfer.status === 'PENDING') {
+        return res.status(409).json({ error: 'Transfer upload in progress. Please wait.' });
+      }
       if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
         return res.status(410).json({ error: 'Transfer has expired.' });
       }

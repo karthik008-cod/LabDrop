@@ -998,68 +998,186 @@
       });
     });
 
-    const formData = new FormData();
-    allFiles.forEach((file) => formData.append('files', file));
-    if (allLinks.length > 0) {
-      formData.append('links', JSON.stringify(allLinks));
-    }
-    if (Object.keys(folderStructure).length > 0) {
-      formData.append('folderStructure', JSON.stringify(folderStructure));
-    }
-    if (transferNameInput.value.trim()) {
-      formData.append('transferName', transferNameInput.value.trim());
-    }
-    formData.append('requirePin', requirePinCheck.checked ? 'true' : 'false');
-    
-    if (requirePinCheck.checked) {
-      const customPinValue = customPinInput.value.trim();
-      if (customPinValue.length === 6 && /^\d+$/.test(customPinValue)) {
-        formData.append('customPin', customPinValue);
-      }
-    }
-    
-    if (transferMode === 'save') {
-      formData.append('saveForLater', 'true');
+    function updateUploadProgress(loaded, total) {
+      const pct = total > 0 ? Math.min(99, Math.round((loaded / total) * 100)) : 0;
+      if (progressBarFill) progressBarFill.style.width = pct + '%';
+      if (paperJetGlider) paperJetGlider.style.left = pct + '%';
+      if (progressText) progressText.textContent = `Uploading… ${pct}%`;
     }
 
     try {
-      const xhr = new XMLHttpRequest();
+      let response = null;
 
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const pct = Math.round((e.loaded / e.total) * 100);
-          progressBarFill.style.width = pct + '%';
-          if (paperJetGlider) {
-            paperJetGlider.style.left = pct + '%';
-          }
-          progressText.textContent = `Uploading… ${pct}%`;
-        }
-      });
+      // ---- Method 1: High-Capacity Direct-to-S3 Presigned Upload ----
+      try {
+        const filesMeta = allFiles.map((f) => ({
+          name: f.name,
+          size: f.size,
+          type: f.type || 'application/octet-stream'
+        }));
 
-      const response = await new Promise((resolve, reject) => {
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              resolve(JSON.parse(xhr.responseText));
-            } catch {
-              reject(new Error('Invalid server response.'));
-            }
-          } else {
-            try {
-              const err = JSON.parse(xhr.responseText);
-              reject(new Error(err.error || 'Upload failed.'));
-            } catch {
-              reject(new Error('Upload failed (HTTP ' + xhr.status + ').'));
-            }
-          }
+        const initPayload = {
+          files: filesMeta,
+          links: allLinks,
+          folderStructure,
+          transferName: transferNameInput.value.trim() || undefined,
+          requirePin: requirePinCheck.checked,
+          saveForLater: transferMode === 'save'
         };
-        xhr.onerror = () => reject(new Error('Network error. Make sure the server is running.'));
-        xhr.open('POST', '/api/upload');
-        if (authToken) {
-          xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+
+        if (requirePinCheck.checked) {
+          const customPinValue = customPinInput.value.trim();
+          if (customPinValue.length === 6 && /^\d+$/.test(customPinValue)) {
+            initPayload.customPin = customPinValue;
+          }
         }
-        xhr.send(formData);
-      });
+
+        const initRes = await fetch('/api/upload/initiate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+          },
+          body: JSON.stringify(initPayload)
+        });
+
+        if (!initRes.ok) {
+          const errData = await initRes.json().catch(() => ({}));
+          throw new Error(errData.error || `Upload initiate failed (${initRes.status}).`);
+        }
+
+        const initData = await initRes.json();
+
+        if (initData.isComplete) {
+          // Links only, no files to upload
+          if (progressBarFill) progressBarFill.style.width = '100%';
+          if (paperJetGlider) paperJetGlider.style.left = '100%';
+          response = initData;
+        } else {
+          // Upload each file directly to S3 with aggregate progress tracking
+          const loadedPerFile = new Array(allFiles.length).fill(0);
+          const totalBytes = allFiles.reduce((sum, f) => sum + (f.size || 0), 0) || 1;
+
+          const uploadPromises = allFiles.map((file, idx) => {
+            const presigned = initData.files[idx];
+            if (!presigned || !presigned.uploadUrl) {
+              return Promise.reject(new Error(`Missing upload URL for "${file.name}".`));
+            }
+
+            return new Promise((resolve, reject) => {
+              const putXhr = new XMLHttpRequest();
+              putXhr.open('PUT', presigned.uploadUrl);
+              putXhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+
+              putXhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                  loadedPerFile[idx] = e.loaded;
+                  const totalLoaded = loadedPerFile.reduce((sum, v) => sum + v, 0);
+                  updateUploadProgress(totalLoaded, totalBytes);
+                }
+              });
+
+              putXhr.onload = () => {
+                if (putXhr.status >= 200 && putXhr.status < 300) {
+                  loadedPerFile[idx] = file.size;
+                  resolve();
+                } else {
+                  reject(new Error(`Direct S3 upload failed for "${file.name}" (HTTP ${putXhr.status}).`));
+                }
+              };
+
+              putXhr.onerror = () => reject(new Error(`Direct S3 network error for "${file.name}".`));
+              putXhr.send(file);
+            });
+          });
+
+          await Promise.all(uploadPromises);
+
+          if (progressBarFill) progressBarFill.style.width = '100%';
+          if (paperJetGlider) paperJetGlider.style.left = '100%';
+          if (progressText) progressText.textContent = 'Finalizing transfer…';
+
+          // Complete the transfer
+          const compRes = await fetch('/api/upload/complete', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+            },
+            body: JSON.stringify({
+              transferId: initData.transferId,
+              pin: initData.pin
+            })
+          });
+
+          if (!compRes.ok) {
+            const errData = await compRes.json().catch(() => ({}));
+            throw new Error(errData.error || `Finalizing transfer failed (${compRes.status}).`);
+          }
+
+          response = await compRes.json();
+        }
+      } catch (directErr) {
+        console.warn('[Direct S3 Upload] Falling back to server-relayed upload:', directErr.message);
+
+        // ---- Method 2: Fallback to Server-Relayed Upload ----
+        const formData = new FormData();
+        allFiles.forEach((file) => formData.append('files', file));
+        if (allLinks.length > 0) {
+          formData.append('links', JSON.stringify(allLinks));
+        }
+        if (Object.keys(folderStructure).length > 0) {
+          formData.append('folderStructure', JSON.stringify(folderStructure));
+        }
+        if (transferNameInput.value.trim()) {
+          formData.append('transferName', transferNameInput.value.trim());
+        }
+        formData.append('requirePin', requirePinCheck.checked ? 'true' : 'false');
+        if (requirePinCheck.checked) {
+          const customPinValue = customPinInput.value.trim();
+          if (customPinValue.length === 6 && /^\d+$/.test(customPinValue)) {
+            formData.append('customPin', customPinValue);
+          }
+        }
+        if (transferMode === 'save') {
+          formData.append('saveForLater', 'true');
+        }
+
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            if (progressBarFill) progressBarFill.style.width = pct + '%';
+            if (paperJetGlider) paperJetGlider.style.left = pct + '%';
+            if (progressText) progressText.textContent = `Uploading… ${pct}%`;
+          }
+        });
+
+        response = await new Promise((resolve, reject) => {
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                resolve(JSON.parse(xhr.responseText));
+              } catch {
+                reject(new Error('Invalid server response.'));
+              }
+            } else {
+              try {
+                const err = JSON.parse(xhr.responseText);
+                reject(new Error(err.error || 'Upload failed.'));
+              } catch {
+                reject(new Error('Upload failed (HTTP ' + xhr.status + ').'));
+              }
+            }
+          };
+          xhr.onerror = () => reject(new Error('Network error. Make sure the server is running.'));
+          xhr.open('POST', '/api/upload');
+          if (authToken) {
+            xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+          }
+          xhr.send(formData);
+        });
+      }
 
       currentTransfer = response;
       showTransferView(response);
