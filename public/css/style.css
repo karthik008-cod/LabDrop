@@ -609,6 +609,201 @@ body:has(.sidebar--open) .header {
 }
 
 /* ============================================================
+   Quick Receive Card (Homescreen)
+   ============================================================ */
+.quick-receive-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 12px 18px;
+  margin-bottom: var(--space-md);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.quick-receive-card:focus-within {
+  border-color: var(--color-primary-dark);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
+}
+
+.quick-receive-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.quick-receive-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.quick-receive-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 209, 102, 0.28);
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.quick-receive-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.quick-receive-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.2px;
+  line-height: 1.25;
+}
+
+.quick-receive-subtitle {
+  font-size: 0.76rem;
+  color: var(--color-text-secondary);
+  line-height: 1.25;
+}
+
+.quick-receive-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 440px;
+}
+
+.quick-receive-input-box {
+  flex: 1;
+  min-width: 0;
+}
+
+.quick-receive-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 14px;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-sizing: border-box;
+  transition: all var(--transition-fast);
+}
+
+.quick-receive-input:focus {
+  border-color: var(--color-primary-dark);
+  background: #ffffff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 209, 102, 0.35);
+}
+
+.quick-receive-scan-btn {
+  height: 40px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.quick-receive-scan-btn:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border-dark);
+}
+
+.quick-receive-submit-btn {
+  height: 40px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border: 1px solid var(--color-border-dark);
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(245, 158, 11, 0.2);
+  transition: all var(--transition-fast);
+}
+
+.quick-receive-submit-btn:hover {
+  background: #ffc947;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(245, 158, 11, 0.3);
+}
+
+.quick-receive-error {
+  color: var(--color-danger);
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-top: 6px;
+  padding-left: 2px;
+}
+
+@media (max-width: 768px) {
+  .quick-receive-card {
+    padding: 12px 14px;
+    margin-bottom: var(--space-sm);
+  }
+
+  .quick-receive-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .quick-receive-info {
+    gap: 10px;
+  }
+
+  .quick-receive-form {
+    max-width: 100%;
+    gap: 6px;
+  }
+
+  .quick-receive-scan-btn {
+    padding: 0 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .quick-receive-scan-label {
+    display: none;
+  }
+  .quick-receive-scan-btn {
+    padding: 0 8px;
+  }
+  .quick-receive-submit-btn {
+    padding: 0 12px;
+  }
+}
+
+/* ============================================================
    Dropzone
    ============================================================ */
 .dropzone {

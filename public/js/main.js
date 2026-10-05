@@ -1560,14 +1560,44 @@
   }
 
   // ---- Receive Form Logic ----
+  const homeScanQrBtn = document.getElementById('homeScanQrBtn');
+  if (homeScanQrBtn) {
+    homeScanQrBtn.addEventListener('click', () => {
+      const mobileScanBtn = document.getElementById('mobileScanBtn');
+      if (mobileScanBtn) mobileScanBtn.click();
+    });
+  }
+
   receiveForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const code = receiveCodeInput.value.trim().toUpperCase();
-    if (code.length < 3) return;
+    let raw = receiveCodeInput.value.trim();
+    if (!raw) return;
+
+    // Handle full URL pasted (e.g. https://labdrop.online/t/uuid)
+    if (raw.includes('/t/')) {
+      const match = raw.match(/\/t\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        window.location.href = `/t/${match[1]}`;
+        return;
+      }
+    }
+
+    // Handle UUID directly
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
+      window.location.href = `/t/${raw}`;
+      return;
+    }
+
+    const code = raw.toUpperCase();
+    if (code.length < 3) {
+      receiveError.textContent = 'Please enter a valid transfer code.';
+      receiveError.style.display = 'block';
+      return;
+    }
     
     receiveError.style.display = 'none';
-    const submitBtn = receiveForm.querySelector('button');
-    submitBtn.disabled = true;
+    const submitBtn = receiveForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
     
     try {
       const res = await fetch(`/api/transfer/code/${code}`);
@@ -1575,14 +1605,14 @@
       if (res.ok && data.id) {
         window.location.href = `/t/${data.id}`;
       } else {
-        receiveError.textContent = data.error || 'Transfer not found.';
+        receiveError.textContent = data.error || 'Transfer not found or has expired.';
         receiveError.style.display = 'block';
       }
     } catch(err) {
-      receiveError.textContent = 'Network error.';
+      receiveError.textContent = 'Network error. Please try again.';
       receiveError.style.display = 'block';
     } finally {
-      submitBtn.disabled = false;
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 

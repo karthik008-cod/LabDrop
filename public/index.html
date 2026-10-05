@@ -330,17 +330,6 @@
 
           <div id="folderList" class="folder-list"></div>
         </div>
-        
-        <!-- Receive Files Section -->
-        <div class="receive-section" style="margin-top: var(--space-md);">
-          <hr class="drawer-divider" style="margin-bottom: var(--space-md);" />
-          <div class="sidebar__title">RECEIVE TRANSFER</div>
-          <form id="receiveForm" style="display: flex; gap: 4px;">
-            <input type="text" id="receiveCodeInput" class="form-input" placeholder="Enter code" maxlength="8" minlength="3" required aria-label="Enter transfer code to receive files" style="padding: 0.4rem; font-size: 0.85rem;" />
-            <button type="submit" class="btn btn--secondary btn--sm">Go →</button>
-          </form>
-          <div id="receiveError" style="color: var(--color-danger); font-size: 0.75rem; display: none; margin-top: 4px;"></div>
-        </div>
       </aside>
 
       <!-- Main Area (Right) -->
@@ -351,6 +340,58 @@
         <!-- Section 1: File Selection                    -->
         <!-- ============================================ -->
         <div id="selectSection">
+
+          <!-- Quick Receive Card (Homescreen) -->
+          <div class="quick-receive-card" id="quickReceiveCard">
+            <div class="quick-receive-inner">
+              <div class="quick-receive-info">
+                <div class="quick-receive-icon-badge">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" x2="12" y1="15" y2="3"></line>
+                  </svg>
+                </div>
+                <div class="quick-receive-text">
+                  <span class="quick-receive-title">Receive Transfer</span>
+                  <span class="quick-receive-subtitle">Enter a code or scan QR to get files</span>
+                </div>
+              </div>
+
+              <form id="receiveForm" class="quick-receive-form">
+                <div class="quick-receive-input-box">
+                  <input 
+                    type="text" 
+                    id="receiveCodeInput" 
+                    class="form-input quick-receive-input" 
+                    placeholder="Enter code (e.g. 5683)" 
+                    maxlength="36" 
+                    minlength="3" 
+                    required 
+                    autocomplete="off" 
+                    autocapitalize="characters" 
+                    spellcheck="false"
+                    aria-label="Enter transfer code to receive files" 
+                  />
+                </div>
+                <button type="button" class="quick-receive-scan-btn" id="homeScanQrBtn" title="Scan QR Code with camera" aria-label="Scan QR Code">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+                    <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+                    <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+                    <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+                    <rect x="8" y="8" width="8" height="8"></rect>
+                  </svg>
+                  <span class="quick-receive-scan-label">Scan</span>
+                </button>
+                <button type="submit" class="btn btn--primary quick-receive-submit-btn" id="homeReceiveBtn">
+                  <span>Get Files</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                </button>
+              </form>
+            </div>
+            <div id="receiveError" class="quick-receive-error" style="display: none;"></div>
+          </div>
           
           <!-- Drop Zone -->
           <div class="dropzone" id="dropzone" style="cursor: pointer;">
