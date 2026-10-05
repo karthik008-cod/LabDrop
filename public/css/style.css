@@ -768,7 +768,6 @@ body:has(.sidebar--open) .header {
 @media (max-width: 768px) {
   .quick-receive-card {
     padding: 12px 14px;
-    margin-bottom: var(--space-sm);
   }
 
   .quick-receive-inner {
@@ -791,15 +790,23 @@ body:has(.sidebar--open) .header {
   }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 480px) {
   .quick-receive-scan-label {
     display: none;
   }
   .quick-receive-scan-btn {
-    padding: 0 8px;
+    padding: 0;
+    width: 40px;
+    justify-content: center;
   }
   .quick-receive-submit-btn {
     padding: 0 12px;
+    font-size: 0.82rem;
+  }
+  .quick-receive-input {
+    font-size: 0.82rem;
+    padding: 0 8px;
+    letter-spacing: 0.5px;
   }
 }
 
