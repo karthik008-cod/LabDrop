@@ -196,6 +196,8 @@ img, svg {
    Layout
    ============================================================ */
 .page-wrapper {
+  container-type: inline-size;
+  container-name: pageWrapper;
   position: relative;
   z-index: 1;
   max-width: 1200px;
@@ -208,6 +210,8 @@ img, svg {
 }
 
 .header {
+  container-type: inline-size;
+  container-name: siteHeader;
   width: 100%;
   position: sticky;
   top: 0;
@@ -915,9 +919,9 @@ body:has(.sidebar--open) .header {
 .dropzone__subtitle {
   color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
+  display: block;
+  text-align: center;
+  line-height: 1.5;
 }
 
 .kbd {
@@ -928,6 +932,9 @@ body:has(.sidebar--open) .header {
   font-family: monospace;
   font-size: 0.8rem;
   color: var(--color-text);
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 2px;
 }
 
 /* ============================================================
@@ -3838,13 +3845,13 @@ body:has(.sidebar--open) .header {
     overflow-x: hidden;
   }
 
-  body.ai-sidepanel-open .header {
-    width: 100% !important;
+  body.ai-sidepanel-open #aiFloatingBtn {
+    display: none !important;
   }
 
-  body.ai-sidepanel-open #aiFloatingBtn {
-    right: calc(var(--ai-sidepanel-width, 480px) + 24px) !important;
-    transition: right 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Dim background sketch decorations so content is crystal clear */
+  body.ai-sidepanel-open .dec-item {
+    opacity: 0.04 !important;
   }
 
   /* Adapt receive card when AI side panel is docked/open on desktop */
@@ -3875,6 +3882,116 @@ body:has(.sidebar--open) .header {
 
   body.ai-sidepanel-open .quick-receive-submit-btn {
     flex-shrink: 0;
+  }
+
+  /* When AI side panel is open on screens <= 1400px (or when workspace is constrained) */
+  @media (max-width: 1400px) {
+    body.ai-sidepanel-open .workspace-grid {
+      grid-template-columns: 1fr !important;
+      gap: var(--space-lg) !important;
+    }
+
+    body.ai-sidepanel-open .sidebar {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      bottom: 0 !important;
+      width: 310px !important;
+      max-width: 85vw !important;
+      height: 100vh !important;
+      height: 100dvh !important;
+      background: #FFFDF8 !important;
+      padding: var(--space-md) var(--space-lg) var(--space-2xl) var(--space-lg) !important;
+      z-index: 9999 !important;
+      transform: translateX(-100%) !important;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      box-shadow: 6px 0 32px rgba(0, 0, 0, 0.18) !important;
+      overflow-y: auto !important;
+      display: flex !important;
+    }
+
+    body.ai-sidepanel-open .sidebar.sidebar--open {
+      transform: translateX(0) !important;
+    }
+
+    body.ai-sidepanel-open .drawer-header {
+      display: flex !important;
+    }
+
+    body.ai-sidepanel-open .drawer-nav {
+      display: block !important;
+    }
+
+    body.ai-sidepanel-open .mobile-header-actions {
+      display: flex !important;
+    }
+
+    body.ai-sidepanel-open .mobile-menu-btn {
+      display: flex !important;
+    }
+
+    body.ai-sidepanel-open .header__nav--desktop {
+      display: none !important;
+    }
+
+    body.ai-sidepanel-open .sidebar-overlay {
+      display: block !important;
+    }
+  }
+
+  /* Container query adaptation for site header & page wrapper */
+  @container siteHeader (max-width: 650px) {
+    .header__nav--desktop {
+      display: none !important;
+    }
+    .mobile-header-actions {
+      display: flex !important;
+    }
+    .mobile-menu-btn {
+      display: flex !important;
+    }
+  }
+
+  @container pageWrapper (max-width: 860px) {
+    .workspace-grid {
+      grid-template-columns: 1fr !important;
+      gap: var(--space-lg) !important;
+    }
+
+    .sidebar {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      bottom: 0 !important;
+      width: 310px !important;
+      max-width: 85vw !important;
+      height: 100vh !important;
+      height: 100dvh !important;
+      background: #FFFDF8 !important;
+      padding: var(--space-md) var(--space-lg) var(--space-2xl) var(--space-lg) !important;
+      z-index: 9999 !important;
+      transform: translateX(-100%) !important;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      box-shadow: 6px 0 32px rgba(0, 0, 0, 0.18) !important;
+      overflow-y: auto !important;
+      display: flex !important;
+    }
+
+    .sidebar.sidebar--open {
+      transform: translateX(0) !important;
+    }
+
+    .drawer-header {
+      display: flex !important;
+    }
+
+    .drawer-nav {
+      display: block !important;
+    }
+
+    .sidebar-overlay {
+      display: block !important;
+    }
   }
 
   /* Overlay becomes a non-blocking transparent viewport layer */
