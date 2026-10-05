@@ -672,9 +672,9 @@
     const activeFolder = getActiveFolder();
     const targetFiles = activeFolder ? activeFolder.files : selectedFiles;
 
-    let availableSlots = 20 - targetFiles.length;
+    let availableSlots = 30 - targetFiles.length;
     if (availableSlots <= 0) {
-      showAlert('Maximum 20 files allowed per folder.');
+      showAlert('Maximum 30 files allowed per folder.');
       return;
     }
 
@@ -960,10 +960,24 @@
     // Gather ALL files from root + all folders
     const allFiles = getAllFiles();
     
-    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+    const MAX_FILE_SIZE = 250 * 1024 * 1024; // 250 MB
+    const MAX_TOTAL_SIZE = 1024 * 1024 * 1024; // 1 GB (1,024 MB)
+    const MAX_FILES = 30;
+
+    if (allFiles.length > MAX_FILES) {
+      showAlert(`Maximum ${MAX_FILES} files allowed per transfer.`);
+      return;
+    }
+
     const oversizedFile = allFiles.find(f => f.size > MAX_FILE_SIZE);
     if (oversizedFile) {
-      showAlert(`File too large: "${oversizedFile.name}" exceeds the 100MB limit.`);
+      showAlert(`File too large: "${oversizedFile.name}" exceeds the 250MB limit.`);
+      return;
+    }
+
+    const totalSize = allFiles.reduce((sum, f) => sum + (f.size || 0), 0);
+    if (totalSize > MAX_TOTAL_SIZE) {
+      showAlert('Total transfer size exceeds the 1GB (1,024MB) limit.');
       return;
     }
 

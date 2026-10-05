@@ -49,9 +49,9 @@ const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 const CONFIG = {
   PORT: parseInt(process.env.PORT || process.env.LABDROP_PORT || '3000', 10),
   UPLOAD_DIR: path.join(__dirname, 'uploads'),
-  MAX_FILE_SIZE: parseInt(process.env.LABDROP_MAX_FILE_SIZE || String(100 * 1024 * 1024), 10), // 100 MB
-  MAX_FILES_PER_TRANSFER: parseInt(process.env.LABDROP_MAX_FILES || '20', 10),
-  MAX_TOTAL_SIZE: parseInt(process.env.LABDROP_MAX_TOTAL_SIZE || String(500 * 1024 * 1024), 10), // 500 MB
+  MAX_FILE_SIZE: parseInt(process.env.LABDROP_MAX_FILE_SIZE || String(250 * 1024 * 1024), 10), // 250 MB
+  MAX_FILES_PER_TRANSFER: parseInt(process.env.LABDROP_MAX_FILES || '30', 10), // 30 files
+  MAX_TOTAL_SIZE: parseInt(process.env.LABDROP_MAX_TOTAL_SIZE || String(1024 * 1024 * 1024), 10), // 1 GB (1,024 MB)
   TRANSFER_EXPIRY_MINUTES: parseInt(process.env.LABDROP_EXPIRY_MINUTES || '30', 10),
   CLEANUP_INTERVAL_MS: 60 * 1000, // Check every 1 minute
 };
