@@ -1,5 +1,7 @@
 # LabDrop 🧪
 
+🌐 **Live Web App:** [https://labdrop.online](https://labdrop.online)
+
 **Transfer lab files to your phone instantly. No login. No USB. No hassle.**
 
 LabDrop is a temporary file transfer system designed for college students who need to quickly move files (screenshots, source code, PDFs, etc.) from shared laboratory computers to their personal phones.
