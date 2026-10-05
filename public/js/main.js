@@ -498,22 +498,47 @@
       });
     });
 
-    // --- Render links ---
+    // --- Render links & code snippets ---
     linkList.innerHTML = '';
     currentLinks.forEach((link, idx) => {
       const li = document.createElement('li');
-      li.className = 'file-item';
-      li.innerHTML = `
-        <div class="file-item__icon file-item__icon--data">🔗</div>
-        <div class="file-item__details">
-          <div class="file-item__name" style="white-space: pre-wrap; word-break: break-word; font-family: monospace; font-size: 0.9em;">${linkify(link)}</div>
-          <div class="file-item__size">Link</div>
-        </div>
-        <div class="file-item__actions">
-          <button type="button" class="file-item__move" data-index="${idx}" data-type="link" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
-          <button type="button" class="file-item__remove" data-index="${idx}" title="Remove">✕</button>
-        </div>
-      `;
+      const isMultiLine = link.includes('\n');
+      const isUrl = /^https?:\/\/[^\s]+$/.test(link.trim());
+      const lineCount = link.split('\n').length;
+      const typeLabel = isUrl ? 'Link' : isMultiLine ? `Code (${lineCount} lines)` : 'Text';
+      
+      if (!isUrl) {
+        li.className = 'file-item file-item--code';
+        li.innerHTML = `
+          <div class="file-item__icon file-item__icon--code">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          </div>
+          <div class="file-item__details">
+            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+              <span class="file-item__size" style="font-weight: 600; font-size: 0.82rem; color: var(--color-primary-dark);">${typeLabel}</span>
+              <span style="font-size: 0.75rem; color: var(--color-text-secondary);">${link.length.toLocaleString()} chars</span>
+            </div>
+            <div class="file-item__name">${linkify(link)}</div>
+          </div>
+          <div class="file-item__actions">
+            <button type="button" class="file-item__move" data-index="${idx}" data-type="link" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
+            <button type="button" class="file-item__remove" data-index="${idx}" title="Remove">✕</button>
+          </div>
+        `;
+      } else {
+        li.className = 'file-item';
+        li.innerHTML = `
+          <div class="file-item__icon file-item__icon--data">🔗</div>
+          <div class="file-item__details">
+            <div class="file-item__name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${linkify(link)}</div>
+            <div class="file-item__size">Link</div>
+          </div>
+          <div class="file-item__actions">
+            <button type="button" class="file-item__move" data-index="${idx}" data-type="link" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
+            <button type="button" class="file-item__remove" data-index="${idx}" title="Remove">✕</button>
+          </div>
+        `;
+      }
       linkList.appendChild(li);
     });
 
@@ -878,29 +903,43 @@
     renderFileList();
   }
 
-  // ---- Add link (folder-aware) ----
+  // ---- Add link / code snippet (folder-aware) ----
   addLinkBtn.addEventListener('click', () => {
-    let url = linkInput.value;
-    if (!url.trim()) return;
-    // url validation removed
+    let text = linkInput.value;
+    if (!text.trim()) return;
     const activeFolder = getActiveFolder();
     const targetLinks = activeFolder ? activeFolder.links : selectedLinks;
-    if (targetLinks.length >= 20) {
-      showAlert('Maximum 20 links allowed per folder.');
+    if (targetLinks.length >= 50) {
+      showAlert('Maximum 50 items allowed per folder.');
       return;
     }
-    targetLinks.push(url);
+    // Push the raw content directly, preserving all leading indentation, tabs, and newlines
+    targetLinks.push(text);
     linkInput.value = '';
 
+    const isCode = text.includes('\n');
+    const label = isCode ? 'Code snippet' : 'Text';
     if (folders.length > 0) {
       const dest = activeFolder ? activeFolder.name : 'Unorganized';
-      showToast(`✓ Link added to <strong>${escapeHtml(dest)}</strong>`);
+      showToast(`✓ ${label} added to <strong>${escapeHtml(dest)}</strong>`);
+    } else {
+      showToast(`✓ ${label} added`);
     }
 
     renderFileList();
   });
-  linkInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
+
+  // Support Tab key indentation (4 spaces) and Ctrl+Enter to submit
+  linkInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const start = linkInput.selectionStart;
+      const end = linkInput.selectionEnd;
+      const val = linkInput.value;
+      // Insert 4 spaces at cursor position
+      linkInput.value = val.substring(0, start) + '    ' + val.substring(end);
+      linkInput.selectionStart = linkInput.selectionEnd = start + 4;
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       addLinkBtn.click();
     }
@@ -1271,19 +1310,72 @@
 
     function renderLinkItem(link) {
       const li = document.createElement('li');
-      li.className = 'file-item';
-      const isUrl = /^https?:\/\/[^\s]+$/.test(link);
-      const openBtnHtml = isUrl ? `<a href="${escapeHtml(link)}" target="_blank" class="btn btn--outline btn--sm">Open</a>` : '';
-      li.innerHTML = `
-        <div class="file-item__icon file-item__icon--data">🔗</div>
-        <div class="file-item__details" style="align-items: flex-start; max-width: 100%; overflow: hidden;">
-          <div class="file-item__name" style="white-space: pre-wrap; word-break: break-word; font-family: monospace; font-size: 0.9em;">${linkify(link)}</div>
-          ${!isUrl ? '' : '<div class="file-item__size">Link</div>'}
-        </div>
-        <div class="file-item__actions">
-          ${openBtnHtml}
-        </div>
-      `;
+      const isUrl = /^https?:\/\/[^\s]+$/.test(link.trim());
+      const isMultiLine = link.includes('\n');
+      const lineCount = link.split('\n').length;
+      
+      if (!isUrl) {
+        li.className = 'file-item file-item--code';
+        li.innerHTML = `
+          <div class="file-item__icon file-item__icon--code">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          </div>
+          <div class="file-item__details">
+            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+              <span class="file-item__size" style="font-weight: 600; font-size: 0.82rem; color: var(--color-primary-dark);">${isMultiLine ? `Code (${lineCount} lines)` : 'Text'}</span>
+              <span style="font-size: 0.75rem; color: var(--color-text-secondary);">${link.length.toLocaleString()} chars</span>
+            </div>
+            <div class="file-item__name">${linkify(link)}</div>
+          </div>
+          <div class="file-item__actions">
+            <button type="button" class="btn btn--outline btn--sm copy-code-btn" style="white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-weight: 600;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+              <span>Copy</span>
+            </button>
+          </div>
+        `;
+        const copyBtn = li.querySelector('.copy-code-btn');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', () => {
+            const doCopy = () => {
+              const label = copyBtn.querySelector('span');
+              if (label) label.textContent = 'Copied!';
+              setTimeout(() => { if (label) label.textContent = 'Copy'; }, 2000);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(link).then(doCopy).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = link;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+                doCopy();
+              });
+            } else {
+              const ta = document.createElement('textarea');
+              ta.value = link;
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              ta.remove();
+              doCopy();
+            }
+          });
+        }
+      } else {
+        li.className = 'file-item';
+        li.innerHTML = `
+          <div class="file-item__icon file-item__icon--data">🔗</div>
+          <div class="file-item__details">
+            <div class="file-item__name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${linkify(link)}</div>
+            <div class="file-item__size">Link</div>
+          </div>
+          <div class="file-item__actions">
+            <a href="${escapeHtml(link.trim())}" target="_blank" class="btn btn--outline btn--sm">Open</a>
+          </div>
+        `;
+      }
       return li;
     }
 

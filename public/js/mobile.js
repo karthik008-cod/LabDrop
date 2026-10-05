@@ -297,19 +297,72 @@
 
     function renderMobileLinkItem(link, listEl = mFileList) {
       const li = document.createElement('li');
-      li.className = 'file-item';
-      const isUrl = /^https?:\/\/[^\s]+$/.test(link);
-      const openBtnHtml = isUrl ? `<a class="btn btn--secondary btn--icon" href="${escapeHtml(link)}" target="_blank" title="Open Link" style="font-size: 0.85rem; padding: 6px 12px;">🔗</a>` : '';
-      li.innerHTML = `
-        <div class="file-item__icon file-item__icon--data">🔗</div>
-        <div class="file-item__details" style="align-items: flex-start; max-width: 100%; overflow: hidden;">
-          <div class="file-item__name" style="white-space: pre-wrap; word-break: break-word; overflow: visible; font-family: monospace; font-size: 0.9em;">${linkify(link)}</div>
-          ${!isUrl ? '' : '<div class="file-item__size">Link</div>'}
-        </div>
-        <div class="file-item__actions">
-          ${openBtnHtml}
-        </div>
-      `;
+      const isUrl = /^https?:\/\/[^\s]+$/.test(link.trim());
+      const isMultiLine = link.includes('\n');
+      const lineCount = link.split('\n').length;
+
+      if (!isUrl) {
+        li.className = 'file-item file-item--code';
+        li.innerHTML = `
+          <div class="file-item__icon file-item__icon--code">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          </div>
+          <div class="file-item__details">
+            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+              <span class="file-item__size" style="font-weight: 600; font-size: 0.82rem; color: var(--color-primary-dark);">${isMultiLine ? `Code (${lineCount} lines)` : 'Text'}</span>
+              <span style="font-size: 0.75rem; color: var(--color-text-secondary);">${link.length.toLocaleString()} chars</span>
+            </div>
+            <div class="file-item__name">${linkify(link)}</div>
+          </div>
+          <div class="file-item__actions">
+            <button type="button" class="btn btn--secondary btn--sm copy-mobile-code-btn" style="white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; font-weight: 600;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+              <span>Copy</span>
+            </button>
+          </div>
+        `;
+        const copyBtn = li.querySelector('.copy-mobile-code-btn');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', () => {
+            const doCopy = () => {
+              const label = copyBtn.querySelector('span');
+              if (label) label.textContent = 'Copied!';
+              setTimeout(() => { if (label) label.textContent = 'Copy'; }, 2000);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(link).then(doCopy).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = link;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+                doCopy();
+              });
+            } else {
+              const ta = document.createElement('textarea');
+              ta.value = link;
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              ta.remove();
+              doCopy();
+            }
+          });
+        }
+      } else {
+        li.className = 'file-item';
+        li.innerHTML = `
+          <div class="file-item__icon file-item__icon--data">🔗</div>
+          <div class="file-item__details">
+            <div class="file-item__name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${linkify(link)}</div>
+            <div class="file-item__size">Link</div>
+          </div>
+          <div class="file-item__actions">
+            <a class="btn btn--secondary btn--icon" href="${escapeHtml(link.trim())}" target="_blank" title="Open Link" style="font-size: 0.85rem; padding: 6px 12px;">🔗</a>
+          </div>
+        `;
+      }
       listEl.appendChild(li);
     }
 

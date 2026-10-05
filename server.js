@@ -446,8 +446,9 @@ app.get('/api/share-session/:id', (req, res) => {
 
 // --- Analytics & Admin ---
 
-// Baseline historical counters (frozen static numbers for lifetime satisfaction)
+// Baseline historical counters (merged prior counts)
 const BASELINE_COUNTERS = {
+  uniqueUsers: 123,
   totalTransfers: 133,
   totalFiles: 216,
   totalDownloads: 151
@@ -497,10 +498,15 @@ app.get('/admin/stats', async (req, res) => {
     const activeTransfers = allTransfers.filter(t => Date.now() < t.expiresAt && t.status !== 'EXPIRED');
     const activeFilesCount = activeTransfers.reduce((acc, t) => acc + (t.files ? t.files.length : 0), 0);
 
-    const uniqueCount = analyticsLoaded ? analytics.uniqueDevices.size : ((stats.uniqueDevices || []).length);
-    const transfersCount = analyticsLoaded ? analytics.totalTransfersCreated : (stats.totalTransfersCreated || 0);
-    const filesCount = analyticsLoaded ? analytics.totalFilesUploaded : (stats.totalFilesUploaded || 0);
-    const downloadsCount = analyticsLoaded ? analytics.totalDownloads : (stats.totalDownloads || 0);
+    const baseUnique = BASELINE_COUNTERS.uniqueUsers || 123;
+    const baseTransfers = BASELINE_COUNTERS.totalTransfers || 133;
+    const baseFiles = BASELINE_COUNTERS.totalFiles || 216;
+    const baseDownloads = BASELINE_COUNTERS.totalDownloads || 151;
+
+    const uniqueCount = (analyticsLoaded ? analytics.uniqueDevices.size : ((stats.uniqueDevices || []).length)) + baseUnique;
+    const transfersCount = (analyticsLoaded ? analytics.totalTransfersCreated : (stats.totalTransfersCreated || 0)) + baseTransfers;
+    const filesCount = (analyticsLoaded ? analytics.totalFilesUploaded : (stats.totalFilesUploaded || 0)) + baseFiles;
+    const downloadsCount = (analyticsLoaded ? analytics.totalDownloads : (stats.totalDownloads || 0)) + baseDownloads;
     const resetSuccess = req.query.resetSuccess === '1';
 
     const html = `
@@ -622,15 +628,15 @@ app.get('/admin/stats', async (req, res) => {
               </div>
               <div class="stat">
                 <span>Total Transfers:</span>
-                <strong>${transfersCount} <span class="baseline">(${BASELINE_COUNTERS.totalTransfers})</span></strong>
+                <strong>${transfersCount}</strong>
               </div>
               <div class="stat">
                 <span>Total Files:</span>
-                <strong>${filesCount} <span class="baseline">(${BASELINE_COUNTERS.totalFiles})</span></strong>
+                <strong>${filesCount}</strong>
               </div>
               <div class="stat">
                 <span>Total Downloads:</span>
-                <strong>${downloadsCount} <span class="baseline">(${BASELINE_COUNTERS.totalDownloads})</span></strong>
+                <strong>${downloadsCount}</strong>
               </div>
               <div class="stat">
                 <span>Active Transfers:</span>
@@ -791,8 +797,8 @@ app.post('/api/upload/initiate', optionalAuth, async (req, res) => {
     if (Array.isArray(req.body.links)) {
       links = req.body.links
         .filter(link => typeof link === 'string' && link.trim() !== '')
-        .slice(0, 20)
-        .map(link => link.substring(0, 5000));
+        .slice(0, 50)
+        .map(link => link.substring(0, 2000000));
     }
 
     if (rawFiles.length === 0 && links.length === 0) {
@@ -1105,8 +1111,8 @@ app.post('/api/upload', optionalAuth, (req, res) => {
         if (Array.isArray(parsedLinks)) {
           links = parsedLinks
             .filter(link => typeof link === 'string' && link.trim() !== '')
-            .slice(0, 20)
-            .map(link => link.substring(0, 5000));
+            .slice(0, 50)
+            .map(link => link.substring(0, 2000000));
         }
       } catch (e) {
         console.warn('Failed to parse links from request:', req.body.links);
@@ -1518,15 +1524,22 @@ app.get('/stats', async (req, res) => {
   const allTransfers = await storage.transfers.getAll();
   const activeTransfers = allTransfers.filter(t => Date.now() < t.expiresAt && t.status !== 'EXPIRED');
 
+  const baseUnique = BASELINE_COUNTERS.uniqueUsers || 123;
+  const baseTransfers = BASELINE_COUNTERS.totalTransfers || 133;
+  const baseFiles = BASELINE_COUNTERS.totalFiles || 216;
+  const baseDownloads = BASELINE_COUNTERS.totalDownloads || 151;
+
+  const mergedUnique = analytics.uniqueDevices.size + baseUnique;
+  const mergedTransfers = analytics.totalTransfersCreated + baseTransfers;
+  const mergedFiles = analytics.totalFilesUploaded + baseFiles;
+  const mergedDownloads = analytics.totalDownloads + baseDownloads;
+
   res.json({
     activeTransfersInServer: activeTransfers.length,
-    totalUniqueVisitors: analytics.uniqueDevices.size,
-    totalTransfersCreated: analytics.totalTransfersCreated,
-    totalTransfersDisplay: `${analytics.totalTransfersCreated} (${BASELINE_COUNTERS.totalTransfers})`,
-    totalFilesUploaded: analytics.totalFilesUploaded,
-    totalFilesDisplay: `${analytics.totalFilesUploaded} (${BASELINE_COUNTERS.totalFiles})`,
-    totalDownloads: analytics.totalDownloads,
-    totalDownloadsDisplay: `${analytics.totalDownloads} (${BASELINE_COUNTERS.totalDownloads})`,
+    totalUniqueVisitors: mergedUnique,
+    totalTransfersCreated: mergedTransfers,
+    totalFilesUploaded: mergedFiles,
+    totalDownloads: mergedDownloads,
     baselineCounters: BASELINE_COUNTERS,
     serverUptimeMinutes: Math.round(process.uptime() / 60)
   });

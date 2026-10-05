@@ -503,6 +503,12 @@ body:has(.sidebar--open) .header {
     color: var(--color-text);
     font-weight: 600;
   }
+  .drawer-nav-item svg {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    color: currentColor;
+  }
   
   .drawer-divider {
     border: none;
@@ -758,6 +764,52 @@ body:has(.sidebar--open) .header {
   .file-item__actions { opacity: 1; } /* Always show on mobile */
   .file-item__details { flex-direction: column; align-items: flex-start; }
   .file-item__meta { text-align: left; margin-top: 2px; }
+}
+
+/* Code and Multi-line Text Transfer items */
+.file-item--code {
+  align-items: flex-start !important;
+  padding: var(--space-sm) 0;
+}
+
+.file-item--code .file-item__icon {
+  margin-top: 4px;
+}
+
+.file-item--code .file-item__details {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.file-item--code .file-item__name {
+  white-space: pre !important;
+  word-break: normal !important;
+  overflow-x: auto !important;
+  text-overflow: clip !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  tab-size: 4;
+  -moz-tab-size: 4;
+  background: var(--color-bg-secondary, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--color-border);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  width: 100%;
+  max-height: 240px;
+  overflow-y: auto;
+  user-select: text;
+  margin-top: 4px;
+  box-sizing: border-box;
+}
+
+.file-item--code .file-item__actions {
+  opacity: 1 !important; /* Always visible for code snippet copy/remove */
+  margin-top: 4px;
+  flex-shrink: 0;
 }
 
 /* ============================================================

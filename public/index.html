@@ -240,17 +240,21 @@
         </div>
         <div id="authLoggedIn" style="display: none; gap: var(--space-md); align-items: center;">
           <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
-          <a href="/my-files.html" class="nav-link">
-            <span>🗄️</span> Saved Transfers
-          </a>
-          <div class="nav-icon" title="User Account" style="background: var(--color-bg-secondary); color: var(--color-text);">👤</div>
+          <a href="/how-to-use.html" class="nav-link" style="text-decoration: none;">How to Use</a>
+          <div class="nav-icon" title="User Account" style="background: var(--color-bg-secondary); color: var(--color-text); display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          </div>
           <button class="nav-link" id="navLogoutBtn" style="background:none;border:none;cursor:pointer;color:var(--color-text-secondary);">Logout</button>
           <span id="navUserEmail" style="display:none;"></span>
         </div>
       </nav>
       <div class="mobile-header-actions" style="display: flex; align-items: center; gap: 4px;">
-        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle Menu">
-          ☰
+        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle Menu" style="display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" x2="20" y1="6" y2="6"></line>
+            <line x1="4" x2="20" y1="12" y2="12"></line>
+            <line x1="4" x2="20" y1="18" y2="18"></line>
+          </svg>
         </button>
         <button class="mobile-scan-btn" id="mobileScanBtn" aria-label="Scan QR Code" title="Scan QR Code" style="background:none;border:none;cursor:pointer;padding:0 8px;display:flex;align-items:center;color:var(--color-text);">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -280,20 +284,21 @@
           <a href="/" class="drawer-brand" aria-label="LabDrop Home">
             <img src="/LabDropTextLogoNoBG.png" alt="LabDrop Logo" width="108" height="43" style="max-height: 38px; width: auto;" />
           </a>
-          <button type="button" class="drawer-close-btn" id="mobileDrawerCloseBtn" aria-label="Close menu">✕</button>
+          <button type="button" class="drawer-close-btn" id="mobileDrawerCloseBtn" aria-label="Close menu" style="display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
         </div>
 
         <!-- Mobile Drawer Navigation -->
         <div class="drawer-nav" id="drawerNav">
           <div class="sidebar__title">MENU</div>
           <a href="/" class="drawer-nav-item active">
-            <span>🏠</span> Home
-          </a>
-          <a href="/my-files.html" class="drawer-nav-item">
-            <span>🗄️</span> Saved Transfers
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Home</span>
           </a>
           <a href="/how-to-use.html" class="drawer-nav-item">
-            <span>📖</span> How to Use
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+            <span>How to Use</span>
           </a>
           
           <div id="drawerAuthLoggedOut" style="display: flex; gap: 8px; margin-top: 6px;">
@@ -302,7 +307,7 @@
           </div>
           <div id="drawerAuthLoggedIn" style="display: none; flex-direction: column; gap: 8px; margin-top: 6px;">
             <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--color-text); padding: 4px 6px;">
-              <span>👤</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
               <span id="drawerUserEmail" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;"></span>
             </div>
             <button type="button" class="btn btn--ghost btn--sm" id="drawerNavLogoutBtn" style="justify-content: flex-start; color: var(--color-danger); padding: 6px 8px;">Logout</button>
@@ -358,11 +363,18 @@
             <button class="btn btn--primary btn--sm mt-md" type="button" onclick="document.getElementById('fileInput').click()">Select Files</button>
           </div>
 
-          <!-- Links Input -->
+          <!-- Links & Code Snippet Input -->
           <div style="margin-top: var(--space-md);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.82rem; color: var(--color-text-secondary);">
+              <span style="font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                Share Code, Text or Link
+              </span>
+              <span style="font-size: 0.74rem; opacity: 0.85;">Tab indents · Ctrl+Enter adds</span>
+            </div>
             <div class="form-group" style="display: flex; gap: var(--space-sm); margin-bottom: 0;">
-              <textarea class="form-input" id="linkInput" placeholder="Type a link, text, or code snippet..." rows="1" aria-label="Text or link content to transfer" style="resize: vertical; min-height: 40px; white-space: pre;"></textarea>
-              <button class="btn btn--secondary" type="button" id="addLinkBtn" style="white-space: nowrap; height: fit-content; align-self: flex-start;">Add Text</button>
+              <textarea class="form-input" id="linkInput" placeholder="Paste or type long Python code, multi-line notes, or links..." rows="2" aria-label="Text or code snippet to transfer" spellcheck="false" style="resize: vertical; min-height: 52px; white-space: pre-wrap; word-break: break-word; font-family: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, monospace; font-size: 0.88rem; line-height: 1.5; tab-size: 4; -moz-tab-size: 4; flex: 1;"></textarea>
+              <button class="btn btn--secondary" type="button" id="addLinkBtn" style="white-space: nowrap; height: fit-content; align-self: flex-start; padding: 12px 16px;">Add Text</button>
             </div>
           </div>
 
@@ -389,11 +401,17 @@
                 <!-- Mode Selector (Segmented Bar) -->
                 <div class="mode-selector compact-mode-selector">
                   <button class="mode-option compact-mode-btn active" id="modeQuick" type="button" title="No login required · 30 mins expiry">
-                    <span class="compact-mode-title">⚡ Quick Transfer</span>
+                    <span class="compact-mode-title" style="display: inline-flex; align-items: center; gap: 5px;">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                      Quick Transfer
+                    </span>
                     <span class="compact-mode-tag">30m</span>
                   </button>
                   <button class="mode-option compact-mode-btn" id="modeSave" type="button" title="Login required · 7 days expiry">
-                    <span class="compact-mode-title">🗄️ Save for Later</span>
+                    <span class="compact-mode-title" style="display: inline-flex; align-items: center; gap: 5px;">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                      Save for Later
+                    </span>
                     <span class="compact-mode-tag">7d</span>
                   </button>
                 </div>
