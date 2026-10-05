@@ -1561,12 +1561,6 @@
 
   // ---- Receive Form Logic ----
   const homeScanQrBtn = document.getElementById('homeScanQrBtn');
-  if (homeScanQrBtn) {
-    homeScanQrBtn.addEventListener('click', () => {
-      const mobileScanBtn = document.getElementById('mobileScanBtn');
-      if (mobileScanBtn) mobileScanBtn.click();
-    });
-  }
 
   receiveForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -3782,11 +3776,16 @@
     });
   }
 
-  if (mobileScanBtn && qrScannerModalOverlay) {
+  const scanTriggerButtons = [
+    document.getElementById('mobileScanBtn'),
+    document.getElementById('homeScanQrBtn')
+  ].filter(Boolean);
+
+  if (scanTriggerButtons.length > 0 && qrScannerModalOverlay) {
     // Hide overlay by default
     qrScannerModalOverlay.style.display = 'none';
 
-    mobileScanBtn.addEventListener('click', async () => {
+    const openScanner = async () => {
       qrScannerModalOverlay.style.display = 'flex';
       qrScannerModalOverlay.classList.add('active'); 
       
@@ -3833,7 +3832,9 @@
         qrScannerModalOverlay.style.display = 'none';
         qrScannerModalOverlay.classList.remove('active');
       }
-    });
+    };
+
+    scanTriggerButtons.forEach(btn => btn.addEventListener('click', openScanner));
 
     closeQrScannerBtn.addEventListener('click', () => {
       if (html5QrcodeScanner) {

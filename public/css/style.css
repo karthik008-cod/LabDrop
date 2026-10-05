@@ -1815,16 +1815,19 @@ body:has(.sidebar--open) .header {
 @media (max-width: 768px) { .mobile-header-actions { display: flex !important; } }
 
 
-/* Fix mobile layout gaps and scroll */
+/* Fix mobile layout gaps, full viewport height, and pin footer to bottom left */
 @media (max-width: 800px) {
   .page-wrapper {
-    justify-content: flex-start !important;
-    min-height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    min-height: calc(100vh - 65px) !important;
+    min-height: calc(100dvh - 65px) !important;
   }
   .workspace-grid {
     align-items: flex-start !important;
     align-content: flex-start !important;
-    flex: none !important;
+    flex: 1 0 auto !important;
   }
   .main-area {
     justify-content: flex-start !important;
@@ -1832,6 +1835,12 @@ body:has(.sidebar--open) .header {
   }
   #selectSection {
     margin-top: 0 !important;
+  }
+  .footer {
+    margin-top: auto !important;
+    padding: var(--space-xl) 0 var(--space-md) 0 !important;
+    text-align: left !important;
+    width: 100% !important;
   }
 }
 
