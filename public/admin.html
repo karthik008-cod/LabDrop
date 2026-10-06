@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LabDrop Intelligence — Admin Mission Control & Stock Analytics</title>
+  <meta name="description" content="LabDrop Admin Mission Control with interactive financial stock charts, real-time counters, active transfer monitors, and telemetry.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+  <meta name="theme-color" content="#0a0d14">
+
+  <!-- Admin Theme Styles -->
+  <link rel="stylesheet" href="/css/admin.css">
+
+  <!-- ApexCharts (Local first, CDN fallback) -->
+  <script src="/js/apexcharts.min.js"></script>
+  <script>
+    if (typeof ApexCharts === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/apexcharts"><\/script>');
+    }
+  </script>
+
+  <!-- Admin Dashboard Logic -->
+  <script src="/js/admin.js" defer></script>
+</head>
+<body>
+
+  <!-- Sticky Top Header & Live Navigation -->
+  <header class="admin-header">
+    <div class="brand-section">
+      <a href="/" class="brand-logo-link" title="Back to LabDrop Home">
+        <div class="brand-icon">🧪</div>
+        <div class="brand-title">Lab<span>Drop</span></div>
+      </a>
+      <span class="badge-tag">ADMIN INTELLIGENCE</span>
+    </div>
+
+    <!-- Live Telemetry Badges -->
+    <div class="header-system-meta">
+      <div class="live-beacon">
+        <span class="beacon-dot"></span>
+        <span>Live Stream</span>
+      </div>
+      <div class="sys-pill" title="MongoDB Connection Status">
+        <span>🍃 Mongo:</span>
+        <strong id="sysMongo" style="color:var(--emerald-green);">Connected</strong>
+      </div>
+      <div class="sys-pill" title="Server Node.js Uptime">
+        <span>⏱️ Uptime:</span>
+        <strong id="sysUptime">0m</strong>
+      </div>
+      <div class="sys-pill" title="Node.js Process RSS Memory">
+        <span>🧠 RAM:</span>
+        <strong id="sysRam">0 MB</strong>
+      </div>
+    </div>
+
+    <!-- Controls Toolbar -->
+    <div class="header-controls">
+      <button class="btn-ctrl btn-refresh" id="btnRefresh" title="Refresh Live Data Now">
+        <span class="spin-icon">↻</span>
+        <span>Refresh</span>
+      </button>
+
+      <button class="btn-ctrl active" id="btnAutoRefresh" title="Toggle Auto-Refresh Polling">
+        <span>⚡</span>
+        <span id="autoRefreshText">Auto-Refresh: 15s</span>
+      </button>
+
+      <button class="btn-ctrl" id="btnLogout" title="Lock Dashboard and Sign Out">
+        <span>🔒</span>
+        <span>Lock</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Dashboard Container -->
+  <main class="admin-container">
+
+    <!-- Global Toolbar & Stock Range Selectors -->
+    <section class="toolbar-strip">
+      <div class="toolbar-group">
+        <span class="toolbar-label">Timeframe:</span>
+        <div class="seg-button-group">
+          <button class="seg-btn" data-range="24H">24H</button>
+          <button class="seg-btn" data-range="7D">7D</button>
+          <button class="seg-btn" data-range="14D">14D</button>
+          <button class="seg-btn active" data-range="30D">30D</button>
+          <button class="seg-btn" data-range="90D">90D</button>
+          <button class="seg-btn" data-range="ALL">ALL</button>
+        </div>
+      </div>
+
+      <div class="toolbar-group">
+        <span class="toolbar-label">Display Mode:</span>
+        <div class="seg-button-group">
+          <button class="seg-btn active" data-view-mode="daily">📈 Daily Activity (Spikes)</button>
+          <button class="seg-btn" data-view-mode="cumulative">🚀 Cumulative Total (Growth)</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Financial KPI Ticker Ribbon (Stock Quote Cards) -->
+    <section class="kpi-grid">
+
+      <!-- 1. Transfers KPI -->
+      <article class="kpi-card" style="--kpi-accent: var(--accent-gold);">
+        <div class="kpi-header">
+          <span class="kpi-title"><span class="kpi-icon">📦</span> Transfers Created</span>
+          <span class="kpi-delta delta-positive" id="kpiTransfersDelta">▲ +0 (0%)</span>
+        </div>
+        <div class="kpi-main-stat">
+          <span class="kpi-value" id="kpiTransfersVal">0</span>
+        </div>
+        <div class="kpi-subtext" id="kpiTransfersSub">Loading activity...</div>
+        <div class="kpi-sparkline" id="sparkTransfers"></div>
+      </article>
+
+      <!-- 2. Files KPI -->
+      <article class="kpi-card" style="--kpi-accent: var(--electric-cyan);">
+        <div class="kpi-header">
+          <span class="kpi-title"><span class="kpi-icon">📁</span> Files Uploaded</span>
+          <span class="kpi-delta delta-positive" id="kpiFilesDelta">▲ +0 (0%)</span>
+        </div>
+        <div class="kpi-main-stat">
+          <span class="kpi-value" id="kpiFilesVal">0</span>
+        </div>
+        <div class="kpi-subtext" id="kpiFilesSub">Loading activity...</div>
+        <div class="kpi-sparkline" id="sparkFiles"></div>
+      </article>
+
+      <!-- 3. Downloads KPI -->
+      <article class="kpi-card" style="--kpi-accent: var(--royal-purple);">
+        <div class="kpi-header">
+          <span class="kpi-title"><span class="kpi-icon">📥</span> Downloads Completed</span>
+          <span class="kpi-delta delta-positive" id="kpiDownloadsDelta">▲ +0 (0%)</span>
+        </div>
+        <div class="kpi-main-stat">
+          <span class="kpi-value" id="kpiDownloadsVal">0</span>
+        </div>
+        <div class="kpi-subtext" id="kpiDownloadsSub">Loading activity...</div>
+        <div class="kpi-sparkline" id="sparkDownloads"></div>
+      </article>
+
+      <!-- 4. Unique Visitors KPI -->
+      <article class="kpi-card" style="--kpi-accent: var(--sunset-rose);">
+        <div class="kpi-header">
+          <span class="kpi-title"><span class="kpi-icon">👥</span> Unique Visitors</span>
+          <span class="kpi-delta delta-positive" id="kpiVisitorsDelta">▲ +0 (0%)</span>
+        </div>
+        <div class="kpi-main-stat">
+          <span class="kpi-value" id="kpiVisitorsVal">0</span>
+        </div>
+        <div class="kpi-subtext" id="kpiVisitorsSub">Loading activity...</div>
+        <div class="kpi-sparkline" id="sparkVisitors"></div>
+      </article>
+
+      <!-- 5. Active Live Transfers KPI -->
+      <article class="kpi-card" style="--kpi-accent: var(--coral-orange);">
+        <div class="kpi-header">
+          <span class="kpi-title"><span class="kpi-icon">⚡</span> Active Live Transfers</span>
+          <span class="live-beacon" style="padding: 2px 7px; font-size: 0.65rem;">Live</span>
+        </div>
+        <div class="kpi-main-stat">
+          <span class="kpi-value" id="kpiActiveVal">0</span>
+        </div>
+        <div class="kpi-subtext" id="kpiActiveSub">0 files currently live</div>
+        <div class="kpi-sparkline" id="sparkActive"></div>
+      </article>
+
+      <!-- 6. Transferred Storage KPI -->
+      <article class="kpi-card" style="--kpi-accent: var(--cyber-blue);">
+        <div class="kpi-header">
+          <span class="kpi-title"><span class="kpi-icon">💾</span> Transferred Volume</span>
+          <span class="kpi-delta delta-neutral">Est</span>
+        </div>
+        <div class="kpi-main-stat">
+          <span class="kpi-value" id="kpiStorageVal">0 MB</span>
+        </div>
+        <div class="kpi-subtext" id="kpiStorageSub">Loading volume...</div>
+        <div class="kpi-sparkline" id="sparkStorage"></div>
+      </article>
+
+    </section>
+
+    <!-- Master Multi-Metric Stock Chart (With Brush Scrubber) -->
+    <section class="chart-card-master">
+      <div class="chart-card-header">
+        <div class="chart-heading-group">
+          <h2 class="chart-title">
+            <span>📈 Master Stock Chart & Timeline Scrubber</span>
+          </h2>
+          <p class="chart-subtitle">Interactive financial area curves with crosshair cursor, zoom, pan, and timeline scrub window</p>
+        </div>
+
+        <!-- Metric Toggle Pills -->
+        <div class="series-toggle-strip">
+          <button class="toggle-pill active" data-toggle-metric="transfers" style="--pill-color: var(--accent-gold);">
+            <span class="pill-dot"></span> Transfers
+          </button>
+          <button class="toggle-pill active" data-toggle-metric="files" style="--pill-color: var(--electric-cyan);">
+            <span class="pill-dot"></span> Files
+          </button>
+          <button class="toggle-pill active" data-toggle-metric="downloads" style="--pill-color: var(--royal-purple);">
+            <span class="pill-dot"></span> Downloads
+          </button>
+          <button class="toggle-pill active" data-toggle-metric="visitors" style="--pill-color: var(--sunset-rose);">
+            <span class="pill-dot"></span> Visitors
+          </button>
+          <button class="toggle-pill active" data-toggle-metric="active" style="--pill-color: var(--coral-orange);">
+            <span class="pill-dot"></span> Active
+          </button>
+          <button class="toggle-pill" data-toggle-metric="storage" style="--pill-color: var(--cyber-blue);">
+            <span class="pill-dot"></span> Volume (MB)
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Stock Chart Container -->
+      <div class="chart-container-master" id="masterStockChart"></div>
+
+      <!-- Brush Timeline Scrubber -->
+      <div class="chart-brush-container" id="masterBrushChart"></div>
+    </section>
+
+    <!-- Dedicated Section: Charts for Every Count Metric -->
+    <div class="section-header">
+      <div class="section-title-wrap">
+        <span class="section-badge-num">6 METRICS</span>
+        <h2 class="section-title">Dedicated Stock Terminals for Every Count</h2>
+      </div>
+      <p class="section-desc">Individual interactive stock charts with dates on X-axis, count on Y-axis, high/low/average stats, and zoom</p>
+    </div>
+
+    <!-- Stock Charts Grid: Dedicated Chart for Every Count -->
+    <section class="stock-charts-grid">
+
+      <!-- Dedicated Chart 1: Transfers Created -->
+      <article class="stock-chart-card">
+        <div class="stock-card-top">
+          <div class="stock-meta-left">
+            <span class="stock-ticker-name"><span style="color:var(--accent-gold);">●</span> LBD / TRANSFERS</span>
+            <h3 class="stock-metric-title">Transfers Created</h3>
+          </div>
+          <div class="stock-stats-strip">
+            <div class="stat-chip"><span class="stat-chip-lbl">TOTAL:</span> <span class="stat-chip-val" id="statTransfersTotal">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">HIGH:</span> <span class="stat-chip-val high" id="statTransfersHigh">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">LOW:</span> <span class="stat-chip-val" id="statTransfersLow">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">AVG:</span> <span class="stat-chip-val" id="statTransfersAvg">0</span></div>
+          </div>
+        </div>
+        <div class="stock-chart-view" id="chartTransfers"></div>
+      </article>
+
+      <!-- Dedicated Chart 2: Files Uploaded -->
+      <article class="stock-chart-card">
+        <div class="stock-card-top">
+          <div class="stock-meta-left">
+            <span class="stock-ticker-name"><span style="color:var(--electric-cyan);">●</span> LBD / FILES</span>
+            <h3 class="stock-metric-title">Files Uploaded</h3>
+          </div>
+          <div class="stock-stats-strip">
+            <div class="stat-chip"><span class="stat-chip-lbl">TOTAL:</span> <span class="stat-chip-val" id="statFilesTotal">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">HIGH:</span> <span class="stat-chip-val high" id="statFilesHigh">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">LOW:</span> <span class="stat-chip-val" id="statFilesLow">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">AVG:</span> <span class="stat-chip-val" id="statFilesAvg">0</span></div>
+          </div>
+        </div>
+        <div class="stock-chart-view" id="chartFiles"></div>
+      </article>
+
+      <!-- Dedicated Chart 3: Downloads Completed -->
+      <article class="stock-chart-card">
+        <div class="stock-card-top">
+          <div class="stock-meta-left">
+            <span class="stock-ticker-name"><span style="color:var(--royal-purple);">●</span> LBD / DOWNLOADS</span>
+            <h3 class="stock-metric-title">Downloads Completed</h3>
+          </div>
+          <div class="stock-stats-strip">
+            <div class="stat-chip"><span class="stat-chip-lbl">TOTAL:</span> <span class="stat-chip-val" id="statDownloadsTotal">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">HIGH:</span> <span class="stat-chip-val high" id="statDownloadsHigh">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">LOW:</span> <span class="stat-chip-val" id="statDownloadsLow">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">AVG:</span> <span class="stat-chip-val" id="statDownloadsAvg">0</span></div>
+          </div>
+        </div>
+        <div class="stock-chart-view" id="chartDownloads"></div>
+      </article>
+
+      <!-- Dedicated Chart 4: Unique Visitors / Devices -->
+      <article class="stock-chart-card">
+        <div class="stock-card-top">
+          <div class="stock-meta-left">
+            <span class="stock-ticker-name"><span style="color:var(--sunset-rose);">●</span> LBD / VISITORS</span>
+            <h3 class="stock-metric-title">Unique Visitors / Devices</h3>
+          </div>
+          <div class="stock-stats-strip">
+            <div class="stat-chip"><span class="stat-chip-lbl">TOTAL:</span> <span class="stat-chip-val" id="statVisitorsTotal">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">HIGH:</span> <span class="stat-chip-val high" id="statVisitorsHigh">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">LOW:</span> <span class="stat-chip-val" id="statVisitorsLow">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">AVG:</span> <span class="stat-chip-val" id="statVisitorsAvg">0</span></div>
+          </div>
+        </div>
+        <div class="stock-chart-view" id="chartVisitors"></div>
+      </article>
+
+      <!-- Dedicated Chart 5: Active Concurrent Transfers -->
+      <article class="stock-chart-card">
+        <div class="stock-card-top">
+          <div class="stock-meta-left">
+            <span class="stock-ticker-name"><span style="color:var(--coral-orange);">●</span> LBD / ACTIVE CONCURRENT</span>
+            <h3 class="stock-metric-title">Active Live Transfers</h3>
+          </div>
+          <div class="stock-stats-strip">
+            <div class="stat-chip"><span class="stat-chip-lbl">PEAK:</span> <span class="stat-chip-val high" id="statActiveHigh">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">LOW:</span> <span class="stat-chip-val" id="statActiveLow">0</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">AVG:</span> <span class="stat-chip-val" id="statActiveAvg">0</span></div>
+          </div>
+        </div>
+        <div class="stock-chart-view" id="chartActive"></div>
+      </article>
+
+      <!-- Dedicated Chart 6: Transferred Storage Volume -->
+      <article class="stock-chart-card">
+        <div class="stock-card-top">
+          <div class="stock-meta-left">
+            <span class="stock-ticker-name"><span style="color:var(--cyber-blue);">●</span> LBD / STORAGE VOLUME</span>
+            <h3 class="stock-metric-title">Transferred Storage (MB)</h3>
+          </div>
+          <div class="stock-stats-strip">
+            <div class="stat-chip"><span class="stat-chip-lbl">TOTAL:</span> <span class="stat-chip-val" id="statStorageTotal">0 MB</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">HIGH:</span> <span class="stat-chip-val high" id="statStorageHigh">0 MB</span></div>
+            <div class="stat-chip"><span class="stat-chip-lbl">AVG:</span> <span class="stat-chip-val" id="statStorageAvg">0 MB</span></div>
+          </div>
+        </div>
+        <div class="stock-chart-view" id="chartStorage"></div>
+      </article>
+
+    </section>
+
+    <!-- Intraday 24-Hour Velocity Pulse -->
+    <section class="table-card" style="margin-top: 0.5rem;">
+      <div class="table-header">
+        <div>
+          <h3 class="section-title">⏱️ Today's Intraday 24-Hour Pulse</h3>
+          <p class="section-desc">Hourly velocity showing activity distribution across morning, afternoon, and evening</p>
+        </div>
+      </div>
+      <div class="stock-chart-view" id="chartIntraday"></div>
+    </section>
+
+    <!-- Operational Tables Section -->
+    <section class="data-section-grid">
+
+      <!-- Active Live Transfers Table -->
+      <article class="table-card">
+        <div class="table-header">
+          <div>
+            <h3 class="section-title">⚡ Live Transfers in Transit</h3>
+            <p class="section-desc">Transfers currently unexpired and stored in S3/MongoDB</p>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Short Code</th>
+                <th>Transfer Name</th>
+                <th>Files</th>
+                <th>Total Size</th>
+                <th>Downloads</th>
+                <th>Remaining TTL</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="activeTransfersBody">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+          <div id="activeTransfersEmpty" class="empty-state" style="display: none;">
+            <span>🍃 No active transfers currently in transit. All past transfers have expired gracefully.</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- Historical Daily Activity Ledger Table -->
+      <article class="table-card">
+        <div class="table-header">
+          <div>
+            <h3 class="section-title">📜 Historical Daily Activity Ledger</h3>
+            <p class="section-desc">Comprehensive daily log with day-over-day changes</p>
+          </div>
+          <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+            <input type="text" id="ledgerSearch" class="table-search-input" placeholder="🔍 Filter by date (YYYY-MM)...">
+            <button class="btn-ctrl" id="btnExportCsv" title="Download all records as CSV">
+              <span>📥 Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="table-wrapper" style="max-height: 420px; overflow-y: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Transfers</th>
+                <th>Files</th>
+                <th>Downloads</th>
+                <th>Unique Visitors</th>
+                <th>Volume</th>
+                <th>Cum. Transfers</th>
+                <th>Trend</th>
+              </tr>
+            </thead>
+            <tbody id="ledgerTableBody">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+    </section>
+
+  </main>
+
+  <!-- Security Authentication Modal -->
+  <div class="auth-modal-backdrop hidden" id="authModal">
+    <div class="auth-modal-card">
+      <div class="auth-card-icon">🛡️</div>
+      <div>
+        <h2 class="auth-title">LabDrop Terminal Auth</h2>
+        <p class="auth-desc">Please enter the administrator passkey to unlock live analytics and control telemetries.</p>
+      </div>
+
+      <form class="auth-form" id="authForm">
+        <div class="auth-error-msg" id="authError">Invalid passkey. Access denied.</div>
+        <div class="auth-input-wrapper">
+          <input 
+            type="password" 
+            id="authInput" 
+            class="auth-input" 
+            placeholder="Enter Admin Passkey..." 
+            autocomplete="current-password"
+            required
+          >
+        </div>
+        <button type="submit" class="auth-submit-btn" id="authSubmit">
+          Unlock Dashboard 🚀
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div class="toast-notice" id="toastNotice">Dashboard Updated</div>
+
+</body>
+</html>
