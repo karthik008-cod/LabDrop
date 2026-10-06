@@ -274,31 +274,43 @@
     setElementText('kpiDownloadsVal', formatNumber(totals.downloads));
     setElementText('kpiVisitorsVal', formatNumber(totals.visitors));
     setElementText('kpiActiveVal', formatNumber(totals.activeTransfers));
-    setElementText('kpiStorageVal', `${formatNumber(totals.cumulativeStorageMB)} MB`);
+    setElementText('kpiStorageVal', formatBytes(totals.activeStorageBytes));
 
     // Deltas
-    updateDeltaBadge('kpiTransfersDelta', trends.transfers.change24h, trends.transfers.pct24h);
-    updateDeltaBadge('kpiFilesDelta', trends.files.change24h, trends.files.pct24h);
-    updateDeltaBadge('kpiDownloadsDelta', trends.downloads.change24h, trends.downloads.pct24h);
-    updateDeltaBadge('kpiVisitorsDelta', trends.visitors.change24h, trends.visitors.pct24h);
+    if (trends.isDayOne) {
+      updateDeltaBadge('kpiTransfersDelta', trends.transfers.today, null, true);
+      updateDeltaBadge('kpiFilesDelta', trends.files.today, null, true);
+      updateDeltaBadge('kpiDownloadsDelta', trends.downloads.today, null, true);
+      updateDeltaBadge('kpiVisitorsDelta', trends.visitors.today, null, true);
+    } else {
+      updateDeltaBadge('kpiTransfersDelta', trends.transfers.change24h, trends.transfers.pct24h);
+      updateDeltaBadge('kpiFilesDelta', trends.files.change24h, trends.files.pct24h);
+      updateDeltaBadge('kpiDownloadsDelta', trends.downloads.change24h, trends.downloads.pct24h);
+      updateDeltaBadge('kpiVisitorsDelta', trends.visitors.change24h, trends.visitors.pct24h);
+    }
 
     // Subtext
-    setElementText('kpiTransfersSub', `24h: +${trends.transfers.today} | 7d growth: ${trends.transfers.growth7d}%`);
+    setElementText('kpiTransfersSub', trends.isDayOne ? `Today: +${trends.transfers.today} (Realtime Live)` : `Today: +${trends.transfers.today} | 24h: ${trends.transfers.change24h}`);
     const avgFiles = totals.transfers > 0 ? (totals.files / totals.transfers).toFixed(1) : '1.0';
     setElementText('kpiFilesSub', `Avg: ${avgFiles} files / transfer`);
     const dlRatio = totals.transfers > 0 ? (totals.downloads / totals.transfers).toFixed(2) : '1.0';
     setElementText('kpiDownloadsSub', `Conversion: ${dlRatio}x per transfer`);
     setElementText('kpiVisitorsSub', `Active today: ${trends.visitors.today} devices`);
     setElementText('kpiActiveSub', `${totals.activeFiles} files currently live`);
-    setElementText('kpiStorageSub', `Active in transit: ${formatBytes(totals.activeStorageBytes)}`);
+    setElementText('kpiStorageSub', `Uploaded today: ${formatBytes(totals.todayStorageBytes)}`);
 
     // Render Sparklines
     renderSparklines();
   }
 
-  function updateDeltaBadge(id, change, pct) {
+  function updateDeltaBadge(id, change, pct, isDayOne = false) {
     const el = document.getElementById(id);
     if (!el) return;
+    if (isDayOne) {
+      el.className = 'kpi-delta delta-positive';
+      el.textContent = `● Today: +${change}`;
+      return;
+    }
     const isPos = change > 0;
     const isZero = change === 0;
     el.className = `kpi-delta ${isZero ? 'delta-neutral' : isPos ? 'delta-positive' : 'delta-neutral'}`;
@@ -308,20 +320,37 @@
 
   function renderSparklines() {
     const ts = dashboardData.timeseries || [];
-    const recent = ts.slice(-14); // last 14 days for sparklines
+    const intra = dashboardData.intraday || [];
+    // If timeseries has only 1 day, use real intraday hourly points for rich sparkline curve
+    const useHourly = ts.length <= 1 && intra.length > 0;
 
-    const sparkConfig = (elId, dataArray, color) => {
+    const getSparkPoints = (metricKey) => {
+      if (useHourly) {
+        return intra.map(h => ({ timestamp: h.timestamp, val: h[metricKey] || 0 }));
+      }
+      return ts.slice(-14).map(d => ({
+        timestamp: d.timestamp,
+        val: metricKey === 'transfers' ? d.dailyTransfers
+           : metricKey === 'files' ? d.dailyFiles
+           : metricKey === 'downloads' ? d.dailyDownloads
+           : metricKey === 'visitors' ? d.dailyVisitors
+           : metricKey === 'active' ? d.activeTransfers
+           : (d.storageBytes || 0)
+      }));
+    };
+
+    const sparkConfig = (elId, seriesData, color) => {
       const el = document.getElementById(elId);
       if (!el) return;
-      const seriesData = dataArray.map(item => ({ x: item.timestamp, y: item.val }));
+      const formattedData = seriesData.map(item => ({ x: item.timestamp, y: item.val }));
 
       if (sparklines[elId]) {
-        sparklines[elId].updateSeries([{ data: seriesData }]);
+        sparklines[elId].updateSeries([{ data: formattedData }]);
         return;
       }
 
       const options = {
-        series: [{ data: seriesData }],
+        series: [{ data: formattedData }],
         chart: {
           type: 'area',
           height: 48,
@@ -355,12 +384,12 @@
       sparklines[elId].render();
     };
 
-    sparkConfig('sparkTransfers', recent.map(d => ({ timestamp: d.timestamp, val: d.dailyTransfers })), METRIC_COLORS.transfers);
-    sparkConfig('sparkFiles', recent.map(d => ({ timestamp: d.timestamp, val: d.dailyFiles })), METRIC_COLORS.files);
-    sparkConfig('sparkDownloads', recent.map(d => ({ timestamp: d.timestamp, val: d.dailyDownloads })), METRIC_COLORS.downloads);
-    sparkConfig('sparkVisitors', recent.map(d => ({ timestamp: d.timestamp, val: d.dailyVisitors })), METRIC_COLORS.visitors);
-    sparkConfig('sparkActive', recent.map(d => ({ timestamp: d.timestamp, val: d.activeTransfers })), METRIC_COLORS.active);
-    sparkConfig('sparkStorage', recent.map(d => ({ timestamp: d.timestamp, val: d.storageMB })), METRIC_COLORS.storage);
+    sparkConfig('sparkTransfers', getSparkPoints('transfers'), METRIC_COLORS.transfers);
+    sparkConfig('sparkFiles', getSparkPoints('files'), METRIC_COLORS.files);
+    sparkConfig('sparkDownloads', getSparkPoints('downloads'), METRIC_COLORS.downloads);
+    sparkConfig('sparkVisitors', getSparkPoints('visitors'), METRIC_COLORS.visitors);
+    sparkConfig('sparkActive', getSparkPoints('active'), METRIC_COLORS.active);
+    sparkConfig('sparkStorage', getSparkPoints('storageBytes'), METRIC_COLORS.storage);
   }
 
   // ============================================================
@@ -376,7 +405,9 @@
 
   function getFilteredData() {
     if (!dashboardData) return [];
-    if (activeRange === '24H') {
+    const isHourly = activeRange === '24H' || (dashboardData.timeseries && dashboardData.timeseries.length <= 1);
+
+    if (isHourly) {
       return (dashboardData.intraday || []).map(h => ({
         date: h.hour,
         timestamp: h.timestamp,
@@ -389,8 +420,8 @@
         dailyVisitors: h.visitors,
         cumulativeVisitors: h.cumulativeVisitors,
         activeTransfers: h.activeTransfers,
-        storageMB: Number((h.files * 3.2).toFixed(2)),
-        cumulativeStorageMB: Number((h.cumulativeFiles * 3.2).toFixed(2))
+        storageMB: h.storageMB || 0,
+        cumulativeStorageMB: h.storageMB || 0
       }));
     }
 

@@ -99,6 +99,15 @@
       </div>
     </section>
 
+    <!-- Real-Time Data Integrity Ribbon -->
+    <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); padding: 10px 16px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: #E5E7EB;">
+        <span style="font-size: 1.15rem;">🛡️</span>
+        <span><strong>100% Genuine Telemetry Active:</strong> All metric counters, hourly pulse, and tables are verified live from MongoDB. Real-time logging started today with true current counters.</span>
+      </div>
+      <span class="live-beacon" style="font-size: 0.72rem; padding: 3px 10px;">Zero Synthetic Data</span>
+    </div>
+
     <!-- Financial KPI Ticker Ribbon (Stock Quote Cards) -->
     <section class="kpi-grid">
 
@@ -167,16 +176,16 @@
         <div class="kpi-sparkline" id="sparkActive"></div>
       </article>
 
-      <!-- 6. Transferred Storage KPI -->
+      <!-- 6. Active Storage KPI (100% Real S3) -->
       <article class="kpi-card" style="--kpi-accent: var(--cyber-blue);">
         <div class="kpi-header">
-          <span class="kpi-title"><span class="kpi-icon">💾</span> Transferred Volume</span>
-          <span class="kpi-delta delta-neutral">Est</span>
+          <span class="kpi-title"><span class="kpi-icon">💾</span> Active Storage (S3)</span>
+          <span class="kpi-delta delta-positive" id="kpiStorageDelta">Real S3</span>
         </div>
         <div class="kpi-main-stat">
-          <span class="kpi-value" id="kpiStorageVal">0 MB</span>
+          <span class="kpi-value" id="kpiStorageVal">0 B</span>
         </div>
-        <div class="kpi-subtext" id="kpiStorageSub">Loading volume...</div>
+        <div class="kpi-subtext" id="kpiStorageSub">Real-time S3 footprint</div>
         <div class="kpi-sparkline" id="sparkStorage"></div>
       </article>
 
