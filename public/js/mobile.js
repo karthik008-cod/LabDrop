@@ -278,8 +278,8 @@
         </div>
         <div class="file-item__actions" style="display:flex; gap: 4px; align-items: center;">
           <input type="checkbox" class="file-checkbox" data-file-id="${file.id}" style="margin-right: 8px; transform: scale(1.2);" />
-          <button class="btn btn--outline btn--icon ai-file-btn" data-file-id="${file.id}" title="AI Viva & Exam Prep for ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px; color: #7c3aed; border-color: rgba(124, 58, 237, 0.3);">
-            ✨
+          <button class="btn btn--outline btn--icon ai-file-btn" data-file-id="${file.id}" title="AI Viva & Exam Prep for ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px; color: #B45309; border-color: rgba(245, 158, 11, 0.35); background: rgba(255, 209, 102, 0.15);">
+            AI
           </button>
           <button class="btn btn--outline btn--icon rename-file-btn" data-file-id="${file.id}" title="Rename ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px;">
             ✏️
@@ -984,21 +984,21 @@
 
     if (isSummarize) {
       secSelect.innerHTML = `
-        <option value="short">⚡ Short (5 lines)</option>
-        <option value="medium" selected>📄 Medium (20 lines)</option>
-        <option value="large">📚 Large (50 lines)</option>
-        <option value="custom">✏️ Custom (Let user fill this number)</option>
+        <option value="short">Short (5 lines)</option>
+        <option value="medium" selected>Medium (20 lines)</option>
+        <option value="large">Large (50 lines)</option>
+        <option value="custom">Custom (Let user fill this number)</option>
       `;
-      if (runBtn) runBtn.textContent = '📄 Generate Summary';
+      if (runBtn) runBtn.textContent = 'Generate Summary';
       if (customInput) customInput.style.display = 'none';
     } else {
       secSelect.innerHTML = `
-        <option value="easy">🟢 Easy (Fundamentals)</option>
-        <option value="medium" selected>🟡 Medium (Lab Standard)</option>
-        <option value="hard">🔴 Hard (Advanced Traps)</option>
-        <option value="extreme">🔥 Extreme (Compiler & Internals)</option>
+        <option value="easy">Easy (Fundamentals)</option>
+        <option value="medium" selected>Medium (Lab Standard)</option>
+        <option value="hard">Hard (Advanced Traps)</option>
+        <option value="extreme">Extreme (Compiler & Internals)</option>
       `;
-      if (runBtn) runBtn.textContent = '🎓 Generate Exam & Viva Prep';
+      if (runBtn) runBtn.textContent = 'Generate Exam & Viva Prep';
       if (customInput) customInput.style.display = 'none';
     }
   };
@@ -1048,26 +1048,24 @@
       if (allFiles.length > 1) {
         const opt = document.createElement('option');
         opt.value = 'ALL';
-        opt.textContent = `📁 All Files in Transfer (${allFiles.length} files)`;
+        opt.textContent = `All Files in Transfer (${allFiles.length} files)`;
         aiFileSelect.appendChild(opt);
       }
 
       // Transfer files
       allFiles.forEach((f, idx) => {
         const displayName = f.customName || f.originalName || f.name || `File ${idx + 1}`;
-        const isMedia = isMediaFilename(displayName);
         const opt = document.createElement('option');
         opt.value = f.id;
-        opt.textContent = `${isMedia ? '🖼️' : '📄'} ${displayName} (${formatBytes(f.size)})`;
+        opt.textContent = `${displayName} (${formatBytes(f.size)})`;
         aiFileSelect.appendChild(opt);
       });
 
       // Direct local files
       directUploadedFiles.forEach((df, idx) => {
-        const isMedia = isMediaFilename(df.name);
         const opt = document.createElement('option');
         opt.value = `direct_${idx}`;
-        opt.textContent = `💻 [Local] ${isMedia ? '🖼️' : '📄'} ${df.name} (${formatBytes(df.size)})`;
+        opt.textContent = `[Local] ${df.name} (${formatBytes(df.size)})`;
         aiFileSelect.appendChild(opt);
       });
 
@@ -1359,15 +1357,23 @@
     }).join('');
   }
 
-  // Client-side ad & promotional text stripping safeguard with Unicode symbol translation
-  function stripAiAdsClient(text) {
+  // Client-side ad, promotional text & emoji stripping safeguard with Unicode symbol translation
+  function stripAiAdsClient(text, allowEmojis = false) {
     if (!text || typeof text !== 'string') return text || '';
-    const cleaned = text
+    let cleaned = text
       .replace(/(?:---\s*)?(?:Support\s+Pollinations(?:\.AI)?|🌸\s*Ad\s*🌸|Powered by Pollinations(?:\.AI)?|Support our mission to keep AI accessible)[\s\S]*$/gi, '')
       .replace(/\n\s*(?:🌸\s*)?(?:Ad|Sponsored|Advertisement)[:\s][^\n]*/gi, '')
       .replace(/\n\s*Powered by [^\n]*/gi, '')
       .replace(/\n\s*Support [A-Za-z0-9_.-]+ AI[^\n]*/gi, '')
       .trim();
+
+    if (!allowEmojis) {
+      cleaned = cleaned.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '')
+        .replace(/[ \t]{2,}/g, ' ')
+        .replace(/\n[ \t]+/g, '\n')
+        .replace(/#+\s+(?=[#\n])/g, '')
+        .trim();
+    }
 
     return convertLatexAndTextSymbolsToUnicode(cleaned);
   }
@@ -1794,9 +1800,9 @@
       currentLabRecord = data;
       let rawMd = data.markdown || '';
       if (data.mermaidCode && !rawMd.includes(data.mermaidCode)) {
-        rawMd += `\n\n## 📊 Visual Flowchart / Diagram\n\`\`\`mermaid\n${data.mermaidCode}\n\`\`\`\n`;
+        rawMd += `\n\n## Visual Flowchart / Diagram\n\`\`\`mermaid\n${data.mermaidCode}\n\`\`\`\n`;
       }
-      currentLabRecordMarkdown = stripAiAdsClient(rawMd);
+      currentLabRecordMarkdown = stripAiAdsClient(rawMd, false);
 
       // Render result
       stopLabRecordLoadingCycle();
@@ -1811,7 +1817,7 @@
         labRecordChatMessages.style.display = 'flex';
         const notice = document.createElement('div');
         notice.className = 'ai-chat-bot-bubble';
-        notice.innerHTML = '<strong>✅ Lab Record generated!</strong> Ask me anything about this record — expand theory, simplify algorithm, add test cases, etc.';
+        notice.innerHTML = '<strong>Lab Record generated!</strong> Ask me anything about this record — expand theory, simplify algorithm, add test cases, etc.';
         labRecordChatMessages.appendChild(notice);
         labRecordChatMessages.scrollTop = labRecordChatMessages.scrollHeight;
       }
@@ -1926,7 +1932,8 @@
         previousOutput: currentLabRecordMarkdown
       });
 
-      const cleanedChat = stripAiAdsClient(data.result);
+      const isEmojiWanted = /emoji|emoticon|smileys|use emojis|with emojis|add emojis/i.test(text);
+      const cleanedChat = stripAiAdsClient(data.result, isEmojiWanted);
       labRecordConversationHistory.push({ role: 'user', content: text });
       labRecordConversationHistory.push({ role: 'model', content: cleanedChat });
 
@@ -2101,7 +2108,7 @@
       }
 
       aiMediaWarningBanner.style.display = 'none';
-      const cleanedExam = stripAiAdsClient(data.result);
+      const cleanedExam = stripAiAdsClient(data.result, false);
       lastGeneratedExamOutput = cleanedExam;
       vivaConversationHistory = [];
 
@@ -2109,10 +2116,10 @@
       if (vivaBadge) {
         if (examType === 'summarize') {
           const lenLabels = {
-            short: '⚡ Short (5 lines)',
-            medium: '📄 Medium (20 lines)',
-            large: '📚 Large (50 lines)',
-            custom: `✏️ Custom (${customLines} lines)`
+            short: 'Short (5 lines)',
+            medium: 'Medium (20 lines)',
+            large: 'Large (50 lines)',
+            custom: `Custom (${customLines} lines)`
           };
           vivaBadge.textContent = `Technical Summary · ${lenLabels[lengthType] || lengthType} · ${selection.count} file(s)`;
         } else {
@@ -2146,8 +2153,8 @@
         if (initialPlaceholder) initialPlaceholder.remove();
 
         const genNotice = document.createElement('div');
-        genNotice.style.cssText = 'color: var(--color-primary); font-size: 0.82rem; text-align: center; padding: 8px 12px; background: rgba(79, 70, 229, 0.08); border-radius: var(--radius-sm); font-weight: 600; border: 1px dashed rgba(79, 70, 229, 0.25);';
-        genNotice.innerHTML = `✨ ${isSummarize ? 'Summary generated above!' : 'Exam & Viva questions generated above!'} You can ask follow-up questions below.`;
+        genNotice.style.cssText = 'color: #B45309; font-size: 0.82rem; text-align: center; padding: 8px 12px; background: rgba(245, 158, 11, 0.1); border-radius: var(--radius-sm); font-weight: 600; border: 1px dashed rgba(245, 158, 11, 0.3);';
+        genNotice.innerHTML = `<strong>${isSummarize ? 'Summary generated above!' : 'Exam & Viva questions generated above!'}</strong> You can ask follow-up questions below.`;
         vivaChatMessages.appendChild(genNotice);
         vivaChatMessages.scrollTop = vivaChatMessages.scrollHeight;
       }
@@ -2394,48 +2401,7 @@
 
   // ---- Follow-Up & Direct Chat in Viva Tab ----
   function renderVivaChips(type = 'initial') {
-    const container = document.getElementById('vivaChipsContainer');
-    if (!container) return;
-
-    let chips = [];
-    if (type === 'summarize') {
-      chips = [
-        { label: '⚡ Make it even shorter (3 lines)', prompt: 'Make the summary even shorter in exactly 3 bullet points.' },
-        { label: '🔍 Explain key concept in depth', prompt: 'Explain the most important concept from this summary in detail.' },
-        { label: '❓ Potential exam questions', prompt: 'What are 3 important questions a professor could ask on this topic?' },
-        { label: '📋 Key takeaways list', prompt: 'Give me a 3-bullet cheat sheet of key formulas or takeaways.' }
-      ];
-    } else if (type === 'viva') {
-      chips = [
-        { label: '💡 Explain Q1 Simply', prompt: 'Can you explain Question 1 in simpler terms with an everyday analogy?' },
-        { label: '🗣️ How to speak Answer 2', prompt: 'How should I speak Answer 2 out loud to sound confident and impress the professor?' },
-        { label: '⚠️ Mock Follow-up Question', prompt: 'Give me a mock follow-up trick question the examiner could ask on this.' },
-        { label: '📋 3-Bullet Cheat Sheet', prompt: 'Give me a 3-bullet quick cheat sheet of key formulas and definitions.' }
-      ];
-    } else {
-      chips = [
-        { label: '⚡ Summarize in 5 lines', prompt: 'Summarize this document in exactly 5 concise lines.' },
-        { label: '❓ What is this document about?', prompt: 'What is this document and what is its main purpose?' },
-        { label: '📋 3-Bullet Overview', prompt: 'Give me a 3-bullet quick overview of key points.' },
-        { label: '💡 Explain Simply', prompt: 'Explain what this file does in simple, non-technical words.' }
-      ];
-    }
-
-    container.innerHTML = '';
-    chips.forEach(c => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'chip-btn viva-chip';
-      btn.setAttribute('data-prompt', c.prompt);
-      btn.textContent = c.label;
-      btn.addEventListener('click', () => {
-        if (vivaChatInput) {
-          vivaChatInput.value = c.prompt;
-          sendVivaChatMessage(c.prompt);
-        }
-      });
-      container.appendChild(btn);
-    });
+    // Quick prompt chips removed
   }
 
   // Initial binding for any static chips
@@ -2469,7 +2435,7 @@
 
     // Append user bubble
     const userMsg = document.createElement('div');
-    userMsg.style.cssText = 'align-self: flex-end; background: var(--color-primary); color: white; padding: 8px 12px; border-radius: 12px 12px 2px 12px; font-size: 0.86rem; max-width: 85%; word-break: break-word;';
+    userMsg.className = 'ai-chat-user-bubble';
     userMsg.textContent = text;
     if (vivaChatMessages) vivaChatMessages.appendChild(userMsg);
 
@@ -2496,7 +2462,8 @@
         previousOutput: lastGeneratedExamOutput
       });
 
-      const cleanedVivaChat = stripAiAdsClient(data.result);
+      const isEmojiWanted = /emoji|emoticon|smileys|use emojis|with emojis|add emojis/i.test(text);
+      const cleanedVivaChat = stripAiAdsClient(data.result, isEmojiWanted);
       vivaConversationHistory.push({ role: 'user', content: text });
       vivaConversationHistory.push({ role: 'model', content: cleanedVivaChat });
 

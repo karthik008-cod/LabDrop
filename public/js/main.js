@@ -462,7 +462,7 @@
       const cat = getFileCategory(file.name);
       const icon = FILE_ICONS[cat] || '📎';
       const isEligibleRecord = cat === 'code' || cat === 'pdf' || cat === 'document' || cat === 'image';
-      const recordBtnHtml = isEligibleRecord ? `<button type="button" class="file-item__record" data-index="${index}" title="Generate Lab Record with AI" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: var(--radius-sm); color: #7c3aed; font-weight: 700; cursor: pointer;">📄 AI Record</button>` : '';
+      const recordBtnHtml = isEligibleRecord ? `<button type="button" class="file-item__record" data-index="${index}" title="Generate Lab Record with AI" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: rgba(255, 209, 102, 0.2); border: 1px solid rgba(217, 119, 6, 0.4); border-radius: var(--radius-sm); color: #B45309; font-weight: 700; cursor: pointer;">AI Record</button>` : '';
 
       const li = document.createElement('li');
       li.className = 'file-item';
@@ -1616,7 +1616,7 @@
   // ---- PWA, Desktop File Handling & Web Share Target Logic ----
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').then(reg => {
+      navigator.serviceWorker.register('/sw.js?v=5.1').then(reg => {
         if (reg && reg.update) {
           reg.update();
         }
@@ -1665,201 +1665,275 @@
   }
 
   let isCheckingSharedFiles = false;
+  let hasPendingSharedCheck = false;
+  const MAX_SHARED_RETRIES = 12; // 12 * 250ms = 3.0s window for background DB write
+
+  // Check if initial page URL had shared marker
+  const initialUrlParams = new URLSearchParams(window.location.search);
+  let wasLaunchedFromShare = initialUrlParams.has('shared') || 
+                             initialUrlParams.has('shared_session') || 
+                             window.location.search.includes('shared');
 
   // Check if we arrived via Web Share Target (Server fallback session or IndexedDB PWA)
-  async function checkSharedFiles(retries = 0) {
-    if (isCheckingSharedFiles) return;
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    if (urlParams.has('share_error')) {
-      window.history.replaceState({}, document.title, window.location.pathname);
-      showAlert('Failed to process shared files. They might be unsupported or restricted by the OS.', 'error');
+  async function checkSharedFiles(retryCount = 0) {
+    if (isCheckingSharedFiles) {
+      hasPendingSharedCheck = true;
       return;
     }
-
-    const sharedSessionId = urlParams.get('shared_session');
-
-    // Dual-Path 1: Server-side fallback session (used when ServiceWorker is inactive or bypassed by OS share)
-    if (sharedSessionId) {
-      isCheckingSharedFiles = true;
-      try {
-        const res = await fetch(`/api/share-session/${encodeURIComponent(sharedSessionId)}`);
-        if (res.ok) {
-          const data = await res.json();
-          const incomingFiles = [];
-          if (data.files && Array.isArray(data.files)) {
-            data.files.forEach(f => {
-              if (f.base64) {
-                const blob = b64toBlob(f.base64, f.mimetype || 'application/octet-stream');
-                const fileObj = new File([blob], f.name || 'shared_file', {
-                  type: f.mimetype || 'application/octet-stream',
-                  lastModified: Date.now()
-                });
-                incomingFiles.push(fileObj);
-              }
-            });
-          }
-
-          let hasAddedAnything = false;
-          if (incomingFiles.length > 0) {
-            addFiles(incomingFiles);
-            showAlert(`📥 Received ${incomingFiles.length} file(s) from WhatsApp / Share! Ready to transfer.`, 'success');
-            hasAddedAnything = true;
-          }
-
-          const shareUrl = data.url || (data.text && /^https?:\/\//i.test(data.text.trim()) ? data.text.trim() : null);
-          if (shareUrl) {
-            const activeFolder = getActiveFolder();
-            const targetLinks = activeFolder ? activeFolder.links : selectedLinks;
-            if (targetLinks.length < 20) {
-              targetLinks.push(shareUrl);
-              renderFileList();
-              showAlert(`🔗 Received shared link from WhatsApp / Share!`, 'success');
-              hasAddedAnything = true;
-            }
-          } else if (data.text && data.text.trim()) {
-            const blob = new Blob([data.text], { type: 'text/plain;charset=utf-8' });
-            const textFile = new File([blob], 'shared-note.txt', { type: 'text/plain;charset=utf-8' });
-            addFiles([textFile]);
-            showAlert(`📥 Received shared text from WhatsApp! Ready to transfer.`, 'success');
-            hasAddedAnything = true;
-          }
-
-          window.history.replaceState({}, document.title, window.location.pathname);
-          isCheckingSharedFiles = false;
-          return;
-        }
-      } catch (err) {
-        console.warn('[ShareTarget] Error retrieving server share session:', err);
-      }
-      isCheckingSharedFiles = false;
-    }
-
-    const hasSharedParam = urlParams.has('shared');
-
-    if (!window.indexedDB) return;
-
     isCheckingSharedFiles = true;
-    const request = indexedDB.open('LabDropSharedFiles', 2);
 
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains('files')) {
-        db.createObjectStore('files', { autoIncrement: true });
-      }
-      if (!db.objectStoreNames.contains('meta')) {
-        db.createObjectStore('meta', { keyPath: 'id' });
-      }
-    };
-
-    request.onsuccess = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains('files')) {
-        db.close();
-        isCheckingSharedFiles = false;
+    try {
+      const currentUrlParams = new URLSearchParams(window.location.search);
+      
+      if (currentUrlParams.has('share_error')) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        showAlert('Failed to process shared files. They might be unsupported or restricted by the OS.', 'error');
         return;
       }
 
-      const storeNames = Array.from(db.objectStoreNames);
-      const transaction = db.transaction(storeNames, 'readwrite');
-      const store = transaction.objectStore('files');
-      const getAllRequest = store.getAll();
+      const sharedSessionId = currentUrlParams.get('shared_session');
 
-      getAllRequest.onsuccess = () => {
-        const rawItems = getAllRequest.result || [];
-        const normalizedFiles = [];
-
-        rawItems.forEach(item => {
-          if (!item) return;
-          if (item instanceof File) {
-            normalizedFiles.push(item);
-          } else if (item.blob instanceof Blob) {
-            normalizedFiles.push(new File([item.blob], item.name || 'shared_file', {
-              type: item.type || item.blob.type || 'application/octet-stream',
-              lastModified: item.lastModified || Date.now()
-            }));
-          } else if (item.file instanceof File) {
-            normalizedFiles.push(item.file);
-          } else if (item.file instanceof Blob) {
-            normalizedFiles.push(new File([item.file], item.name || 'shared_file', {
-              type: item.type || item.file.type || 'application/octet-stream',
-              lastModified: item.lastModified || Date.now()
-            }));
-          } else if (item instanceof Blob) {
-            normalizedFiles.push(new File([item], item.name || 'shared_file', {
-              type: item.type || 'application/octet-stream',
-              lastModified: Date.now()
-            }));
-          }
-        });
-
-        // Check meta store for any shared link
-        let sharedLink = null;
-        if (storeNames.includes('meta')) {
-          const metaStore = transaction.objectStore('meta');
-          const getMetaReq = metaStore.get('share_meta');
-          getMetaReq.onsuccess = () => {
-            if (getMetaReq.result && getMetaReq.result.url) {
-              sharedLink = getMetaReq.result.url;
+      // Dual-Path 1: Server-side fallback session (used when ServiceWorker is inactive or bypassed by OS share)
+      if (sharedSessionId) {
+        try {
+          const res = await fetch(`/api/share-session/${encodeURIComponent(sharedSessionId)}`);
+          if (res.ok) {
+            const data = await res.json();
+            const incomingFiles = [];
+            if (data.files && Array.isArray(data.files)) {
+              data.files.forEach(f => {
+                if (f.base64) {
+                  const blob = b64toBlob(f.base64, f.mimetype || 'application/octet-stream');
+                  const fileObj = new File([blob], f.name || 'shared_file', {
+                    type: f.mimetype || 'application/octet-stream',
+                    lastModified: Date.now()
+                  });
+                  incomingFiles.push(fileObj);
+                }
+              });
             }
-          };
-        }
 
-        // Only clear stores if files or links were actually present!
-        if (normalizedFiles.length > 0 || rawItems.length > 0) {
-          store.clear();
-          if (storeNames.includes('meta')) {
-            const metaStore = transaction.objectStore('meta');
-            metaStore.clear();
-          }
-        }
+            let hasAdded = false;
+            if (incomingFiles.length > 0) {
+              showSection(selectSection);
+              closeMobileSidebar();
+              addFiles(incomingFiles);
+              showAlert(`Received ${incomingFiles.length} file(s) from WhatsApp / Share! Ready to transfer.`, 'success');
+              hasAdded = true;
+            }
 
-        transaction.oncomplete = () => {
-          db.close();
-          isCheckingSharedFiles = false;
+            const shareUrl = data.url || (data.text && /^https?:\/\//i.test(data.text.trim()) ? data.text.trim() : null);
+            if (shareUrl) {
+              const activeFolder = getActiveFolder();
+              const targetLinks = activeFolder ? activeFolder.links : selectedLinks;
+              if (targetLinks.length < 20) {
+                targetLinks.push(shareUrl);
+                renderFileList();
+                showAlert(`Received shared link from WhatsApp / Share!`, 'success');
+                hasAdded = true;
+              }
+            } else if (data.text && data.text.trim()) {
+              const blob = new Blob([data.text], { type: 'text/plain;charset=utf-8' });
+              const textFile = new File([blob], 'shared-note.txt', { type: 'text/plain;charset=utf-8' });
+              showSection(selectSection);
+              closeMobileSidebar();
+              addFiles([textFile]);
+              showAlert(`Received shared text from WhatsApp! Ready to transfer.`, 'success');
+              hasAdded = true;
+            }
 
-          let hasAddedAnything = false;
-          if (normalizedFiles.length > 0) {
-            addFiles(normalizedFiles);
-            showAlert(`📥 Received ${normalizedFiles.length} file(s) from WhatsApp / Share! Ready to transfer.`, 'success');
-            hasAddedAnything = true;
-          }
-
-          if (sharedLink) {
-            const activeFolder = getActiveFolder();
-            const targetLinks = activeFolder ? activeFolder.links : selectedLinks;
-            if (targetLinks.length < 20) {
-              targetLinks.push(sharedLink);
-              renderFileList();
-              showAlert(`🔗 Received shared link from WhatsApp / Share!`, 'success');
-              hasAddedAnything = true;
+            if (hasAdded) {
+              window.history.replaceState({}, document.title, window.location.pathname);
+              wasLaunchedFromShare = false;
+              if (fileListWrapper) {
+                fileListWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
+              return;
             }
           }
+        } catch (err) {
+          console.warn('[ShareTarget] Error retrieving server share session:', err);
+        }
+      }
 
-          if (hasSharedParam) {
-            window.history.replaceState({}, document.title, window.location.pathname);
+      // Dual-Path 2: Service Worker IndexedDB PWA Web Share Target
+      if (!window.indexedDB) return;
+
+      await new Promise((resolve) => {
+        let dbRef = null;
+        const request = indexedDB.open('LabDropSharedFiles', 2);
+
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains('files')) {
+            db.createObjectStore('files', { autoIncrement: true });
           }
-
-          // Safe retry if URL had ?shared=1 and files haven't arrived yet
-          if (!hasAddedAnything && hasSharedParam && retries < 10) {
-            setTimeout(() => checkSharedFiles(retries + 1), 400);
+          if (!db.objectStoreNames.contains('meta')) {
+            db.createObjectStore('meta', { keyPath: 'id' });
           }
         };
-      };
 
-      getAllRequest.onerror = () => {
-        db.close();
-        isCheckingSharedFiles = false;
-      };
-    };
+        request.onsuccess = (event) => {
+          dbRef = event.target.result;
+          if (!dbRef.objectStoreNames.contains('files')) {
+            try { dbRef.close(); } catch (_) {}
+            resolve();
+            return;
+          }
 
-    request.onerror = (err) => {
-      console.error('Failed to open IndexedDB for shared files', err);
+          const storeNames = Array.from(dbRef.objectStoreNames);
+          let transaction;
+          try {
+            transaction = dbRef.transaction(storeNames, 'readwrite');
+          } catch (tErr) {
+            try { dbRef.close(); } catch (_) {}
+            resolve();
+            return;
+          }
+
+          const store = transaction.objectStore('files');
+          const getAllRequest = store.getAll();
+
+          getAllRequest.onsuccess = () => {
+            const rawItems = getAllRequest.result || [];
+            const normalizedFiles = [];
+
+            rawItems.forEach(item => {
+              if (!item) return;
+              let blobContent = null;
+              if (item instanceof Blob || item instanceof File) {
+                blobContent = item;
+              } else if (item.blob && (item.blob instanceof Blob || typeof item.blob.slice === 'function')) {
+                blobContent = item.blob;
+              } else if (item.file && (item.file instanceof Blob || typeof item.file.slice === 'function')) {
+                blobContent = item.file;
+              } else if (item.buffer || item.arrayBuffer) {
+                blobContent = new Blob([item.buffer || item.arrayBuffer], { type: item.type || 'application/octet-stream' });
+              }
+
+              if (blobContent) {
+                let fileObj;
+                try {
+                  fileObj = new File([blobContent], item.name || blobContent.name || 'shared_file', {
+                    type: item.type || blobContent.type || 'application/octet-stream',
+                    lastModified: item.lastModified || blobContent.lastModified || Date.now()
+                  });
+                } catch (_) {
+                  blobContent.name = item.name || 'shared_file';
+                  blobContent.lastModified = item.lastModified || Date.now();
+                  fileObj = blobContent;
+                }
+                normalizedFiles.push(fileObj);
+              }
+            });
+
+            // Check meta store for any shared link or text
+            let sharedLink = null;
+            let sharedText = null;
+            if (storeNames.includes('meta')) {
+              const metaStore = transaction.objectStore('meta');
+              const getMetaReq = metaStore.get('share_meta');
+              getMetaReq.onsuccess = () => {
+                if (getMetaReq.result) {
+                  if (getMetaReq.result.url) sharedLink = getMetaReq.result.url;
+                  if (getMetaReq.result.text) sharedText = getMetaReq.result.text;
+                }
+              };
+            }
+
+            // Only clear IndexedDB once we actually have items to consume
+            if (normalizedFiles.length > 0 || sharedLink || sharedText) {
+              store.clear();
+              if (storeNames.includes('meta')) {
+                const metaStore = transaction.objectStore('meta');
+                metaStore.clear();
+              }
+            }
+
+            transaction.oncomplete = () => {
+              try { dbRef.close(); } catch (_) {}
+
+              let hasAddedAnything = false;
+              if (normalizedFiles.length > 0) {
+                showSection(selectSection);
+                closeMobileSidebar();
+                addFiles(normalizedFiles);
+                showAlert(`Received ${normalizedFiles.length} file(s) from WhatsApp / Share! Ready to transfer.`, 'success');
+                hasAddedAnything = true;
+              }
+
+              if (sharedLink) {
+                const activeFolder = getActiveFolder();
+                const targetLinks = activeFolder ? activeFolder.links : selectedLinks;
+                if (targetLinks.length < 20) {
+                  targetLinks.push(sharedLink);
+                  renderFileList();
+                  showAlert(`Received shared link from WhatsApp / Share!`, 'success');
+                  hasAddedAnything = true;
+                }
+              } else if (sharedText && sharedText.trim() && normalizedFiles.length === 0) {
+                const blob = new Blob([sharedText], { type: 'text/plain;charset=utf-8' });
+                const textFile = new File([blob], 'shared-note.txt', { type: 'text/plain;charset=utf-8' });
+                showSection(selectSection);
+                closeMobileSidebar();
+                addFiles([textFile]);
+                showAlert(`Received shared text from WhatsApp! Ready to transfer.`, 'success');
+                hasAddedAnything = true;
+              }
+
+              if (hasAddedAnything) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+                wasLaunchedFromShare = false;
+                if (fileListWrapper) {
+                  fileListWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+              } else if (wasLaunchedFromShare && retryCount < MAX_SHARED_RETRIES) {
+                // If files haven't landed yet, schedule next retry polling
+                setTimeout(() => checkSharedFiles(retryCount + 1), 250);
+              } else if (retryCount >= MAX_SHARED_RETRIES) {
+                // Exhausted retries, clean URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                wasLaunchedFromShare = false;
+              }
+
+              resolve();
+            };
+
+            transaction.onerror = () => {
+              try { dbRef.close(); } catch (_) {}
+              resolve();
+            };
+
+            transaction.onabort = () => {
+              try { dbRef.close(); } catch (_) {}
+              resolve();
+            };
+          };
+
+          getAllRequest.onerror = () => {
+            try { dbRef.close(); } catch (_) {}
+            resolve();
+          };
+        };
+
+        request.onerror = (err) => {
+          console.warn('Failed to open IndexedDB for shared files', err);
+          if (wasLaunchedFromShare && retryCount < MAX_SHARED_RETRIES) {
+            setTimeout(() => checkSharedFiles(retryCount + 1), 250);
+          }
+          resolve();
+        };
+      });
+
+    } catch (err) {
+      console.error('[ShareTarget] checkSharedFiles unexpected error:', err);
+    } finally {
       isCheckingSharedFiles = false;
-      if (hasSharedParam && retries < 10) {
-        setTimeout(() => checkSharedFiles(retries + 1), 400);
+      if (hasPendingSharedCheck) {
+        hasPendingSharedCheck = false;
+        setTimeout(() => checkSharedFiles(0), 100);
       }
-    };
+    }
   }
 
   // Re-check when user switches back to LabDrop app window
@@ -1867,15 +1941,6 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') checkSharedFiles();
   });
-
-  // Listen for ServiceWorker background postMessage signal
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      if (event.data && event.data.type === 'LABDROP_SHARED_FILES_READY') {
-        checkSharedFiles();
-      }
-    });
-  }
 
   // Run on load
   checkAuth();
@@ -2104,7 +2169,7 @@
     allFiles.forEach(f => {
       const opt = document.createElement('option');
       opt.value = f.name;
-      opt.textContent = `${getAiFileIcon(f.name)} ${f.name} (${formatBytes(f.size || 0)})`;
+      opt.textContent = `${f.name} (${formatBytes(f.size || 0)})`;
       if (preferredName && f.name === preferredName) opt.selected = true;
       recordSourceSelect.appendChild(opt);
     });
@@ -2114,14 +2179,14 @@
     links.forEach((link, idx) => {
       const opt = document.createElement('option');
       opt.value = `__link_${idx}`;
-      opt.textContent = `🔗 Snippet / Text #${idx + 1} (${link.slice(0, 30)}...)`;
+      opt.textContent = `Snippet / Text #${idx + 1} (${link.slice(0, 30)}...)`;
       recordSourceSelect.appendChild(opt);
     });
 
     if (recordSourceSelect.options.length === 0) {
       const opt = document.createElement('option');
       opt.value = '';
-      opt.textContent = '-- No file selected. Click "Browse Other" to upload code --';
+      opt.textContent = 'No file selected. Click Browse to upload';
       recordSourceSelect.appendChild(opt);
     }
   }
@@ -2292,15 +2357,23 @@
     }).join('');
   }
 
-  // Client-side ad & promotional text stripping safeguard with Unicode symbol translation
-  function stripAiAdsClient(text) {
+  // Client-side ad, promotional text & emoji stripping safeguard with Unicode symbol translation
+  function stripAiAdsClient(text, allowEmojis = false) {
     if (!text || typeof text !== 'string') return text || '';
-    const cleaned = text
+    let cleaned = text
       .replace(/(?:---\s*)?(?:Support\s+Pollinations(?:\.AI)?|🌸\s*Ad\s*🌸|Powered by Pollinations(?:\.AI)?|Support our mission to keep AI accessible)[\s\S]*$/gi, '')
       .replace(/\n\s*(?:🌸\s*)?(?:Ad|Sponsored|Advertisement)[:\s][^\n]*/gi, '')
       .replace(/\n\s*Powered by [^\n]*/gi, '')
       .replace(/\n\s*Support [A-Za-z0-9_.-]+ AI[^\n]*/gi, '')
       .trim();
+
+    if (!allowEmojis) {
+      cleaned = cleaned.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '')
+        .replace(/[ \t]{2,}/g, ' ')
+        .replace(/\n[ \t]+/g, '\n')
+        .replace(/#+\s+(?=[#\n])/g, '')
+        .trim();
+    }
 
     return convertLatexAndTextSymbolsToUnicode(cleaned);
   }
@@ -2864,7 +2937,7 @@
         chatMsgContainer.innerHTML = '';
         const notice = document.createElement('div');
         notice.className = 'ai-chat-bot-bubble';
-        notice.innerHTML = '<strong>✅ Lab Record generated!</strong> Ask me anything — expand theory, simplify algorithm, add test cases, or explain any section.';
+        notice.innerHTML = '<strong>Lab Record generated!</strong> Ask me anything — expand theory, simplify algorithm, add test cases, or explain any section.';
         chatMsgContainer.appendChild(notice);
       }
       labRecordConversationHistory = [
@@ -3208,7 +3281,8 @@
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Chat failed.');
 
-      const cleanedResult = stripAiAdsClient(data.result);
+      const isEmojiWanted = /emoji|emoticon|smileys|use emojis|with emojis|add emojis/i.test(text);
+      const cleanedResult = stripAiAdsClient(data.result, isEmojiWanted);
       labRecordConversationHistory.push({ role: 'user', content: text });
       labRecordConversationHistory.push({ role: 'model', content: cleanedResult });
 
@@ -3419,7 +3493,7 @@
     if (allFiles.length === 0) {
       const opt = document.createElement('option');
       opt.value = '';
-      opt.textContent = '📂 No files queued yet — Click ➕ Upload';
+      opt.textContent = 'No file selected. Click Browse to upload';
       homeAiFileSelect.appendChild(opt);
       return;
     }
@@ -3428,7 +3502,7 @@
     allFiles.forEach((file, index) => {
       const opt = document.createElement('option');
       opt.value = index;
-      opt.textContent = `${getAiFileIcon(file.name)} ${file.name} (${formatBytes(file.size || 0)})`;
+      opt.textContent = `${file.name} (${formatBytes(file.size || 0)})`;
       if (preferredName && file.name === preferredName) {
         opt.selected = true;
         selectedIndex = index;
@@ -3583,7 +3657,7 @@
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Failed to generate prep.');
 
-      const cleanedViva = stripAiAdsClient(data.result);
+      const cleanedViva = stripAiAdsClient(data.result, false);
       lastGeneratedHomeVivaOutput = cleanedViva;
 
       if (homeVivaOutput) {
@@ -3621,9 +3695,7 @@
         homeVivaChatMessages.innerHTML = '';
         const botNotice = document.createElement('div');
         botNotice.className = 'ai-chat-bot-bubble';
-        botNotice.style.background = 'rgba(79, 70, 229, 0.06)';
-        botNotice.style.borderColor = 'rgba(79, 70, 229, 0.2)';
-        botNotice.innerHTML = `<strong>🎓 Exam & Viva Prep Generated!</strong><br/>You can now chat with LabDrop AI to ask follow-up questions, request deeper explanations, or prepare customized answers.`;
+        botNotice.innerHTML = `<strong>Exam & Viva Prep Generated!</strong><br/>You can now chat with LabDrop AI to ask follow-up questions, request deeper explanations, or prepare customized answers.`;
         homeVivaChatMessages.appendChild(botNotice);
       }
 
@@ -3718,7 +3790,8 @@
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Chat failed.');
 
-      const cleanedVivaChat = stripAiAdsClient(data.result);
+      const isEmojiWanted = /emoji|emoticon|smileys|use emojis|with emojis|add emojis/i.test(text);
+      const cleanedVivaChat = stripAiAdsClient(data.result, isEmojiWanted);
       homeVivaConversationHistory.push({ role: 'user', content: text });
       homeVivaConversationHistory.push({ role: 'model', content: cleanedVivaChat });
 

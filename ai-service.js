@@ -144,9 +144,9 @@ function convertLatexAndTextSymbolsToUnicode(text) {
  * Strip all ads, promotional footers, watermarks, scratchpad notes, and sponsor lines from AI output.
  * Automatically translates LaTeX math notation (e.g. $\rightarrow$, \leq) into clean Unicode symbols.
  */
-function stripAiAds(text) {
+function stripAiAds(text, allowEmojis = false) {
   if (!text || typeof text !== 'string') return text || '';
-  const cleaned = text
+  let cleaned = text
     // Remove thinking tags or chain of thought blocks if any
     .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
     // Remove Gemma / LLM scratchpad notes before the actual answer
@@ -161,6 +161,17 @@ function stripAiAds(text) {
     .replace(/\n\s*Powered by [^\n]*/gi, '')
     .replace(/\n\s*Support [A-Za-z0-9_.-]+ AI[^\n]*/gi, '')
     .trim();
+
+  if (!allowEmojis) {
+    // Strictly strip emojis and pictograms unless explicitly requested by user
+    // Preserves all technical letters, numbers, punctuation, arrows (→, ←, ↔), and math symbols
+    cleaned = cleaned
+      .replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '')
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/\n[ \t]+/g, '\n')
+      .replace(/#+\s+(?=[#\n])/g, '')
+      .trim();
+  }
 
   return convertLatexAndTextSymbolsToUnicode(cleaned);
 }
@@ -550,7 +561,7 @@ An Activity Diagram in UML 2.5 specifies the dynamic coordination of operational
 
 ### 3. Comprehensive Operational Breakdown of All Diagrams (Page-by-Page)
 
-#### 🏛️ Diagram 1: Library Management System Activity Diagram (Page 1)
+#### Diagram 1: Library Management System Activity Diagram (Page 1)
 Here is the operational breakdown of the first activity diagram (Page 1), formatted in a concise 6-step sequence:
 - **Step 1: Session Initiation (Start):** The workflow begins at the solid black Initial Node (labeled Start), launching the library administration portal interface.
 - **Step 2: User Authentication (Login & Authenticate):** The control token transitions to Login, followed by Authenticate. A decision diamond evaluates identity credentials: if [Invalid], control loops back to the Login prompt; if [Valid], control advances to the Fork Bar.
@@ -563,7 +574,7 @@ Here is the operational breakdown of the first activity diagram (Page 1), format
 - **Step 5: Concurrency & Synchronization (Join Bar):** All 4 operational paths synchronize at the horizontal Join Bar, ensuring all background transactions complete atomically before proceeding.
 - **Step 6: Session Termination (Log Out & Activity Final Node):** Control transitions from the Join Bar to Log Out, invalidating session cookies and terminating cleanly at the Activity Final Node (bullseye).
 
-#### 🏛️ Diagram 2: Banking Management System Activity Diagram (Page 2)
+#### Diagram 2: Banking Management System Activity Diagram (Page 2)
 Here is the operational breakdown of the second activity diagram (Page 2), formatted in a concise 6-step sequence:
 - **Step 1: Session Initiation (Start):** The workflow begins at the solid black Initial Node (labeled Start), triggering the launch of the banking portal interface.
 - **Step 2: User Authentication (Login to the banking Management system):** The control token transitions to Login to the banking Management system, where the user enters their credentials to establish a secure session.
@@ -577,7 +588,7 @@ Here is the operational breakdown of the second activity diagram (Page 2), forma
 - **Step 5: Concurrency & Synchronization:** All five modular service pathways evaluate operational bounds safely and route downstream toward terminal processing.
 - **Step 6: Session Termination (Logout from the system & End):** Completed operations converge into the Logout from the system action, cleanly clearing cache and terminating at the Activity Final Node (labeled End).
 
-#### 🏛️ Diagram 3: Railway Reservation System Activity Diagram (Page 3)
+#### Diagram 3: Railway Reservation System Activity Diagram (Page 3)
 Here is the operational breakdown of the third activity diagram (Page 3), formatted in a concise 6-step sequence:
 - **Step 1: Session Initiation (Start):** The workflow initiates at the Initial Node (Start), transitioning into the Railway Reservation portal.
 - **Step 2: User Authentication (Login to the Railway Reservation System):** The user authenticates into the railway booking engine with encrypted session credentials.
@@ -591,7 +602,7 @@ Here is the operational breakdown of the third activity diagram (Page 3), format
 - **Step 5: Transaction Synchronization:** Reservation, routing, and payment transactions are validated and synchronized before concluding the active session.
 - **Step 6: Session Termination (Logout from the system & End):** Control routes to Logout from the system, concluding at the Activity Final Node (End).
 
-#### 🏛️ Diagram 4: Tourism Management System Activity Diagram (Page 4)
+#### Diagram 4: Tourism Management System Activity Diagram (Page 4)
 Here is the operational breakdown of the fourth activity diagram (Page 4), formatted in a concise 6-step sequence:
 - **Step 1: Session Initiation (Start):** The workflow begins at the solid black Initial Node, launching the Tourism Management portal.
 - **Step 2: User Authentication (Login to the Tourism Management System):** Operator or traveler logs in with verified session tokens.
@@ -605,7 +616,7 @@ Here is the operational breakdown of the fourth activity diagram (Page 4), forma
 - **Step 5: Service Flow Synchronization:** Selected travel services process bookings, update itinerary datastores, and coordinate logistics.
 - **Step 6: Session Termination (Logout from the system & End):** All operational paths converge into Logout from the system, terminating safely at the Activity Final Node.
 
-#### 🏛️ Diagram 5: E-commerce Management System Activity Diagram (Page 5)
+#### Diagram 5: E-commerce Management System Activity Diagram (Page 5)
 Here is the operational breakdown of the fifth activity diagram (Page 5), formatted in a concise 6-step sequence:
 - **Step 1: Session Initiation (Start):** The workflow begins at the Initial Node, opening the e-commerce storefront.
 - **Step 2: User Authentication & Verification Loop (Login & Authentication):** Enters Login -> Authentication. A decision diamond evaluates [Check]: if [Invalid], loops back to login; if [Valid], transitions to the horizontal Fork Bar.
@@ -728,9 +739,9 @@ Here is the operational breakdown of the fifth activity diagram (Page 5), format
   } else {
     if (isDiagram) {
       aim = `To design, construct, analyze, and verify the multi-system UML Activity Diagrams and workflow architectures for **${purpose.replace('Model, Analyze, and Implement ', '')}**, validating decision logic, guard conditions, and fork/join synchronization paths across all systems.`;
-      theory = `### 🏛️ Multi-System UML Activity Diagram Architecture & Operational Analysis
+      theory = `### Multi-System UML Activity Diagram Architecture & Operational Analysis
 
-#### 🏛️ Diagram 1: Library Management System Activity Diagram (Page 1)
+#### Diagram 1: Library Management System Activity Diagram (Page 1)
 Here is the operational breakdown of the first activity diagram (Page 1), formatted in a concise 6-step sequence:
 - **Step 1: Session Initiation (Start):** The workflow begins at the solid black Initial Node (labeled Start), launching the library administration portal interface.
 - **Step 2: User Authentication (Login & Authenticate):** The control token transitions to Login, followed by Authenticate. A decision diamond evaluates identity credentials: if [Invalid], control loops back to the Login prompt; if [Valid], control advances to the Fork Bar.
@@ -743,7 +754,7 @@ Here is the operational breakdown of the first activity diagram (Page 1), format
 - **Step 5: Concurrency & Synchronization (Join Bar):** All 4 operational paths synchronize at the horizontal Join Bar, ensuring all background transactions complete atomically before proceeding.
 - **Step 6: Session Termination (Log Out & Activity Final Node):** Control transitions from the Join Bar to Log Out, invalidating session cookies and terminating cleanly at the Activity Final Node.
 
-#### 🏛️ Diagram 2: Banking Management System Activity Diagram (Page 2)
+#### Diagram 2: Banking Management System Activity Diagram (Page 2)
 Here is the operational breakdown of the second activity diagram (Page 2), formatted in a concise 6-step sequence:
 - **Step 1: Session Initiation (Start):** The workflow begins at the solid black Initial Node (labeled Start), triggering the launch of the banking portal interface.
 - **Step 2: User Authentication (Login to the banking Management system):** The control token transitions to Login to the banking Management system, where the user enters their credentials to establish a secure session.
@@ -757,7 +768,7 @@ Here is the operational breakdown of the second activity diagram (Page 2), forma
 - **Step 5: Concurrency & Synchronization:** All five modular service pathways evaluate operational bounds safely and route downstream toward terminal processing.
 - **Step 6: Session Termination (Logout from the system & End):** Completed operations converge into the Logout from the system action, cleanly clearing cache and terminating at the Activity Final Node (labeled End).
 
-#### 🏛️ Diagram 3: Railway Reservation System Activity Diagram (Page 3)
+#### Diagram 3: Railway Reservation System Activity Diagram (Page 3)
 Here is the operational breakdown of the third activity diagram (Page 3), formatted in a concise 6-step sequence:
 - **Step 1: Session Initiation (Start):** The workflow initiates at the Initial Node (Start), transitioning into the Railway Reservation portal.
 - **Step 2: User Authentication (Login to the Railway Reservation System):** The user authenticates into the railway booking engine with encrypted session credentials.
@@ -771,7 +782,7 @@ Here is the operational breakdown of the third activity diagram (Page 3), format
 - **Step 5: Transaction Synchronization:** Reservation, routing, and payment transactions are validated and synchronized before concluding the active session.
 - **Step 6: Session Termination (Logout from the system & End):** Control routes to Logout from the system, concluding at the Activity Final Node (End).
 
-#### 🏛️ Diagram 4: Tourism Management System Activity Diagram (Page 4)
+#### Diagram 4: Tourism Management System Activity Diagram (Page 4)
 Here is the operational breakdown of the fourth activity diagram (Page 4), formatted in a concise 6-step sequence:
 - **Step 1: Session Initiation (Start):** The workflow begins at the solid black Initial Node, launching the Tourism Management portal.
 - **Step 2: User Authentication (Login to the Tourism Management System):** Operator or traveler logs in with verified session tokens.
@@ -785,7 +796,7 @@ Here is the operational breakdown of the fourth activity diagram (Page 4), forma
 - **Step 5: Service Flow Synchronization:** Selected travel services process bookings, update itinerary datastores, and coordinate logistics.
 - **Step 6: Session Termination (Logout from the system & End):** All operational paths converge into Logout from the system, terminating safely at the Activity Final Node.
 
-#### 🏛️ Diagram 5: E-commerce Management System Activity Diagram (Page 5)
+#### Diagram 5: E-commerce Management System Activity Diagram (Page 5)
 Here is the operational breakdown of the fifth activity diagram (Page 5), formatted in a concise 6-step sequence:
 - **Step 1: Session Initiation (Start):** The workflow begins at the Initial Node, opening the e-commerce storefront.
 - **Step 2: User Authentication & Verification Loop (Login & Authentication):** Enters Login -> Authentication. A decision diamond evaluates [Check]: if [Invalid], loops back to login; if [Valid], transitions to the horizontal Fork Bar.
@@ -891,19 +902,19 @@ Here is the operational breakdown of the fifth activity diagram (Page 5), format
 }
 
 const SECTION_TITLES = {
-  aim: '🎯 Aim / Objective',
-  requirements: '💻 HW & SW Requirements',
-  apparatus: '🔬 Apparatus & Libraries',
-  description: '📖 Theory & Description',
-  theory: '📖 Theory & Description',
-  algorithm: '🔢 Step-by-Step Algorithm',
-  flowchart: '📊 Visual Flowchart',
-  procedure: '⚙️ Procedure & Commands',
-  program: '💻 Source Code (Program)',
-  table: '📋 Observation Table',
-  precautions: '⚠️ Precautions & Boundary',
-  output: '🖥️ Sample Console Output',
-  result: '🏁 Result Statement'
+  aim: 'Aim / Objective',
+  requirements: 'HW & SW Requirements',
+  apparatus: 'Apparatus & Libraries',
+  description: 'Theory & Description',
+  theory: 'Theory & Description',
+  algorithm: 'Step-by-Step Algorithm',
+  flowchart: 'Visual Flowchart',
+  procedure: 'Procedure & Commands',
+  program: 'Source Code (Program)',
+  table: 'Observation Table',
+  precautions: 'Precautions & Boundary',
+  output: 'Sample Console Output',
+  result: 'Result Statement'
 };
 
 function buildAllSectionVariants(codeContent, filename) {
@@ -1131,7 +1142,7 @@ function synthesizeLabRecord({ codeContent = '', filename = 'program.c', selecte
   const lines = [];
 
   // Title / Document Header
-  lines.push(`# 📄 LABORATORY OBSERVATION & RECORD`);
+  lines.push(`# LABORATORY OBSERVATION & RECORD`);
   lines.push(`**Experiment / Topic:** ${purpose}\n`);
 
   if (studentDetails && (studentDetails.studentName || studentDetails.rollNo || studentDetails.subject || studentDetails.expNo)) {
@@ -1147,13 +1158,13 @@ function synthesizeLabRecord({ codeContent = '', filename = 'program.c', selecte
 
   // 1. AIM
   if (sections.includes('aim')) {
-    lines.push(`## 🎯 Aim`);
+    lines.push(`## Aim`);
     lines.push(`${aim}\n`);
   }
 
   // 2. REQUIREMENTS
   if (sections.includes('requirements')) {
-    lines.push(`## 💻 System & Software Requirements`);
+    lines.push(`## System & Software Requirements`);
     if (isDiagram) {
       if (contentSize === 'brief') {
         lines.push(`- **Modeling Suite:** StarUML / Draw.io / Mermaid.js CLI / PlantUML`);
@@ -1212,7 +1223,7 @@ function synthesizeLabRecord({ codeContent = '', filename = 'program.c', selecte
 
   // 3. APPARATUS
   if (sections.includes('apparatus')) {
-    lines.push(`## 🛠️ Apparatus & Tools Required`);
+    lines.push(`## Apparatus & Tools Required`);
     if (isDiagram) {
       if (contentSize === 'brief') {
         lines.push(`1. Computer Workstation\n2. UML Modeling CASE Tool (StarUML / Draw.io / Mermaid)\n3. Technical Specification Suite\n`);
@@ -1239,13 +1250,13 @@ function synthesizeLabRecord({ codeContent = '', filename = 'program.c', selecte
 
   // 4. THEORY
   if (sections.includes('theory') || sections.includes('description')) {
-    lines.push(`## 📖 Theoretical Principles & Background`);
+    lines.push(`## Theoretical Principles & Background`);
     lines.push(`${theory}\n`);
   }
 
   // 5. ALGORITHM
   if (sections.includes('algorithm')) {
-    lines.push(`## 📝 Algorithm`);
+    lines.push(`## Algorithm`);
     algoSteps.forEach(st => lines.push(`${st}`));
     lines.push(``);
   }
@@ -1254,13 +1265,13 @@ function synthesizeLabRecord({ codeContent = '', filename = 'program.c', selecte
   let mermaidCode = null;
   if (sections.includes('flowchart')) {
     mermaidCode = mermaidFlow;
-    lines.push(`## 📊 Flowchart`);
+    lines.push(`## Flowchart`);
     lines.push(`\`\`\`mermaid\n${mermaidCode}\n\`\`\`\n`);
   }
 
   // 7. PROCEDURE
   if (sections.includes('procedure')) {
-    lines.push(`## ⚙️ Procedure & Execution Steps`);
+    lines.push(`## Procedure & Execution Steps`);
     if (isDiagram) {
       lines.push(`1. **System Scope & Boundary:** Define structural limits, external actors, and starting stimuli.`);
       lines.push(`2. **Initial Node & Action Mapping:** Construct the start node and map sequential action states.`);
@@ -1305,17 +1316,17 @@ function synthesizeLabRecord({ codeContent = '', filename = 'program.c', selecte
   // 8. PROGRAM
   if (sections.includes('program')) {
     if (isDiagram) {
-      lines.push(`## 💻 System Architecture & Activity Model`);
+      lines.push(`## System Architecture & Activity Model`);
       lines.push(`\`\`\`mermaid\n${mermaidFlow}\n\`\`\`\n`);
     } else {
-      lines.push(`## 💻 Source Code`);
+      lines.push(`## Source Code`);
       lines.push(`\`\`\`${tag}\n${codeContent.trim()}\n\`\`\`\n`);
     }
   }
 
   // 9. TABLE
   if (sections.includes('table')) {
-    lines.push(`## 📋 Observation & Test Cases Table`);
+    lines.push(`## Observation & Test Cases Table`);
     lines.push(`| Sl. No. | Test Scenario | Input Data | Expected Output | Actual Output | Status |`);
     lines.push(`| :---: | :--- | :--- | :--- | :--- | :---: |`);
     testCases.forEach((tc, idx) => {
@@ -1326,7 +1337,7 @@ function synthesizeLabRecord({ codeContent = '', filename = 'program.c', selecte
 
   // 10. PRECAUTIONS
   if (sections.includes('precautions')) {
-    lines.push(`## ⚠️ Precautions & Best Practices`);
+    lines.push(`## Precautions & Best Practices`);
     precautions.forEach((p, idx) => {
       lines.push(`${idx + 1}. ${p}`);
     });
@@ -1335,13 +1346,13 @@ function synthesizeLabRecord({ codeContent = '', filename = 'program.c', selecte
 
   // 11. OUTPUT
   if (sections.includes('output')) {
-    lines.push(`## 🖥️ Sample Console Execution Output`);
+    lines.push(`## Sample Console Execution Output`);
     lines.push(`\`\`\`text\n${sampleOutput}\n\`\`\`\n`);
   }
 
   // 12. RESULT
   if (sections.includes('result')) {
-    lines.push(`## 🏆 Result`);
+    lines.push(`## Result`);
     lines.push(`${resultText}\n`);
   }
 
@@ -1414,6 +1425,10 @@ async function generateExamPrep({
 
   const systemInstruction = `You are a distinguished University Professor and Chief Academic Examiner.
 You are evaluating student submissions across computer science, engineering, and IT subjects (e.g. Operating Systems, Computer Networks, Data Structures, Software Engineering, Electronics, Programming, System Architecture, etc.).
+
+STRICT EMOJI POLICY:
+Do NOT use ANY emojis or pictograms in your response under any circumstances unless explicitly requested by the student. Keep all markdown headings, titles, bullet points, numbers, explanations, and diagrams 100% free of emojis (no decorative icons or emojis whatsoever).
+
 CRITICAL MULTI-PAGE & MULTI-DIAGRAM DIRECTIVES:
 1. Base all questions, answers, elevator pitches, and summaries STRICTLY on the actual technical topics and content in the provided files.
 2. If the document contains diagrams (such as UML Activity Diagrams, Flowcharts, Architecture, etc.) across multiple pages:
@@ -1429,7 +1444,7 @@ CRITICAL MULTI-PAGE & MULTI-DIAGRAM DIRECTIVES:
 7. AUTHENTIC REAL UNICODE ARROWS & SYMBOLS (NO LATEX):
    - NEVER output LaTeX math notation or dollar signs (e.g. NEVER write $\rightarrow$, \rightarrow, $\Rightarrow$, $\leq$, etc.).
    - ALWAYS output clean, real Unicode symbols directly: →, ←, ↔, ⇒, ⇐, ⇔, ≥, ≤, ≠, ±, ×, ÷, •, …, etc.
-Format strictly in clean, beautiful GitHub Markdown with bold headings, badges, and code snippets where relevant.`;
+Format strictly in clean, beautiful GitHub Markdown with bold headings and code snippets where relevant.`;
 
   let prompt = '';
   if (examType === 'summarize') {
@@ -1439,26 +1454,26 @@ Format strictly in clean, beautiful GitHub Markdown with bold headings, badges, 
 ${hasMultimodalOrDiagrams ? `CRITICAL MANDATORY REQUIREMENT FOR MULTI-PAGE & MULTI-SYSTEM DIAGRAMS:
 1. INSPECT EVERY SINGLE PAGE: This document contains visual diagrams across multiple pages (e.g. 5 distinct Activity Diagrams of 5 different systems across 5 pages). You MUST inspect ALL pages from Page 1 to the final page.
 2. ENUMERATE AND DESCRIBE ALL SYSTEMS: Count every distinct system or diagram in the file.
-3. PROVIDE A DEDICATED, COMPLETE SECTION FOR EVERY SYSTEM: Under "### 📊 Comprehensive Diagram & System Breakdown", you MUST generate a separate, numbered breakdown subsection for EVERY SINGLE SYSTEM found in the document without exception (e.g. System 1 of N, System 2 of N, System 3 of N, System 4 of N, System 5 of N):
-   #### 🏛️ System 1 of N: [Exact System Name from Diagram] (Page 1)
-   - 🎯 **Domain & Core Objective:** [What this specific system does]
-   - 🎬 **Initial Trigger & Starting Node:** [Initial stimulus or start event]
-   - 🔄 **Step-by-Step Activity Flow:** [Chronological sequence of actions and activities]
-   - 🔀 **Decision Diamonds & Guard Conditions:** [List all decision nodes and explicit bracketed guards like [Valid] vs [Invalid]]
-   - ⚡ **Concurrent / Fork-Join Parallel Operations:** [Parallel branches executed between Fork and Join bars]
-   - ⚠️ **Exception Paths & Rollback States:** [Error handling, cancellation, timeouts, safe abort states]
-   - 🏁 **Terminal State:** [Activity Final Node / outcome]
+3. PROVIDE A DEDICATED, COMPLETE SECTION FOR EVERY SYSTEM: Under "### Comprehensive Diagram & System Breakdown", you MUST generate a separate, numbered breakdown subsection for EVERY SINGLE SYSTEM found in the document without exception (e.g. System 1 of N, System 2 of N, System 3 of N, System 4 of N, System 5 of N):
+   #### System 1 of N: [Exact System Name from Diagram] (Page 1)
+   - **Domain & Core Objective:** [What this specific system does]
+   - **Initial Trigger & Starting Node:** [Initial stimulus or start event]
+   - **Step-by-Step Activity Flow:** [Chronological sequence of actions and activities]
+   - **Decision Diamonds & Guard Conditions:** [List all decision nodes and explicit bracketed guards like [Valid] vs [Invalid]]
+   - **Concurrent / Fork-Join Parallel Operations:** [Parallel branches executed between Fork and Join bars]
+   - **Exception Paths & Rollback States:** [Error handling, cancellation, timeouts, safe abort states]
+   - **Terminal State:** [Activity Final Node / outcome]
 
-   #### 🏛️ System 2 of N: [Exact System Name from Diagram] (Page 2)
+   #### System 2 of N: [Exact System Name from Diagram] (Page 2)
    [Provide the exact same exhaustive breakdown for System 2]
 
-   #### 🏛️ System 3 of N: [Exact System Name from Diagram] (Page 3)
+   #### System 3 of N: [Exact System Name from Diagram] (Page 3)
    [Provide the exact same exhaustive breakdown for System 3]
 
-   #### 🏛️ System 4 of N: [Exact System Name from Diagram] (Page 4)
+   #### System 4 of N: [Exact System Name from Diagram] (Page 4)
    [Provide the exact same exhaustive breakdown for System 4]
 
-   #### 🏛️ System 5 of N: [Exact System Name from Diagram] (Page 5)
+   #### System 5 of N: [Exact System Name from Diagram] (Page 5)
    [Provide the exact same exhaustive breakdown for System 5]
 
 4. STRICT COMPLETENESS RULE: It is an absolute failure to describe only the first system and omit systems 2, 3, 4, 5. Do NOT summarize them together. Every single system must be described in full detail under its own header!
@@ -1468,14 +1483,14 @@ DOCUMENT TEXT REFERENCE:
 ${filesText}
 
 STRUCTURE:
-# 📄 Academic Technical Summary & System Architecture Breakdown
+# Academic Technical Summary & System Architecture Breakdown
 **Source Document(s):** ${filesData.map(f => f.name).join(', ')}
 
-### 🎯 Core Topic, Architecture & Document Scope
-### 📊 Comprehensive Diagram & System Breakdown (Page-by-Page / System-by-System)
-### 🔑 Key Entities, Decision Logic & State Transitions
-### 💡 Important Technical Insights & Engineering Takeaways
-### 📌 Quick-Revision Summary Points`;
+### Core Topic, Architecture & Document Scope
+### Comprehensive Diagram & System Breakdown (Page-by-Page / System-by-System)
+### Key Entities, Decision Logic & State Transitions
+### Important Technical Insights & Engineering Takeaways
+### Quick-Revision Summary Points`;
   } else if (examType === 'internal_20') {
     prompt = `Generate a formal 20-Mark University Internal Exam Question Paper with Model Answers based on:
 ${filesText}
@@ -1483,7 +1498,7 @@ ${filesText}
 ${difficultyInstruction}
 
 Include:
-# 📝 20-Mark Internal Assessment Examination Paper & Solutions
+# 20-Mark Internal Assessment Examination Paper & Solutions
 **Subject / Topic:** Inferred from files | **Total Marks:** 20 | **Time:** 45 Mins
 
 ### Part A: 2-Mark Conceptual Questions (Answer all 4 questions - 8 Marks)
@@ -1498,7 +1513,7 @@ ${filesText}
 ${difficultyInstruction}
 
 Include:
-# 🏛️ 100-Mark University Semester Final Examination Paper
+# 100-Mark University Semester Final Examination Paper
 **Topic:** Inferred from files | **Total Marks:** 100
 
 ### Section A: Short Answer Concepts (10 Questions × 2 Marks = 20 Marks)
@@ -1512,7 +1527,7 @@ ${filesText}
 ${difficultyInstruction}
 
 Include:
-# ⚡ Rapid-Fire Exam & Viva Flashcards
+# Rapid-Fire Exam & Viva Flashcards
 **Topic:** Inferred from files
 
 (List 10 quick-fire question and answer pairs with Key Recall Tip for each)`;
@@ -1529,26 +1544,27 @@ ${hasMultimodalOrDiagrams ? `CRITICAL MULTI-SYSTEM DIRECTIVE:
 3. The Viva Questions MUST formulate questions spanning across ALL the distinct systems (e.g., Question 1 on System 1, Question 2 on System 2, Question 3 on System 3, Question 4 on System 4, Question 5 on System 5), focusing on decision logic, guard conditions, concurrency, and exceptions for each.` : 'CRITICAL DIRECTIVE: If the document contains diagrams (such as Activity Diagrams, Architecture, or Flowcharts), formulate viva questions specifically on the diagram mechanisms, decision diamonds, guard conditions, swimlanes, and concurrency.'}
 
 Include:
-# 🎓 Oral Lab Viva Voce Preparation Guide
+# Oral Lab Viva Voce Preparation Guide
 **Topic:** [Identify topic accurately from content/diagrams]
 
-### 1. 🎯 60-Second Elevator Pitch
+### 1. 60-Second Elevator Pitch
 (Provide a crisp 60-second explanation that a student can speak confidently when the examiner asks: "What is this topic / assignment / experiment about?")
 
-### 2. ❓ Top Viva Questions & Spoken Answers (Across All Systems)
+### 2. Top Viva Questions & Spoken Answers (Across All Systems)
 (For each question include:
 - **Examiner Question** (referencing specific system/diagram)
-- 🗣️ **How to Speak the Answer** (Exact professional words to speak)
-- ⚠️ **Examiner Trap / Follow-up** (What the examiner might counter-ask to test depth))
+- **How to Speak the Answer** (Exact professional words to speak)
+- **Examiner Trap / Follow-up** (What the examiner might counter-ask to test depth))
 
-### 3. 🔍 Critical Edge Cases, Traps & Real-World Application
+### 3. Critical Edge Cases, Traps & Real-World Application
 (Highlight subtle nuances, pitfalls, or system design trade-offs related specifically to this topic)`;
   }
 
   try {
     // Use higher token limits for multi-page/diagram docs to ensure ALL systems are described
     const tokenLimit = hasMultimodalOrDiagrams ? 24576 : 16384;
-    return await callAi(prompt, systemInstruction, tokenLimit, mediaParts);
+    const rawResult = await callAi(prompt, systemInstruction, tokenLimit, mediaParts);
+    return stripAiAds(rawResult, false);
   } catch (err) {
     console.warn('[LabDrop AI] Viva AI failed. Using intelligent document synthesizer:', err.message);
     return synthesizeDocumentStudyPrep({ filesData, examType, difficulty, lengthType, customLines });
@@ -1920,21 +1936,21 @@ function synthesizeChatResponse(userQuery, filesContext = '', conversationHistor
       { num: 5, name: 'Output Finalization & Audit Logging Lifecycle' }
     ];
 
-    let multiResp = `### 📊 LabDrop AI Assistant — Individual Descriptions for Each Software Engineering Diagram\n\n`;
+    let multiResp = `### LabDrop AI Assistant — Individual Descriptions for Each Software Engineering Diagram\n\n`;
     multiResp += `Here are the distinct, dedicated technical breakdowns for each diagram identified in your document:\n\n`;
 
     defaultSystems.forEach((sys, sIdx) => {
-      multiResp += `#### 🏛️ Diagram ${sIdx + 1}: ${sys.name}\n`;
-      multiResp += `- 🎯 **Core Purpose & Domain:** Dedicated architectural workflow modeling state progression, input acquisition, and invariant guarantees for **${sys.name}**.\n`;
-      multiResp += `- 🎬 **Initial State / Trigger Node:** Commences at \`[Initial State]\` upon external stimulus, parameter ingestion, or user interaction dispatch.\n`;
-      multiResp += `- 🔄 **Operational Execution Flow:** Executes sequential activity nodes with strict preconditions, data transformations, and state persistence.\n`;
-      multiResp += `- 🔀 **Decision Diamonds & Guard Conditions:** Evaluates boundary rules (e.g. \`[Valid / Verified]\` vs \`[Invalid / Abort]\`) to enforce deterministic routing.\n`;
-      multiResp += `- ⚡ **Concurrency & Synchronization:** Utilizes parallel Fork/Join bars to spawn concurrent background threads and enforce barrier synchronization before joining.\n`;
-      multiResp += `- ⚠️ **Exception Handling & Rollback:** Diverts fault conditions to isolated recovery handlers, releasing locks and preventing dangling transactions.\n`;
-      multiResp += `- 🏁 **Terminal Activity Node:** Concludes cleanly at the \`[Activity Final Node]\`, releasing session resources.\n\n`;
+      multiResp += `#### Diagram ${sIdx + 1}: ${sys.name}\n`;
+      multiResp += `- **Core Purpose & Domain:** Dedicated architectural workflow modeling state progression, input acquisition, and invariant guarantees for **${sys.name}**.\n`;
+      multiResp += `- **Initial State / Trigger Node:** Commences at \`[Initial State]\` upon external stimulus, parameter ingestion, or user interaction dispatch.\n`;
+      multiResp += `- **Operational Execution Flow:** Executes sequential activity nodes with strict preconditions, data transformations, and state persistence.\n`;
+      multiResp += `- **Decision Diamonds & Guard Conditions:** Evaluates boundary rules (e.g. \`[Valid / Verified]\` vs \`[Invalid / Abort]\`) to enforce deterministic routing.\n`;
+      multiResp += `- **Concurrency & Synchronization:** Utilizes parallel Fork/Join bars to spawn concurrent background threads and enforce barrier synchronization before joining.\n`;
+      multiResp += `- **Exception Handling & Rollback:** Diverts fault conditions to isolated recovery handlers, releasing locks and preventing dangling transactions.\n`;
+      multiResp += `- **Terminal Activity Node:** Concludes cleanly at the \`[Activity Final Node]\`, releasing session resources.\n\n`;
     });
 
-    multiResp += `> 💡 *Exam Tip:* In your lab oral viva, present each diagram by first stating its primary swimlane actor, followed by its critical decision diamonds and fork/join synchronization points.`;
+    multiResp += `> *Exam Tip:* In your lab oral viva, present each diagram by first stating its primary swimlane actor, followed by its critical decision diamonds and fork/join synchronization points.`;
     return multiResp;
   }
 
@@ -2011,16 +2027,16 @@ function synthesizeChatResponse(userQuery, filesContext = '', conversationHistor
       finalPoints.push(`**Deterministic Guarantee (Step ${finalPoints.length + 1}):** Verifies path reachability and invariants, guaranteeing zero deadlocks across all execution branches.`);
     }
 
-    return `### 📊 LabDrop AI Assistant — Architectural Breakdown of Diagram\n\nHere is the detailed technical description of the diagram in **${requestedPoints} points**:\n\n` +
+    return `### LabDrop AI Assistant — Architectural Breakdown of Diagram\n\nHere is the detailed technical description of the diagram in **${requestedPoints} points**:\n\n` +
       finalPoints.map((p, idx) => `${idx + 1}. ${p}`).join('\n\n') +
-      (mermaidCode ? `\n\n> 🔍 *Diagram Reference Model:* Mermaid state flow parsed from your generated Lab Record.` : '');
+      (mermaidCode ? `\n\n> *Diagram Reference Model:* Mermaid state flow parsed from your generated Lab Record.` : '');
   }
 
   // 3. Algorithm query
   if (/algorithm|algo|step-by-step|procedure|pseudocode/i.test(queryLower)) {
     const algoMatch = fullContext.match(/##\s*(?:🔢\s*)?Step-by-Step Algorithm[\s\S]*?(?=\n##|$)/i);
     if (algoMatch) {
-      return `### 🔢 LabDrop AI Assistant — Algorithm Breakdown\n\nBased on your generated Lab Record, here is the algorithm explanation:\n\n${algoMatch[0].replace(/^##[^\n]*\n/, '').trim()}`;
+      return `### LabDrop AI Assistant — Algorithm Breakdown\n\nBased on your generated Lab Record, here is the algorithm explanation:\n\n${algoMatch[0].replace(/^##[^\n]*\n/, '').trim()}`;
     }
   }
 
@@ -2028,7 +2044,7 @@ function synthesizeChatResponse(userQuery, filesContext = '', conversationHistor
   if (/theory|concept|explain|what is|how does|architecture/i.test(queryLower)) {
     const theoryMatch = fullContext.match(/##\s*(?:📖\s*)?Theory & Description[\s\S]*?(?=\n##|$)/i);
     if (theoryMatch) {
-      return `### 📖 LabDrop AI Assistant — Theory & Concepts\n\nBased on your uploaded material and Lab Record:\n\n${theoryMatch[0].replace(/^##[^\n]*\n/, '').trim()}`;
+      return `### LabDrop AI Assistant — Theory & Concepts\n\nBased on your uploaded material and Lab Record:\n\n${theoryMatch[0].replace(/^##[^\n]*\n/, '').trim()}`;
     }
   }
 
@@ -2036,13 +2052,13 @@ function synthesizeChatResponse(userQuery, filesContext = '', conversationHistor
   if (/test|table|observation|boundary|sample/i.test(queryLower)) {
     const tableMatch = fullContext.match(/##\s*(?:📋\s*)?Observation Table[\s\S]*?(?=\n##|$)/i);
     if (tableMatch) {
-      return `### 📋 LabDrop AI Assistant — Test Cases & Observations\n\nHere are the observation records and test cases:\n\n${tableMatch[0].replace(/^##[^\n]*\n/, '').trim()}`;
+      return `### LabDrop AI Assistant — Test Cases & Observations\n\nHere are the observation records and test cases:\n\n${tableMatch[0].replace(/^##[^\n]*\n/, '').trim()}`;
     }
   }
 
   // 6. Default intelligent academic response
   const sem = analyzeCodeSemantics(fullContext, 'program', 'standard');
-  return `### 💡 LabDrop AI Assistant\n\n**Analysis for: "${userQuery}"**\n\n1. **Core Concept:** ${sem.aim}\n2. **Architecture:** ${sem.theory.slice(0, 300)}...\n3. **Key Execution Step:** ${sem.algoSteps[0] || 'Execute initial workflow setup.'}\n4. **Verification:** Inspect edge conditions and observe expected outputs: \`${sem.testCases[0]?.exp || 'Normal Execution'}\`.\n\n*Feel free to ask for deeper technical breakdowns, diagram node analysis, or viva prep!*`;
+  return `### LabDrop AI Assistant\n\n**Analysis for: "${userQuery}"**\n\n1. **Core Concept:** ${sem.aim}\n2. **Architecture:** ${sem.theory.slice(0, 300)}...\n3. **Key Execution Step:** ${sem.algoSteps[0] || 'Execute initial workflow setup.'}\n4. **Verification:** Inspect edge conditions and observe expected outputs: \`${sem.testCases[0]?.exp || 'Normal Execution'}\`.\n\n*Feel free to ask for deeper technical breakdowns, diagram node analysis, or viva prep!*`;
 }
 
 /**
@@ -2051,9 +2067,13 @@ function synthesizeChatResponse(userQuery, filesContext = '', conversationHistor
  */
 async function chatWithFiles(userQuery, filesContext, conversationHistory = [], previousOutput = '', mediaParts = []) {
   const hasVisualMedia = Array.isArray(mediaParts) && mediaParts.length > 0;
+  const isEmojiRequested = /emoji|emoticon|smileys|use emojis|with emojis|add emojis/i.test(userQuery);
 
   const systemInstruction = `You are LabDrop AI, a distinguished computer science professor and software engineering examiner.
 You have access to the complete context of the student's transferred lab files, generated lab reports, and visual multimodal file attachments (including multi-page PDFs containing software engineering diagrams).
+
+STRICT EMOJI POLICY:
+${isEmojiRequested ? 'The student explicitly requested emojis. You may include relevant emojis.' : 'Do NOT use ANY emojis or pictograms in your response under any circumstances unless explicitly requested by the student. Keep all markdown headings, titles, bullet points, numbers, explanations, and diagram analyses 100% free of emojis (no decorative icons or emojis whatsoever).'}
 
 CRITICAL DIRECTIVES:
 1. MULTIPLE SOFTWARE ENGINEERING DIAGRAMS (UML Activity, Sequence, Architecture, Flowcharts, State Machine, ER Models):
@@ -2062,21 +2082,21 @@ CRITICAL DIRECTIVES:
    - YOU MUST ENUMERATE AND PREPARE DISTINCT, INDEPENDENT DESCRIPTIONS FOR EVERY SINGLE DIAGRAM IDENTIFIED IN THE FILE.
    - DO NOT MERGE THEM TOGETHER. DO NOT DESCRIBE ONLY THE FIRST DIAGRAM AND OMIT THE REST.
    - Format each diagram with a clear, prominent markdown header:
-     #### 🏛️ Diagram [N]: [Exact System Title, e.g. ATM Cash Withdrawal Activity Diagram / Online Shopping Checkout Flow]
-     - 🎯 **Core Purpose & Domain:** Detailed technical description of what this specific diagram/system represents.
-     - 👥 **Actors / Swimlanes:** Components, actors, or systems interacting in this workflow.
-     - 🎬 **Initial State / Trigger Node:** Exact starting point or initial trigger stimulus.
-     - 🔄 **Step-by-Step Activity Flow:** Chronological operational sequence from step 1 to completion.
-     - 🔀 **Decision Diamonds & Guard Conditions:** Explicit conditional branches and bracketed guards like [Valid PIN] vs [Invalid PIN].
-     - ⚡ **Concurrency & Synchronization:** Parallel threads executed between Fork and Join bars.
-     - ⚠️ **Exception / Rollback Paths:** Error handling, cancellation, timeouts, safe abort states.
-     - 🏁 **Terminal Activity Node:** Final termination state and resource cleanup.
+     #### Diagram [N]: [Exact System Title, e.g. ATM Cash Withdrawal Activity Diagram / Online Shopping Checkout Flow]
+     - **Core Purpose & Domain:** Detailed technical description of what this specific diagram/system represents.
+     - **Actors / Swimlanes:** Components, actors, or systems interacting in this workflow.
+     - **Initial State / Trigger Node:** Exact starting point or initial trigger stimulus.
+     - **Step-by-Step Activity Flow:** Chronological operational sequence from step 1 to completion.
+     - **Decision Diamonds & Guard Conditions:** Explicit conditional branches and bracketed guards like [Valid PIN] vs [Invalid PIN].
+     - **Concurrency & Synchronization:** Parallel threads executed between Fork and Join bars.
+     - **Exception / Rollback Paths:** Error handling, cancellation, timeouts, safe abort states.
+     - **Terminal Activity Node:** Final termination state and resource cleanup.
 2. ADHERENCE TO STUDENT CONSTRAINTS:
    - If the student requests a specific format (e.g. "in 10 points", "in 5 bullets each", "short summary"), format each diagram according to that exact specification while preserving technical precision.
 3. VISUAL RIGOR:
    - Since you have visual multimodal vision of the document, inspect the actual node labels, arrows, guard conditions, and swimlane partitions directly from the image/PDF.
 4. TONE & FORMATTING:
-   - Use clean, beautiful GitHub Markdown with bold labels, badges, and clean spacing. Never output generic filler or say you cannot see diagrams.
+   - Use clean, beautiful GitHub Markdown with bold labels and clean spacing. Never output generic filler or say you cannot see diagrams.
 5. AUTHENTIC REAL UNICODE ARROWS & SYMBOLS (NO LATEX):
    - NEVER output LaTeX math notation or dollar signs (e.g. NEVER write $\rightarrow$, \rightarrow, $\Rightarrow$, $\leq$, etc.).
    - ALWAYS use clean, real Unicode symbols directly in your text: →, ←, ↔, ⇒, ⇐, ⇔, ≥, ≤, ≠, ±, ×, ÷, •, …, etc.`;
@@ -2098,10 +2118,12 @@ CRITICAL DIRECTIVES:
 
   try {
     const tokenLimit = hasVisualMedia ? 16384 : 8192;
-    return await callAi(prompt, systemInstruction, tokenLimit, mediaParts);
+    const rawAnswer = await callAi(prompt, systemInstruction, tokenLimit, mediaParts);
+    return stripAiAds(rawAnswer, isEmojiRequested);
   } catch (err) {
     console.warn('[LabDrop AI] Cloud chat AI unavailable:', err.message, '- Engaging zero-failure semantic chat synthesizer.');
-    return synthesizeChatResponse(userQuery, filesContext, conversationHistory, previousOutput);
+    const fallbackAnswer = synthesizeChatResponse(userQuery, filesContext, conversationHistory, previousOutput);
+    return stripAiAds(fallbackAnswer, isEmojiRequested);
   }
 }
 
@@ -2182,10 +2204,13 @@ async function generateLabRecord({
 
     const systemInstruction = `You are a distinguished University Lab Examiner and Professor. Generate a formal, publication-grade academic Lab Record in GitHub Markdown. Strictly include ONLY the requested sections. Ensure any Mermaid flowchart is valid.
 
+STRICT EMOJI POLICY:
+Do NOT use ANY emojis or pictograms anywhere in the generated Lab Record under any circumstances. Keep all headings, titles, bullet points, numbers, code, explanations, and diagram analyses 100% free of emojis (no decorative icons or emojis whatsoever).
+
 CRITICAL DIRECTIVES FOR DIAGRAMS (UML Activity Diagrams, Flowcharts, Architecture, Sequence, State Machine, ER Diagrams):
 1. MANDATORY STRUCTURED 6-STEP OPERATIONAL BREAKDOWN (BY DEFAULT LIKE IN CHATBOT):
    - When the document or file contains diagrams, you MUST describe them by default under THEORY / DESCRIPTION and ALGORITHM using the exact structured 6-step operational breakdown sequence shown below:
-     #### 🏛️ Diagram [N]: [Exact System Title] Activity Diagram (Page [N])
+     #### Diagram [N]: [Exact System Title] Activity Diagram (Page [N])
      Here is the operational breakdown of the [Nth] activity diagram (Page [N]), formatted in a concise 6-step sequence:
      - **Step 1: Session Initiation (Start):** The workflow begins at the solid black Initial Node (labeled Start), triggering the launch of the [System Name] interface.
      - **Step 2: User Authentication (Login / Authenticate):** The control token transitions to Login / Authentication, where the user enters their credentials to establish a secure session. If invalid, a decision loop returns to the login prompt; once valid, control proceeds.
@@ -2200,7 +2225,7 @@ CRITICAL DIRECTIVES FOR DIAGRAMS (UML Activity Diagrams, Flowcharts, Architectur
 2. MULTI-DIAGRAM COMPLETENESS (CRITICAL MANDATE - DO NOT SKIP ANY DIAGRAM):
    - If the file contains multiple diagrams across pages (e.g. Page 1: Library Management, Page 2: Banking Management, Page 3: Railway Reservation, Page 4: Tourism Management, Page 5: E-commerce Management):
    - YOU MUST ENUMERATE AND DESCRIBE EVERY SINGLE DIAGRAM IN THE DOCUMENT (Diagram 1, Diagram 2, Diagram 3, Diagram 4, Diagram 5...)!
-   - Every diagram must have its own dedicated "#### 🏛️ Diagram [N]: [System Title] Activity Diagram (Page [N])" block with its complete 6-step breakdown.
+   - Every diagram must have its own dedicated "#### Diagram [N]: [System Title] Activity Diagram (Page [N])" block with its complete 6-step breakdown.
    - DO NOT summarize them into a single paragraph. DO NOT describe only the first diagram and omit the others. Describe EVERY diagram!
    - NEVER substitute a generic C addition or calculator program unless the file literally contains only C addition source code.
 
@@ -2228,18 +2253,19 @@ ${(codeContent || '').slice(0, 25000)}
 Generate the ${contentSize.toUpperCase()} Lab Record now:`;
 
     const rawMarkdown = await callAi(prompt, systemInstruction, 8192, mediaParts);
+    const cleanedMarkdown = stripAiAds(rawMarkdown, false);
 
     let mermaidCode = null;
-    const mermaidMatch = rawMarkdown.match(/```(?:mermaid)?\s*([\s\S]*?)```/i);
+    const mermaidMatch = cleanedMarkdown.match(/```(?:mermaid)?\s*([\s\S]*?)```/i);
     if (mermaidMatch && (mermaidMatch[1].includes('flowchart') || mermaidMatch[1].includes('graph'))) {
       mermaidCode = mermaidMatch[1].trim();
     }
 
     const fallbackVariants = buildAllSectionVariants(codeContent, filename);
-    const sectionVariants = parseSectionsFromAiMarkdown(rawMarkdown, sections, fallbackVariants);
+    const sectionVariants = parseSectionsFromAiMarkdown(cleanedMarkdown, sections, fallbackVariants);
 
     return {
-      markdown: rawMarkdown,
+      markdown: cleanedMarkdown,
       mermaidCode,
       filename,
       selectedSections: sections,

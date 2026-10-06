@@ -275,7 +275,7 @@
           <a href="/" class="drawer-brand" aria-label="LabDrop Home">
             <img src="/LabDropTextLogoNoBG.png" alt="LabDrop Logo" width="108" height="43" style="max-height: 38px; width: auto;" />
           </a>
-          <button type="button" class="drawer-close-btn" id="mobileDrawerCloseBtn" aria-label="Close menu" style="display:flex;align-items:center;justify-content:center;">
+          <button type="button" class="drawer-close-btn" id="mobileDrawerCloseBtn" aria-label="Close menu">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
           </button>
         </div>
@@ -292,16 +292,16 @@
             <span>How to Use</span>
           </a>
           
-          <div id="drawerAuthLoggedOut" style="display: flex; gap: 8px; margin-top: 6px;">
-            <button type="button" class="btn btn--outline btn--sm" id="drawerNavLoginBtn" style="flex: 1; justify-content: center;">Login</button>
-            <button type="button" class="btn btn--primary btn--sm" id="drawerNavSignupBtn" style="flex: 1; justify-content: center;">Sign Up</button>
+          <div id="drawerAuthLoggedOut">
+            <button type="button" class="btn btn--outline btn--sm" id="drawerNavLoginBtn">Login</button>
+            <button type="button" class="btn btn--primary btn--sm" id="drawerNavSignupBtn">Sign Up</button>
           </div>
           <div id="drawerAuthLoggedIn" style="display: none; flex-direction: column; gap: 8px; margin-top: 6px;">
-            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--color-text); padding: 4px 6px;">
+            <div class="drawer-auth-user">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              <span id="drawerUserEmail" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;"></span>
+              <span id="drawerUserEmail"></span>
             </div>
-            <button type="button" class="btn btn--ghost btn--sm" id="drawerNavLogoutBtn" style="justify-content: flex-start; color: var(--color-danger); padding: 6px 8px;">Logout</button>
+            <button type="button" class="btn btn--ghost btn--sm" id="drawerNavLogoutBtn">Logout</button>
           </div>
           <hr class="drawer-divider" />
         </div>
@@ -309,11 +309,14 @@
         <!-- Folder Panel -->
         <div id="folderPanel">
           <div class="sidebar__title">WORKSPACE</div>
-          <button class="btn btn--outline btn--sm" id="newFolderBtn" type="button" style="margin-bottom: var(--space-sm); width: 100%; justify-content: flex-start;">+ New Folder</button>
+          <button class="btn btn--outline btn--sm" id="newFolderBtn" type="button">
+            <span style="font-size: 1.1rem; line-height: 1; font-weight: 600;">+</span>
+            <span>New Folder</span>
+          </button>
           
           <div id="newFolderRow" class="new-folder-row" style="display: none; flex-direction: column;">
             <input class="form-input" type="text" id="newFolderInput" placeholder="Folder name..." maxlength="40" aria-label="New folder name" />
-            <div style="display: flex; gap: 4px;">
+            <div class="new-folder-actions">
               <button class="btn btn--secondary btn--sm" id="confirmNewFolderBtn" type="button" style="flex:1;">Create</button>
               <button class="btn btn--ghost btn--sm" id="cancelNewFolderBtn" type="button" aria-label="Cancel new folder">✕</button>
             </div>
@@ -695,7 +698,7 @@
       <!-- Desktop Side Panel Left Resize Handle -->
       <div class="ai-sidepanel-resize-edge" title="Drag to resize AI Side Panel"></div>
       
-      <div class="modal__header ai-modal-header" id="homeAiModalHeader" style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(219, 39, 119, 0.08)); border-bottom: 1px solid var(--color-border); padding: 12px 18px; flex-shrink: 0;">
+      <div class="modal__header ai-modal-header" id="homeAiModalHeader" style="background: var(--color-bg-secondary); border-bottom: 1px solid var(--color-border); padding: 12px 18px; flex-shrink: 0;">
         <div style="display: flex; align-items: center; gap: 8px;">
           <picture>
             <source srcset="/LabDropAILogo-icon.webp" type="image/webp" />
@@ -711,8 +714,8 @@
 
       <!-- Tab Bar -->
       <div class="ai-tab-bar" id="homeAiTabBar">
-        <button class="ai-tab-btn active" data-tab="labrecord" id="homeTabBtnLabRecord"><span class="tab-icon">📝</span> Lab Record</button>
-        <button class="ai-tab-btn" data-tab="viva" id="homeTabBtnViva"><span class="tab-icon">🎓</span> Viva & Exam Prep</button>
+        <button class="ai-tab-btn active" data-tab="labrecord" id="homeTabBtnLabRecord">Lab Record</button>
+        <button class="ai-tab-btn" data-tab="viva" id="homeTabBtnViva">Viva & Exam Prep</button>
       </div>
 
       <div class="modal__body" id="homeAiModalBody" style="padding: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
@@ -720,27 +723,25 @@
         <!-- Tab 1: Lab Record -->
         <div class="ai-tab-content active" id="homeTabContentLabRecord">
         <!-- Scrollable Content Area -->
-        <div id="labRecordScrollArea" style="flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-lg); display: flex; flex-direction: column;">
+        <div id="labRecordScrollArea" class="ai-tab-scroll-container">
         
         <!-- In-Modal Alert Box (Shown on the popup window instead of background) -->
-        <div id="recordModalAlert" style="display: none; margin-bottom: var(--space-md); padding: 12px 16px; border-radius: var(--radius-md); background: #fef2f2; border: 1.5px solid #f87171; color: #991b1b; font-size: 0.88rem; font-weight: 600; align-items: center; justify-content: space-between; gap: 12px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 1.2rem;">⚠️</span>
-            <span id="recordModalAlertText"></span>
+          <div id="recordModalAlert" style="display: none; margin-bottom: var(--space-md); padding: 12px 16px; border-radius: var(--radius-md); background: #fef2f2; border: 1.5px solid #f87171; color: #991b1b; font-size: 0.88rem; font-weight: 600; align-items: center; justify-content: space-between; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="recordModalAlertText"></span>
+            </div>
+            <button type="button" id="recordModalAlertClose" style="background: none; border: none; font-size: 1.1rem; color: #991b1b; cursor: pointer; padding: 0 4px; line-height: 1;">✕</button>
           </div>
-          <button type="button" id="recordModalAlertClose" style="background: none; border: none; font-size: 1.1rem; color: #991b1b; cursor: pointer; padding: 0 4px; line-height: 1;">✕</button>
-        </div>
 
         <!-- View 1: Configuration Form (Collapsible Panel) -->
         <div id="recordConfigView" class="ai-collapsible-panel">
           <div class="ai-collapsible-header" id="recordConfigToggleHeader">
             <div class="ai-collapsible-header-info">
-              <span>⚙️</span>
               <span class="ai-collapsible-title">Lab Record Setup & Sections</span>
               <span class="ai-collapsible-badge" id="recordConfigStatusBadge">Full University (12)</span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
-              <button type="button" class="btn btn--ai btn--sm" id="btnRunLabRecordCompact" style="display: none; padding: 4px 10px; font-size: 0.78rem;">🚀 Generate</button>
+              <button type="button" class="btn btn--ai btn--sm" id="btnRunLabRecordCompact" style="display: none; padding: 4px 10px; font-size: 0.78rem;">Generate</button>
               <button type="button" class="ai-collapsible-toggle-btn" id="btnToggleRecordConfig" aria-label="Toggle Configuration Panel">
                 <span id="recordConfigToggleText">▲ Collapse Setup</span>
               </button>
@@ -751,10 +752,10 @@
           
           <!-- Source Code Indicator / Selector -->
           <div class="record-source-bar">
-            <div style="font-size: 0.82rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">SOURCE CODE FILE:</div>
-            <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
-              <select id="recordSourceSelect" class="form-input" style="flex: 1; padding: 8px 12px; font-weight: 600;"></select>
-              <button type="button" class="btn btn--outline btn--sm" id="recordUploadBtn" style="white-space: nowrap;">📂 Browse Other</button>
+            <label for="recordSourceSelect" class="ai-field-label">Select File:</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <select id="recordSourceSelect" class="form-input ai-select-styled"></select>
+              <button type="button" class="ai-browse-btn" id="recordUploadBtn" title="Upload an additional file from your device">Browse</button>
               <input type="file" id="recordFileInput" style="display: none;" />
             </div>
           </div>
@@ -762,14 +763,14 @@
           <!-- Quick Presets -->
           <div class="ai-presets-row" style="margin-top: var(--space-md);">
             <div class="ai-presets-label" style="font-size: 0.78rem; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
-              ⚡ Quick Presets:
+              Quick Presets:
             </div>
             <div class="preset-container" id="presetContainer" style="display: flex; flex-wrap: wrap; gap: 6px;">
-              <button type="button" class="preset-chip active" data-preset="full">🎓 Full Record (12)</button>
-              <button type="button" class="preset-chip" data-preset="observation">⚡ Observation (6)</button>
-              <button type="button" class="preset-chip" data-preset="theory_code">📖 Theory & Code (4)</button>
-              <button type="button" class="preset-chip" data-preset="flowchart_table">📊 Flowchart & Tables</button>
-              <button type="button" class="preset-chip" data-preset="custom">✏️ Custom</button>
+              <button type="button" class="preset-chip active" data-preset="full">Full Record (12)</button>
+              <button type="button" class="preset-chip" data-preset="observation">Observation (6)</button>
+              <button type="button" class="preset-chip" data-preset="theory_code">Theory & Code (4)</button>
+              <button type="button" class="preset-chip" data-preset="flowchart_table">Flowchart & Tables</button>
+              <button type="button" class="preset-chip" data-preset="custom">Custom</button>
             </div>
           </div>
 
@@ -778,7 +779,7 @@
             <div class="ai-sections-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <span class="ai-sections-label" style="font-size: 0.82rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Sections to Include:</span>
               <div class="ai-sections-actions" style="display: flex; align-items: center; gap: 8px;">
-                <span class="ai-sections-badge" id="selectedSectionsCount" style="font-size: 0.76rem; font-weight: 700; color: #7c3aed; background: rgba(124, 58, 237, 0.08); padding: 2px 8px; border-radius: 12px;">12 / 12 selected</span>
+                <span class="ai-sections-badge" id="selectedSectionsCount" style="font-size: 0.76rem; font-weight: 700; color: #B45309; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.25); padding: 2px 8px; border-radius: 12px;">12 / 12 selected</span>
                 <button type="button" class="btn-text-action" id="btnSelectAllSections" title="Select all 12 sections">All</button>
                 <span style="color: var(--color-border); font-size: 0.75rem;">|</span>
                 <button type="button" class="btn-text-action" id="btnClearSections" title="Deselect all sections">None</button>
@@ -790,7 +791,6 @@
               <label class="section-checkbox-card" title="Aim / Objective: Formal goal statement">
                 <input type="checkbox" name="labSection" value="aim" checked />
                 <span class="section-card-check">✓</span>
-                <span class="section-card-icon">🎯</span>
                 <span class="section-card-title">Aim / Objective</span>
               </label>
 
@@ -798,7 +798,6 @@
               <label class="section-checkbox-card" title="HW & SW Requirements: OS, RAM, Compiler, IDE">
                 <input type="checkbox" name="labSection" value="requirements" checked />
                 <span class="section-card-check">✓</span>
-                <span class="section-card-icon">💻</span>
                 <span class="section-card-title">HW & SW Specs</span>
               </label>
 
@@ -806,7 +805,6 @@
               <label class="section-checkbox-card" title="Apparatus & Libraries: Headers, modules & packages">
                 <input type="checkbox" name="labSection" value="apparatus" checked />
                 <span class="section-card-check">✓</span>
-                <span class="section-card-icon">🔬</span>
                 <span class="section-card-title">Apparatus & Libs</span>
               </label>
 
@@ -814,7 +812,6 @@
               <label class="section-checkbox-card" title="Theory & Description: Logic & Big-O Complexity">
                 <input type="checkbox" name="labSection" value="description" checked />
                 <span class="section-card-check">✓</span>
-                <span class="section-card-icon">📖</span>
                 <span class="section-card-title">Theory & Logic</span>
               </label>
 
@@ -822,7 +819,6 @@
               <label class="section-checkbox-card" title="Step-by-Step Algorithm: Numbered steps (Start to Stop)">
                 <input type="checkbox" name="labSection" value="algorithm" checked />
                 <span class="section-card-check">✓</span>
-                <span class="section-card-icon">🔢</span>
                 <span class="section-card-title">Algorithm</span>
               </label>
 
@@ -830,7 +826,6 @@
               <label class="section-checkbox-card" title="Visual Flowchart: Rendered Mermaid Diagram">
                 <input type="checkbox" name="labSection" value="flowchart" checked />
                 <span class="section-card-check">✓</span>
-                <span class="section-card-icon">📊</span>
                 <span class="section-card-title">Flowchart Diagram</span>
               </label>
 
@@ -838,7 +833,6 @@
               <label class="section-checkbox-card" title="Procedure & Commands: Exact terminal run commands">
                 <input type="checkbox" name="labSection" value="procedure" checked />
                 <span class="section-card-check">✓</span>
-                <span class="section-card-icon">⚙️</span>
                 <span class="section-card-title">Procedure & Cmds</span>
               </label>
 
@@ -846,7 +840,6 @@
               <label class="section-checkbox-card" title="Source Code (Program): Clean syntax-styled code">
                 <input type="checkbox" name="labSection" value="program" checked />
                 <span class="section-card-check">✓</span>
-                <span class="section-card-icon">💻</span>
                 <span class="section-card-title">Source Code</span>
               </label>
 
@@ -854,7 +847,6 @@
               <label class="section-checkbox-card" title="Observation Table: Test inputs & outputs grid">
                 <input type="checkbox" name="labSection" value="table" checked />
                 <span class="section-card-check">✓</span>
-                <span class="section-card-icon">📋</span>
                 <span class="section-card-title">Observation Table</span>
               </label>
 
@@ -862,7 +854,6 @@
               <label class="section-checkbox-card" title="Precautions & Boundary: Safety & edge case rules">
                 <input type="checkbox" name="labSection" value="precautions" checked />
                 <span class="section-card-check">✓</span>
-                <span class="section-card-icon">⚠️</span>
                 <span class="section-card-title">Precautions</span>
               </label>
 
@@ -870,7 +861,6 @@
               <label class="section-checkbox-card" title="Sample Console Output: Realistic terminal trace">
                 <input type="checkbox" name="labSection" value="output" checked />
                 <span class="section-card-check">✓</span>
-                <span class="section-card-icon">🖥️</span>
                 <span class="section-card-title">Console Output</span>
               </label>
 
@@ -878,7 +868,6 @@
               <label class="section-checkbox-card" title="Result Statement: Formal practical conclusion">
                 <input type="checkbox" name="labSection" value="result" checked />
                 <span class="section-card-check">✓</span>
-                <span class="section-card-icon">🏁</span>
                 <span class="section-card-title">Result Statement</span>
               </label>
             </div>
@@ -887,7 +876,7 @@
           <!-- Student & Submission Details (Optional Accordion) -->
           <details class="ai-student-details-accordion" id="studentDetailsAccordion" style="margin-top: var(--space-md); background: var(--color-bg); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
             <summary style="cursor: pointer; font-weight: 600; font-size: 0.85rem; color: var(--color-text); display: flex; justify-content: space-between; align-items: center;">
-              <span>🎓 Add Student & Lab Details (Optional)</span>
+              <span>Add Student & Lab Details (Optional)</span>
               <span class="accordion-arrow" style="font-size: 0.8rem; color: var(--color-text-secondary); transition: transform 0.2s;">▾</span>
             </summary>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
@@ -899,9 +888,9 @@
           </details>
 
           <!-- Submit Button -->
-          <div style="margin-top: var(--space-lg);">
-            <button type="button" class="btn btn--ai btn--lg btn--block" id="btnRunLabRecord" style="font-size: 1rem; padding: 12px; border-radius: var(--radius-md);">
-              🚀 Generate Full Lab Record
+          <div style="margin-top: 10px;">
+            <button type="button" class="btn btn--primary btn--ai btn--block" id="btnRunLabRecord" style="width: 100%; padding: 10px 14px; font-size: 0.95rem; font-weight: 700; border-radius: var(--radius-md); height: 40px;">
+              Generate Full Lab Record
             </button>
           </div>
         </div> <!-- end of recordConfigContent -->
@@ -914,21 +903,21 @@
           <div class="record-toolbar" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: var(--space-md); padding-bottom: var(--space-sm); border-bottom: 1px solid var(--color-border);">
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
               <button type="button" class="btn btn--primary btn--sm" id="btnPrintRecord" title="Print or Save as PDF formatted for standard A4 sheet">
-                🖨️ Print / Save as PDF
+                Print / Save as PDF
               </button>
               <button type="button" class="btn btn--outline btn--sm" id="btnCopyRecordMd" title="Copy raw Markdown">
-                📋 Copy Markdown
+                Copy Markdown
               </button>
               <button type="button" class="btn btn--outline btn--sm" id="btnCopyRecordRich" title="Copy formatted text to paste into Word or Docs">
-                📑 Copy for Word / Docs
+                Copy for Word / Docs
               </button>
               <button type="button" class="btn btn--ghost btn--sm" id="btnDownloadRecordMd" title="Download markdown file">
-                💾 Download .md
+                Download .md
               </button>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
               <button type="button" class="btn btn--secondary btn--sm" id="btnReconfigureRecord">
-                ⚙️ Adjust Sections
+                Adjust Sections
               </button>
             </div>
           </div>
@@ -938,7 +927,7 @@
 
             <!-- Text Font Scaling -->
             <div class="sizing-control-group">
-              <span class="sizing-control-group__label">🔤 Text Size:</span>
+              <span class="sizing-control-group__label">Text Size:</span>
               <div class="size-stepper">
                 <button type="button" class="size-stepper-btn" id="btnScaleDown" title="Decrease font size">A−</button>
                 <span class="size-stepper-value" id="scaleValueDisplay">100%</span>
@@ -953,7 +942,7 @@
 
             <!-- Flowchart Diagram Scaling -->
             <div class="sizing-control-group">
-              <span class="sizing-control-group__label">📊 Flowchart:</span>
+              <span class="sizing-control-group__label">Flowchart:</span>
               <div style="display: flex; gap: 4px;">
                 <button type="button" class="size-pill-btn chart-size-btn" data-chart-size="55%">Small</button>
                 <button type="button" class="size-pill-btn chart-size-btn active" data-chart-size="80%">Medium</button>
@@ -963,7 +952,7 @@
 
             <!-- Table Spacing -->
             <div class="sizing-control-group">
-              <span class="sizing-control-group__label">📋 Tables:</span>
+              <span class="sizing-control-group__label">Tables:</span>
               <div style="display: flex; gap: 4px;">
                 <button type="button" class="size-pill-btn table-density-btn active" data-density="normal">Standard</button>
                 <button type="button" class="size-pill-btn table-density-btn" data-density="compact">Compact</button>
@@ -973,7 +962,7 @@
             <!-- Interactive Edit Content Mode -->
             <div class="sizing-control-group">
               <button type="button" class="size-pill-btn" id="btnToggleEditSheet" title="Click to edit any text directly before printing">
-                ✏️ Edit Content
+                Edit Content
               </button>
             </div>
           </div>
@@ -986,7 +975,7 @@
             <div id="labRecordContent" class="markdown-body"></div>
             <!-- Rendered Mermaid Flowchart -->
             <div id="labRecordMermaidArea" style="display: none; margin: 20px 0; padding: 16px; background: white; border: 1px solid var(--color-border); border-radius: var(--radius-md); text-align: center;">
-              <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 8px; text-transform: uppercase; color: #374151;">📊 Flowchart Diagram</div>
+              <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 8px; text-transform: uppercase; color: #374151;">Flowchart Diagram</div>
               <div id="labRecordMermaidSvg" style="overflow-x: auto;"></div>
             </div>
           </div>
@@ -1085,16 +1074,16 @@
             <h2 class="loading-title">Synthesizing University Lab Record...</h2>
             <div class="loading-status-pill">
               <span class="status-dot-pulse"></span>
-              <span id="loadingDynamicMsg">💡 You can share files <strong>without logging in</strong> or signing up</span>
+              <span id="loadingDynamicMsg">You can share files <strong>without logging in</strong> or signing up</span>
             </div>
           </div>
         </div>
 
         <!-- Chat Messages Feed (Expanded Full-Height Visibility) -->
-        <div id="labRecordChatMessages" class="ai-chat-messages-container" style="display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); flex: 1; min-height: 280px; overflow-y: auto; margin-top: 10px;">
-          <div class="ai-chat-bot-bubble" style="background: rgba(79, 70, 229, 0.05); border-color: rgba(79, 70, 229, 0.15);">
-            <strong>👋 Welcome to LabDrop AI!</strong><br />
-            Select your code or diagram file above and click <strong>🚀 Generate Full Lab Record</strong>, or ask any question about code, algorithms, data structures, or lab experiments below.
+        <div id="labRecordChatMessages" class="ai-chat-messages-container">
+          <div class="ai-chat-bot-bubble">
+            <strong>Welcome to LabDrop AI!</strong><br />
+            Select your code or diagram file above and click <strong>Generate Full Lab Record</strong>, or ask any question about code, algorithms, data structures, or lab experiments below.
           </div>
         </div>
 
@@ -1102,16 +1091,9 @@
 
       <!-- Docked Bottom Chat Box for Lab Record -->
       <div class="lab-chat-bottom-bar" id="labRecordChatBar">
-        <div id="labRecordChipsContainer" style="display: flex; gap: 6px; flex-wrap: wrap;">
-          <button type="button" class="chip-btn lab-record-chip-home" data-prompt="Describe each diagram separately with its system name, initial trigger, step-by-step flow, decision diamonds, and fork/join concurrency">📊 Describe Each Diagram Separately</button>
-          <button type="button" class="chip-btn lab-record-chip-home" data-prompt="Explain this code step by step">💡 Explain Code</button>
-          <button type="button" class="chip-btn lab-record-chip-home" data-prompt="Rewrite the algorithm in simpler steps">🔢 Simplify Algorithm</button>
-          <button type="button" class="chip-btn lab-record-chip-home" data-prompt="Add more detail to the theory section">📖 Expand Theory</button>
-          <button type="button" class="chip-btn lab-record-chip-home" data-prompt="Generate more test cases for the observation table">📋 More Test Cases</button>
-        </div>
         <form id="labRecordChatForm" autocomplete="off" style="display: flex; gap: 8px; width: 100%;">
-          <input type="text" id="labRecordChatInput" name="labdrop_record_chat" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="form-input" placeholder="Ask AI about this lab record..." style="flex: 1; font-size: 0.88rem; padding: 9px 12px; border-radius: var(--radius-sm);" required />
-          <button type="submit" class="btn btn--primary" id="labRecordChatSubmitBtn" style="padding: 0 18px; font-weight: 600; white-space: nowrap;">Send</button>
+          <input type="text" id="labRecordChatInput" name="labdrop_record_chat" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="form-input ai-chat-input" placeholder="Ask AI a question or request a change..." required />
+          <button type="submit" class="btn btn--primary ai-chat-send-btn" id="labRecordChatSubmitBtn">Send</button>
         </form>
       </div> <!-- end of labRecordChatBar -->
     </div> <!-- end of homeTabContentLabRecord -->
@@ -1120,18 +1102,17 @@
         <div class="ai-tab-content" id="homeTabContentViva">
           
           <!-- Scrollable Content Area -->
-          <div id="homeTabContentVivaScroll" style="flex: 1; min-height: 0; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;">
+          <div id="homeTabContentVivaScroll" class="ai-tab-scroll-container">
             
             <!-- View 1: Configuration Form (Collapsible Panel) -->
             <div id="homeVivaConfigPanel" class="ai-collapsible-panel">
               <div class="ai-collapsible-header" id="homeVivaConfigHeader">
                 <div class="ai-collapsible-header-info">
-                  <span>🎓</span>
                   <span class="ai-collapsible-title">Viva & Exam Prep Options</span>
                   <span class="ai-collapsible-badge" id="homeVivaConfigBadge">Oral Viva · Medium</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <button type="button" class="btn btn--primary btn--sm" id="btnRunVivaCompact" style="display: none; padding: 4px 10px; font-size: 0.78rem;">🎓 Generate</button>
+                  <button type="button" class="btn btn--ai btn--sm" id="btnRunVivaCompact" style="display: none; padding: 4px 10px; font-size: 0.78rem;">Generate</button>
                   <button type="button" class="ai-collapsible-toggle-btn" id="btnToggleVivaConfig" aria-label="Toggle Viva Options">
                     <span id="homeVivaConfigToggleText">▲ Collapse Setup</span>
                   </button>
@@ -1139,13 +1120,11 @@
               </div>
               <div class="ai-collapsible-content" id="homeVivaConfigContent">
                 <!-- Compact File Selector Dropdown -->
-                <div style="display: flex; flex-direction: column; gap: 3px;">
-                  <label for="homeAiFileSelect" style="font-size: 0.76rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.03em;">Select File:</label>
-                  <div style="display: flex; gap: 6px; align-items: center;">
-                    <select id="homeAiFileSelect" class="form-input" style="flex: 1; font-size: 0.84rem; padding: 6px 10px; height: 36px; border-radius: var(--radius-sm);"></select>
-                    <button type="button" class="btn btn--outline btn--sm" id="btnHomeAiUpload" style="font-size: 0.76rem; padding: 0 10px; height: 36px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; margin: 0;" title="Upload an additional file from your device">
-                      ➕ Upload
-                    </button>
+                <div class="record-source-bar">
+                  <label for="homeAiFileSelect" class="ai-field-label">Select File:</label>
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <select id="homeAiFileSelect" class="form-input ai-select-styled"></select>
+                    <button type="button" class="ai-browse-btn" id="btnHomeAiUpload" title="Upload an additional file from your device">Browse</button>
                     <input type="file" id="homeAiDirectFileInput" multiple style="display: none;" />
                   </div>
                 </div>
@@ -1153,33 +1132,37 @@
                 <!-- Exam Mode & Dynamic Secondary Option Row -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start; margin-top: 8px;">
                   <div>
-                    <label for="homeAiExamType" style="font-size: 0.76rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.03em; display: block; margin-bottom: 3px;">Target Action / Prep:</label>
-                    <select id="homeAiExamType" class="form-input" style="width: 100%; font-size: 0.84rem; padding: 6px 8px; height: 36px; border-radius: var(--radius-sm);">
-                      <option value="viva">🎓 Oral Lab Viva (Voce)</option>
-                      <option value="internal_20">📝 20 Marks Internal Test</option>
-                      <option value="semester_100">🏛️ 100 Marks Semester Paper</option>
-                      <option value="rapid_fire">⚡ Rapid-Fire Flashcards</option>
-                      <option value="summarize">📄 Summarize Content</option>
+                    <label for="homeAiExamType" class="ai-field-label">Target Action / Prep:</label>
+                    <select id="homeAiExamType" class="form-input ai-select-styled">
+                      <option value="viva">Oral Lab Viva (Voce)</option>
+                      <option value="internal_20">20 Marks Internal Test</option>
+                      <option value="semester_100">100 Marks Semester Paper</option>
+                      <option value="rapid_fire">Rapid-Fire Flashcards</option>
+                      <option value="summarize">Summarize Content</option>
                     </select>
                   </div>
 
                   <!-- Dynamic Secondary Option: Difficulty Level OR Summary Length -->
                   <div id="homeAiSecondaryContainer">
-                    <label id="homeAiSecondaryLabel" for="homeAiSecondaryOption" style="font-size: 0.76rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.03em; display: block; margin-bottom: 3px;">Difficulty Level:</label>
+                    <label id="homeAiSecondaryLabel" for="homeAiSecondaryOption" class="ai-field-label">Difficulty Level:</label>
                     <div style="display: flex; gap: 6px; align-items: center;">
-                      <select id="homeAiSecondaryOption" class="form-input" style="flex: 1; width: 100%; font-size: 0.84rem; padding: 6px 8px; height: 36px; border-radius: var(--radius-sm);">
-                        <option value="easy">🟢 Easy (Fundamentals)</option>
-                        <option value="medium" selected>🟡 Medium (Lab Standard)</option>
-                        <option value="hard">🔴 Hard (Advanced Traps)</option>
-                        <option value="extreme">🔥 Extreme (Compiler & Internals)</option>
+                      <select id="homeAiSecondaryOption" class="form-input ai-select-styled">
+                        <option value="easy">Easy (Fundamentals)</option>
+                        <option value="medium" selected>Medium (Lab Standard)</option>
+                        <option value="hard">Hard (Advanced Traps)</option>
+                        <option value="extreme">Extreme (Compiler & Internals)</option>
                       </select>
-                      <input type="number" id="homeAiCustomLines" class="form-input" min="1" max="500" value="15" placeholder="Lines..." title="Number of summary lines" style="width: 65px; font-size: 0.84rem; padding: 6px 8px; height: 36px; border-radius: var(--radius-sm); display: none;" />
+                      <input type="number" id="homeAiCustomLines" class="form-input" min="1" max="500" value="15" placeholder="Lines..." title="Number of summary lines" style="width: 65px; font-size: 0.84rem; padding: 6px 8px; height: 38px; border-radius: var(--radius-sm); display: none;" />
                     </div>
                   </div>
                 </div>
 
                 <!-- Primary Generate Button -->
-                <button class="btn btn--primary btn--ai" id="homeBtnRunViva" style="width: 100%; padding: 8px 12px; font-size: 0.88rem; font-weight: 700; border-radius: var(--radius-sm); height: 38px; margin-top: 10px;">🎓 Generate Exam & Viva Prep</button>
+                <div style="margin-top: 10px;">
+                  <button class="btn btn--primary btn--ai btn--block" id="homeBtnRunViva" style="width: 100%; padding: 10px 14px; font-size: 0.95rem; font-weight: 700; border-radius: var(--radius-md); height: 40px;">
+                    Generate Exam & Viva Prep
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1269,7 +1252,7 @@
                 <h2 class="loading-title" id="homeAiLoadingTitle">Synthesizing Academic Intelligence...</h2>
                 <div class="loading-status-pill">
                   <span class="status-dot-pulse"></span>
-                  <span id="homeAiLoadingDynamicMsg">💡 You can share files <strong>without logging in</strong> or signing up</span>
+                  <span id="homeAiLoadingDynamicMsg">You can share files <strong>without logging in</strong> or signing up</span>
                 </div>
               </div>
             </div>
@@ -1277,40 +1260,31 @@
             <!-- Viva Result Output -->
             <div id="homeVivaResult" style="display: none; margin-top: 4px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-                <span id="homeVivaBadge" style="font-size: 0.75rem; font-weight: 700; background: rgba(79, 70, 229, 0.1); color: var(--color-primary); padding: 4px 10px; border-radius: var(--radius-full); border: 1px solid rgba(79, 70, 229, 0.25);">Oral Viva · Medium</span>
+                <span id="homeVivaBadge" style="font-size: 0.75rem; font-weight: 700; background: rgba(245, 158, 11, 0.12); color: #B45309; padding: 4px 10px; border-radius: var(--radius-full); border: 1px solid rgba(245, 158, 11, 0.25);">Oral Viva · Medium</span>
                 <div style="display: flex; gap: 8px;">
-                  <button class="btn btn--outline btn--sm" id="homeBtnRegenViva">🔄 Regenerate</button>
-                  <button class="btn btn--outline btn--sm" id="homeBtnCopyViva">📋 Copy Output</button>
+                  <button class="btn btn--outline btn--sm" id="homeBtnRegenViva">Regenerate</button>
+                  <button class="btn btn--outline btn--sm" id="homeBtnCopyViva">Copy Output</button>
                 </div>
               </div>
               <div id="homeVivaOutput" class="markdown-body" style="font-size: 0.9rem; line-height: 1.6; text-align: left; background: var(--color-bg-secondary); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); max-height: 360px; overflow-y: auto;"></div>
             </div>
 
             <!-- Messages Feed (Spacious Chat Container) -->
-            <div id="homeVivaChatMessages" class="ai-chat-messages-container" style="display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); flex: 1; min-height: 280px; overflow-y: auto; margin-top: 10px;">
-              <div class="ai-chat-bot-bubble" style="background: rgba(79, 70, 229, 0.05); border-color: rgba(79, 70, 229, 0.15);">
-                <strong>🎓 Welcome to LabDrop Viva & Exam Prep!</strong><br />
-                Select your study, code, or diagram file above and click <strong>🎓 Generate Exam & Viva Prep</strong>, or chat below with AI to get oral viva drills, rapid-fire questions, and concept explanations.
+            <div id="homeVivaChatMessages" class="ai-chat-messages-container">
+              <div class="ai-chat-bot-bubble">
+                <strong>Welcome to LabDrop Viva & Exam Prep!</strong><br />
+                Select your study, code, or diagram file above and click <strong>Generate Exam & Viva Prep</strong>, or chat below with AI to get oral viva drills, rapid-fire questions, and concept explanations.
               </div>
             </div>
 
           </div>
 
           <!-- Docked Bottom Chat Box -->
-          <div id="homeVivaChatBottomBar" class="lab-chat-bottom-bar" style="flex-shrink: 0; background: var(--color-bg-secondary); border-top: 1px solid var(--color-border); padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -2px 10px rgba(0,0,0,0.03); z-index: 10;">
-            <!-- Quick Prompt Chips -->
-            <div id="homeVivaChipsContainer" style="display: flex; gap: 6px; flex-wrap: wrap;">
-              <button type="button" class="chip-btn viva-chip-home" data-prompt="Describe each diagram separately with its system name, initial trigger, step-by-step flow, decision diamonds, and fork/join concurrency">📊 Describe Each Diagram Separately</button>
-              <button type="button" class="chip-btn viva-chip-home" data-prompt="Summarize this in 5 lines">⚡ Summarize in 5 lines</button>
-              <button type="button" class="chip-btn viva-chip-home" data-prompt="What is this document about?">❓ What is this document about?</button>
-              <button type="button" class="chip-btn viva-chip-home" data-prompt="Give me a 3-bullet quick overview of key concepts.">📋 3-Bullet Overview</button>
-              <button type="button" class="chip-btn viva-chip-home" data-prompt="Explain how this works in simple words.">💡 Explain Simply</button>
-            </div>
-
+          <div id="homeVivaChatBottomBar" class="lab-chat-bottom-bar">
             <!-- Chat Input Form -->
             <form id="homeVivaChatForm" autocomplete="off" style="display: flex; gap: 8px; width: 100%;">
-              <input type="text" id="homeVivaChatInput" name="labdrop_viva_chat" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="form-input" placeholder="Ask AI a question or request a summary..." style="flex: 1; font-size: 0.88rem; padding: 9px 12px; border-radius: var(--radius-sm);" required />
-              <button type="submit" class="btn btn--primary" id="homeVivaChatSubmitBtn" style="padding: 0 18px; font-weight: 600; white-space: nowrap;">Send</button>
+              <input type="text" id="homeVivaChatInput" name="labdrop_viva_chat" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="form-input ai-chat-input" placeholder="Ask AI a question or request a change..." required />
+              <button type="submit" class="btn btn--primary ai-chat-send-btn" id="homeVivaChatSubmitBtn">Send</button>
             </form>
           </div>
 
@@ -1329,7 +1303,7 @@
       <source srcset="/LabDropAILogo-icon.webp" type="image/webp" />
       <img src="/LabDropAILogo-icon.png" alt="LabDrop AI" width="60" height="60" loading="eager" />
     </picture>
-    <div class="ai-fab-tooltip">✨ LabDrop AI</div>
+    <div class="ai-fab-tooltip">LabDrop AI</div>
   </button>
 
   <!-- External Visual Libraries (Deferred) -->

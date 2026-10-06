@@ -18,7 +18,7 @@ window.LabDialog = (function() {
             header.style.alignItems = 'center';
             header.style.gap = '8px';
             header.innerHTML = `
-                <div style="width:24px;height:24px;background:var(--color-primary);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:bold;">🚀</div>
+                <div style="width:24px;height:24px;background:var(--color-primary);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:bold;color:#111827;">LD</div>
                 <h3 style="margin:0;font-size:1rem;color:var(--color-text);font-weight:600;">${title}</h3>
             `;
             card.appendChild(header);

@@ -412,6 +412,7 @@ app.post('/share-target', (req, res) => {
       expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes
     });
 
+    console.log(`[ShareTarget Server Fallback] Received ${files.length} file(s), text length ${text.length}. Session: ${sessionId}`);
     res.redirect(303, `/?shared_session=${sessionId}`);
   });
 });
