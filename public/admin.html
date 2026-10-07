@@ -81,7 +81,6 @@
       <div class="toolbar-group">
         <span class="toolbar-label">Timeframe:</span>
         <div class="seg-button-group">
-          <button class="seg-btn" data-range="24H">24H</button>
           <button class="seg-btn" data-range="7D">7D</button>
           <button class="seg-btn" data-range="14D">14D</button>
           <button class="seg-btn active" data-range="30D">30D</button>
@@ -89,13 +88,9 @@
           <button class="seg-btn" data-range="ALL">ALL</button>
         </div>
       </div>
-
-      <div class="toolbar-group">
-        <span class="toolbar-label">Display Mode:</span>
-        <div class="seg-button-group">
-          <button class="seg-btn active" data-view-mode="daily">📈 Daily Activity (Spikes)</button>
-          <button class="seg-btn" data-view-mode="cumulative">🚀 Cumulative Total (Growth)</button>
-        </div>
+      <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
+        <span style="color: var(--emerald-green);">●</span>
+        <span>Trading Mode: <strong>Cumulative Counters on Increase Ticks</strong></span>
       </div>
     </section>
 
@@ -191,169 +186,52 @@
 
     </section>
 
-    <!-- Master Multi-Metric Stock Chart (With Brush Scrubber) -->
-    <section class="chart-card-master">
+    <!-- Dedicated Trading Chart: Genuine Day-Wise Growth Recorded on Count Increases -->
+    <section class="chart-card-master" id="tradingChartCard">
       <div class="chart-card-header">
         <div class="chart-heading-group">
           <h2 class="chart-title">
-            <span>📈 Master Stock Chart & Timeline Scrubber</span>
+            <span>📈 LabDrop Growth & Trading Pulse</span>
           </h2>
-          <p class="chart-subtitle">Interactive financial area curves with crosshair cursor, zoom, pan, and timeline scrub window</p>
+          <p class="chart-subtitle">Event timeline recorded strictly on count increases starting from current counters. Pan forward/backward and zoom horizontally like a trading chart.</p>
         </div>
 
-        <!-- Metric Toggle Pills -->
-        <div class="series-toggle-strip">
-          <button class="toggle-pill active" data-toggle-metric="transfers" style="--pill-color: var(--accent-gold);">
-            <span class="pill-dot"></span> Transfers
-          </button>
-          <button class="toggle-pill active" data-toggle-metric="files" style="--pill-color: var(--electric-cyan);">
-            <span class="pill-dot"></span> Files
-          </button>
-          <button class="toggle-pill active" data-toggle-metric="downloads" style="--pill-color: var(--royal-purple);">
-            <span class="pill-dot"></span> Downloads
-          </button>
-          <button class="toggle-pill active" data-toggle-metric="visitors" style="--pill-color: var(--sunset-rose);">
-            <span class="pill-dot"></span> Visitors
-          </button>
-          <button class="toggle-pill active" data-toggle-metric="active" style="--pill-color: var(--coral-orange);">
-            <span class="pill-dot"></span> Active
-          </button>
-          <button class="toggle-pill" data-toggle-metric="storage" style="--pill-color: var(--cyber-blue);">
-            <span class="pill-dot"></span> Volume (MB)
-          </button>
-        </div>
-      </div>
-
-      <!-- Main Stock Chart Container -->
-      <div class="chart-container-master" id="masterStockChart"></div>
-
-      <!-- Brush Timeline Scrubber -->
-      <div class="chart-brush-container" id="masterBrushChart"></div>
-    </section>
-
-    <!-- Dedicated Section: Charts for Every Count Metric -->
-    <div class="section-header">
-      <div class="section-title-wrap">
-        <span class="section-badge-num">6 METRICS</span>
-        <h2 class="section-title">Dedicated Stock Terminals for Every Count</h2>
-      </div>
-      <p class="section-desc">Individual interactive stock charts with dates on X-axis, count on Y-axis, high/low/average stats, and zoom</p>
-    </div>
-
-    <!-- Stock Charts Grid: Dedicated Chart for Every Count -->
-    <section class="stock-charts-grid">
-
-      <!-- Dedicated Chart 1: Transfers Created -->
-      <article class="stock-chart-card">
-        <div class="stock-card-top">
-          <div class="stock-meta-left">
-            <span class="stock-ticker-name"><span style="color:var(--accent-gold);">●</span> LBD / TRANSFERS</span>
-            <h3 class="stock-metric-title">Transfers Created</h3>
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+          <!-- Timeline View Mode Toggle -->
+          <div class="seg-button-group">
+            <button class="seg-btn active" id="btnModeDayWise" data-chart-mode="dayWise" title="Show points only on dates with count increases">📅 Day-Wise</button>
+            <button class="seg-btn" id="btnModeTicks" data-chart-mode="eventTicks" title="Show all granular event timestamps with count increases">⏱️ Event Ticks</button>
           </div>
-          <div class="stock-stats-strip">
-            <div class="stat-chip"><span class="stat-chip-lbl">TOTAL:</span> <span class="stat-chip-val" id="statTransfersTotal">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">HIGH:</span> <span class="stat-chip-val high" id="statTransfersHigh">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">LOW:</span> <span class="stat-chip-val" id="statTransfersLow">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">AVG:</span> <span class="stat-chip-val" id="statTransfersAvg">0</span></div>
-          </div>
-        </div>
-        <div class="stock-chart-view" id="chartTransfers"></div>
-      </article>
 
-      <!-- Dedicated Chart 2: Files Uploaded -->
-      <article class="stock-chart-card">
-        <div class="stock-card-top">
-          <div class="stock-meta-left">
-            <span class="stock-ticker-name"><span style="color:var(--electric-cyan);">●</span> LBD / FILES</span>
-            <h3 class="stock-metric-title">Files Uploaded</h3>
+          <!-- Trading Navigation Buttons -->
+          <div class="seg-button-group">
+            <button class="seg-btn" id="btnPanLeft" title="Pan timeline backward">◀ Pan</button>
+            <button class="seg-btn" id="btnPanRight" title="Pan timeline forward">Pan ▶</button>
+            <button class="seg-btn" id="btnZoomIn" title="Zoom in">+</button>
+            <button class="seg-btn" id="btnZoomOut" title="Zoom out">-</button>
+            <button class="seg-btn" id="btnChartReset" title="Reset view">↺</button>
           </div>
-          <div class="stock-stats-strip">
-            <div class="stat-chip"><span class="stat-chip-lbl">TOTAL:</span> <span class="stat-chip-val" id="statFilesTotal">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">HIGH:</span> <span class="stat-chip-val high" id="statFilesHigh">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">LOW:</span> <span class="stat-chip-val" id="statFilesLow">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">AVG:</span> <span class="stat-chip-val" id="statFilesAvg">0</span></div>
-          </div>
-        </div>
-        <div class="stock-chart-view" id="chartFiles"></div>
-      </article>
 
-      <!-- Dedicated Chart 3: Downloads Completed -->
-      <article class="stock-chart-card">
-        <div class="stock-card-top">
-          <div class="stock-meta-left">
-            <span class="stock-ticker-name"><span style="color:var(--royal-purple);">●</span> LBD / DOWNLOADS</span>
-            <h3 class="stock-metric-title">Downloads Completed</h3>
+          <!-- Series Toggle Pills -->
+          <div class="series-toggle-strip">
+            <button class="toggle-pill active" data-toggle-metric="transfers" style="--pill-color: var(--accent-gold);">
+              <span class="pill-dot"></span> Transfers
+            </button>
+            <button class="toggle-pill active" data-toggle-metric="downloads" style="--pill-color: var(--royal-purple);">
+              <span class="pill-dot"></span> Downloads
+            </button>
+            <button class="toggle-pill active" data-toggle-metric="visitors" style="--pill-color: var(--sunset-rose);">
+              <span class="pill-dot"></span> Visitors
+            </button>
+            <button class="toggle-pill active" data-toggle-metric="files" style="--pill-color: var(--electric-cyan);">
+              <span class="pill-dot"></span> Files
+            </button>
           </div>
-          <div class="stock-stats-strip">
-            <div class="stat-chip"><span class="stat-chip-lbl">TOTAL:</span> <span class="stat-chip-val" id="statDownloadsTotal">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">HIGH:</span> <span class="stat-chip-val high" id="statDownloadsHigh">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">LOW:</span> <span class="stat-chip-val" id="statDownloadsLow">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">AVG:</span> <span class="stat-chip-val" id="statDownloadsAvg">0</span></div>
-          </div>
-        </div>
-        <div class="stock-chart-view" id="chartDownloads"></div>
-      </article>
-
-      <!-- Dedicated Chart 4: Unique Visitors / Devices -->
-      <article class="stock-chart-card">
-        <div class="stock-card-top">
-          <div class="stock-meta-left">
-            <span class="stock-ticker-name"><span style="color:var(--sunset-rose);">●</span> LBD / VISITORS</span>
-            <h3 class="stock-metric-title">Unique Visitors / Devices</h3>
-          </div>
-          <div class="stock-stats-strip">
-            <div class="stat-chip"><span class="stat-chip-lbl">TOTAL:</span> <span class="stat-chip-val" id="statVisitorsTotal">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">HIGH:</span> <span class="stat-chip-val high" id="statVisitorsHigh">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">LOW:</span> <span class="stat-chip-val" id="statVisitorsLow">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">AVG:</span> <span class="stat-chip-val" id="statVisitorsAvg">0</span></div>
-          </div>
-        </div>
-        <div class="stock-chart-view" id="chartVisitors"></div>
-      </article>
-
-      <!-- Dedicated Chart 5: Active Concurrent Transfers -->
-      <article class="stock-chart-card">
-        <div class="stock-card-top">
-          <div class="stock-meta-left">
-            <span class="stock-ticker-name"><span style="color:var(--coral-orange);">●</span> LBD / ACTIVE CONCURRENT</span>
-            <h3 class="stock-metric-title">Active Live Transfers</h3>
-          </div>
-          <div class="stock-stats-strip">
-            <div class="stat-chip"><span class="stat-chip-lbl">PEAK:</span> <span class="stat-chip-val high" id="statActiveHigh">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">LOW:</span> <span class="stat-chip-val" id="statActiveLow">0</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">AVG:</span> <span class="stat-chip-val" id="statActiveAvg">0</span></div>
-          </div>
-        </div>
-        <div class="stock-chart-view" id="chartActive"></div>
-      </article>
-
-      <!-- Dedicated Chart 6: Transferred Storage Volume -->
-      <article class="stock-chart-card">
-        <div class="stock-card-top">
-          <div class="stock-meta-left">
-            <span class="stock-ticker-name"><span style="color:var(--cyber-blue);">●</span> LBD / STORAGE VOLUME</span>
-            <h3 class="stock-metric-title">Transferred Storage (MB)</h3>
-          </div>
-          <div class="stock-stats-strip">
-            <div class="stat-chip"><span class="stat-chip-lbl">TOTAL:</span> <span class="stat-chip-val" id="statStorageTotal">0 MB</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">HIGH:</span> <span class="stat-chip-val high" id="statStorageHigh">0 MB</span></div>
-            <div class="stat-chip"><span class="stat-chip-lbl">AVG:</span> <span class="stat-chip-val" id="statStorageAvg">0 MB</span></div>
-          </div>
-        </div>
-        <div class="stock-chart-view" id="chartStorage"></div>
-      </article>
-
-    </section>
-
-    <!-- Intraday 24-Hour Velocity Pulse -->
-    <section class="table-card" style="margin-top: 0.5rem;">
-      <div class="table-header">
-        <div>
-          <h3 class="section-title">⏱️ Today's Intraday 24-Hour Pulse</h3>
-          <p class="section-desc">Hourly velocity showing activity distribution across morning, afternoon, and evening</p>
         </div>
       </div>
-      <div class="stock-chart-view" id="chartIntraday"></div>
+
+      <!-- Trading Chart Container -->
+      <div class="chart-container-master" id="tradingPulseChart" style="min-height: 420px;"></div>
     </section>
 
     <!-- Operational Tables Section -->

@@ -450,7 +450,7 @@ app.get('/api/share-session/:id', (req, res) => {
 
 // Baseline historical counters (merged prior counts)
 const BASELINE_COUNTERS = {
-  uniqueUsers: 123,
+  uniqueUsers: 240, // Calibrated starting baseline (was ~240)
   totalTransfers: 133,
   totalFiles: 216,
   totalDownloads: 151
@@ -495,7 +495,7 @@ function getTodayDateStr() {
 }
 
 function getCurrentTotals(activeCount = 0) {
-  const baseUnique = BASELINE_COUNTERS.uniqueUsers || 123;
+  const baseUnique = BASELINE_COUNTERS.uniqueUsers || 240;
   const baseTransfers = BASELINE_COUNTERS.totalTransfers || 133;
   const baseFiles = BASELINE_COUNTERS.totalFiles || 216;
   const baseDownloads = BASELINE_COUNTERS.totalDownloads || 151;
@@ -548,7 +548,7 @@ app.get('/api/admin/dashboard-data', async (req, res) => {
     const activeFilesCount = activeTransfers.reduce((acc, t) => acc + (t.files ? t.files.length : 0), 0);
     const activeStorageBytes = activeTransfers.reduce((acc, t) => acc + (t.totalSize || 0), 0);
 
-    const baseUnique = BASELINE_COUNTERS.uniqueUsers || 123;
+    const baseUnique = BASELINE_COUNTERS.uniqueUsers || 240;
     const baseTransfers = BASELINE_COUNTERS.totalTransfers || 133;
     const baseFiles = BASELINE_COUNTERS.totalFiles || 216;
     const baseDownloads = BASELINE_COUNTERS.totalDownloads || 151;
@@ -607,6 +607,94 @@ app.get('/api/admin/dashboard-data', async (req, res) => {
       storageBytes: d.storageBytes || 0,
       storageMB: Number(((d.storageBytes || 0) / (1024 * 1024)).toFixed(2))
     }));
+
+    // Build Increase-Only Series (Day-Wise and Event-Ticks)
+    // Rule: Points are strictly recorded when there is an increase in the count
+    // Rule: Start count from current baseline counters (e.g. Transfers: 247, Downloads: 268, Visitors: 240, Files: 376)
+    const dayWise = {
+      transfers: [],
+      files: [],
+      downloads: [],
+      visitors: []
+    };
+
+    let prevT = null, prevF = null, prevD = null, prevV = null;
+
+    allDaily.forEach((d, idx) => {
+      const ts = d.timestamp;
+      const tVal = d.cumulativeTransfers || totalTransfers;
+      const fVal = d.cumulativeFiles || totalFiles;
+      const dVal = d.cumulativeDownloads || totalDownloads;
+      const vVal = d.cumulativeVisitors || totalUnique;
+
+      if (idx === 0) {
+        // Base starting point
+        dayWise.transfers.push([ts, tVal]);
+        dayWise.files.push([ts, fVal]);
+        dayWise.downloads.push([ts, dVal]);
+        dayWise.visitors.push([ts, vVal]);
+        prevT = tVal; prevF = fVal; prevD = dVal; prevV = vVal;
+      } else {
+        if (tVal > prevT) { dayWise.transfers.push([ts, tVal]); prevT = tVal; }
+        if (fVal > prevF) { dayWise.files.push([ts, fVal]); prevF = fVal; }
+        if (dVal > prevD) { dayWise.downloads.push([ts, dVal]); prevD = dVal; }
+        if (vVal > prevV) { dayWise.visitors.push([ts, vVal]); prevV = vVal; }
+      }
+    });
+
+    // Event ticks series: granular timestamps where increases occurred
+    const eventTicks = {
+      transfers: [],
+      files: [],
+      downloads: [],
+      visitors: []
+    };
+
+    if (allDaily.length > 0) {
+      const firstDoc = allDaily[0];
+      let runningT = firstDoc.cumulativeTransfers || (totalTransfers - (todayRecord.transfers || 0));
+      let runningF = firstDoc.cumulativeFiles || (totalFiles - (todayRecord.files || 0));
+      let runningD = firstDoc.cumulativeDownloads || (totalDownloads - (todayRecord.downloads || 0));
+      let runningV = firstDoc.cumulativeVisitors || (totalUnique - (todayRecord.visitors || 0));
+
+      eventTicks.transfers.push([firstDoc.timestamp, runningT]);
+      eventTicks.files.push([firstDoc.timestamp, runningF]);
+      eventTicks.downloads.push([firstDoc.timestamp, runningD]);
+      eventTicks.visitors.push([firstDoc.timestamp, runningV]);
+
+      allDaily.forEach(doc => {
+        const dayStart = doc.timestamp;
+        const hourly = doc.hourly || {};
+        for (let h = 0; h <= 23; h++) {
+          const hData = hourly[h];
+          if (!hData) continue;
+          const hTime = dayStart + (h * 3600 * 1000);
+          let incT = false, incF = false, incD = false, incV = false;
+
+          if ((hData.transfers || 0) > 0) {
+            runningT += hData.transfers;
+            incT = true;
+          }
+          if ((hData.files || 0) > 0) {
+            runningF += hData.files;
+            incF = true;
+          }
+          if ((hData.downloads || 0) > 0) {
+            runningD += hData.downloads;
+            incD = true;
+          }
+          if ((hData.visitors || 0) > 0) {
+            runningV += hData.visitors;
+            incV = true;
+          }
+
+          if (incT) eventTicks.transfers.push([hTime, runningT]);
+          if (incF) eventTicks.files.push([hTime, runningF]);
+          if (incD) eventTicks.downloads.push([hTime, runningD]);
+          if (incV) eventTicks.visitors.push([hTime, runningV]);
+        }
+      });
+    }
 
     // Build today's 24-hour intraday hourly telemetry (hours 0 to current hour)
     const currentDate = new Date();
@@ -709,6 +797,10 @@ app.get('/api/admin/dashboard-data', async (req, res) => {
       },
       trends,
       timeseries,
+      increaseSeries: {
+        dayWise,
+        eventTicks
+      },
       intraday,
       activeTransfers: activeTransfersList,
       system

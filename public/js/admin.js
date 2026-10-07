@@ -18,18 +18,15 @@
   let tickerIntervalId = null;
 
   // Chart instances
-  let masterChart = null;
-  let brushChart = null;
+  let tradingChartInstance = null;
   let sparklines = {};
-  let stockCharts = {}; // { transfers, files, downloads, visitors, active, storage, intraday }
+  let chartMode = 'dayWise'; // 'dayWise' or 'eventTicks'
 
   const activeSeries = {
     transfers: true,
-    files: true,
     downloads: true,
     visitors: true,
-    active: true,
-    storage: false // off by default on master to prevent scale skew
+    files: true
   };
 
   const METRIC_COLORS = {
@@ -137,29 +134,94 @@
         document.querySelectorAll('[data-range]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         activeRange = btn.dataset.range;
-        renderAllCharts();
+        if (tradingChartInstance && tradingChartInstance.w) {
+          const { max } = tradingChartInstance.w.globals;
+          let days = 30;
+          if (activeRange === '7D') days = 7;
+          else if (activeRange === '14D') days = 14;
+          else if (activeRange === '90D') days = 90;
+          else if (activeRange === 'ALL') {
+            tradingChartInstance.resetSeries();
+            return;
+          }
+          const minTime = max - (days * 24 * 3600 * 1000);
+          tradingChartInstance.zoomX(minTime, max);
+        }
       });
     });
 
-    // View Mode Toggle (Daily Spikes vs Cumulative Equity)
-    document.querySelectorAll('[data-view-mode]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('[data-view-mode]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        viewMode = btn.dataset.viewMode;
-        renderAllCharts();
-      });
-    });
-
-    // Master Series Toggles
+    // Metric Series Toggles
     document.querySelectorAll('[data-toggle-metric]').forEach(pill => {
       pill.addEventListener('click', () => {
         const metric = pill.dataset.toggleMetric;
         activeSeries[metric] = !activeSeries[metric];
         pill.classList.toggle('active', activeSeries[metric]);
-        updateMasterChartSeries();
+        updateTradingChartSeries();
       });
     });
+
+    // Chart Mode Toggles (Day-Wise vs Granular Event Ticks)
+    const btnModeDayWise = document.getElementById('btnModeDayWise');
+    const btnModeTicks = document.getElementById('btnModeTicks');
+    if (btnModeDayWise && btnModeTicks) {
+      btnModeDayWise.addEventListener('click', () => {
+        chartMode = 'dayWise';
+        btnModeDayWise.classList.add('active');
+        btnModeTicks.classList.remove('active');
+        updateTradingChartSeries();
+      });
+      btnModeTicks.addEventListener('click', () => {
+        chartMode = 'eventTicks';
+        btnModeTicks.classList.add('active');
+        btnModeDayWise.classList.remove('active');
+        updateTradingChartSeries();
+      });
+    }
+
+    // Trading Navigation Controls (Pan Left/Right, Zoom In/Out, Reset)
+    const btnPanLeft = document.getElementById('btnPanLeft');
+    const btnPanRight = document.getElementById('btnPanRight');
+    const btnZoomIn = document.getElementById('btnZoomIn');
+    const btnZoomOut = document.getElementById('btnZoomOut');
+    const btnChartReset = document.getElementById('btnChartReset');
+
+    if (btnPanLeft) {
+      btnPanLeft.addEventListener('click', () => {
+        if (!tradingChartInstance || !tradingChartInstance.w) return;
+        const { min, max } = tradingChartInstance.w.globals;
+        const shift = (max - min) * 0.25;
+        tradingChartInstance.zoomX(min - shift, max - shift);
+      });
+    }
+    if (btnPanRight) {
+      btnPanRight.addEventListener('click', () => {
+        if (!tradingChartInstance || !tradingChartInstance.w) return;
+        const { min, max } = tradingChartInstance.w.globals;
+        const shift = (max - min) * 0.25;
+        tradingChartInstance.zoomX(min + shift, max + shift);
+      });
+    }
+    if (btnZoomIn) {
+      btnZoomIn.addEventListener('click', () => {
+        if (!tradingChartInstance || !tradingChartInstance.w) return;
+        const { min, max } = tradingChartInstance.w.globals;
+        const shift = (max - min) * 0.2;
+        tradingChartInstance.zoomX(min + shift, max - shift);
+      });
+    }
+    if (btnZoomOut) {
+      btnZoomOut.addEventListener('click', () => {
+        if (!tradingChartInstance || !tradingChartInstance.w) return;
+        const { min, max } = tradingChartInstance.w.globals;
+        const shift = (max - min) * 0.25;
+        tradingChartInstance.zoomX(min - shift, max + shift);
+      });
+    }
+    if (btnChartReset) {
+      btnChartReset.addEventListener('click', () => {
+        if (tradingChartInstance) tradingChartInstance.resetSeries();
+      });
+    }
 
     // Daily Ledger Search
     const searchInput = document.getElementById('ledgerSearch');
@@ -295,7 +357,7 @@
     setElementText('kpiFilesSub', `Avg: ${avgFiles} files / transfer`);
     const dlRatio = totals.transfers > 0 ? (totals.downloads / totals.transfers).toFixed(2) : '1.0';
     setElementText('kpiDownloadsSub', `Conversion: ${dlRatio}x per transfer`);
-    setElementText('kpiVisitorsSub', `Active today: ${trends.visitors.today} devices`);
+    setElementText('kpiVisitorsSub', `Baseline: 240 | +${trends.visitors.today} today`);
     setElementText('kpiActiveSub', `${totals.activeFiles} files currently live`);
     setElementText('kpiStorageSub', `Uploaded today: ${formatBytes(totals.todayStorageBytes)}`);
 
@@ -393,122 +455,93 @@
   }
 
   // ============================================================
-  // Master Stock Chart & Timeline Scrubber (Brush)
+  // Trading Pulse Chart (Attached Reference Style Everywhere)
+  // Day-Wise Growth Recorded Strictly on Count Increases
+  // Stock-style Non-Zero Baselines & Pan/Zoom Trading Navigation
   // ============================================================
 
   function renderAllCharts() {
     if (!dashboardData) return;
-    renderMasterChart();
-    renderDedicatedStockCharts();
-    renderIntradayChart();
+    renderTradingPulseChart();
   }
 
-  function getFilteredData() {
-    if (!dashboardData) return [];
-    const isHourly = activeRange === '24H' || (dashboardData.timeseries && dashboardData.timeseries.length <= 1);
+  function getTradingSeriesData() {
+    if (!dashboardData) return { transfers: [], downloads: [], visitors: [], files: [] };
+    const inc = dashboardData.increaseSeries || {};
+    const source = chartMode === 'dayWise' ? (inc.dayWise || {}) : (inc.eventTicks || {});
 
-    if (isHourly) {
-      return (dashboardData.intraday || []).map(h => ({
-        date: h.hour,
-        timestamp: h.timestamp,
-        dailyTransfers: h.transfers,
-        cumulativeTransfers: h.cumulativeTransfers,
-        dailyFiles: h.files,
-        cumulativeFiles: h.cumulativeFiles,
-        dailyDownloads: h.downloads,
-        cumulativeDownloads: h.cumulativeDownloads,
-        dailyVisitors: h.visitors,
-        cumulativeVisitors: h.cumulativeVisitors,
-        activeTransfers: h.activeTransfers,
-        storageMB: h.storageMB || 0,
-        cumulativeStorageMB: h.storageMB || 0
-      }));
-    }
-
-    const all = dashboardData.timeseries || [];
-    let count = all.length;
-    if (activeRange === '7D') count = 7;
-    else if (activeRange === '14D') count = 14;
-    else if (activeRange === '30D') count = 30;
-    else if (activeRange === '90D') count = 90;
-
-    return all.slice(-count);
+    return {
+      transfers: source.transfers || [],
+      downloads: source.downloads || [],
+      visitors: source.visitors || [],
+      files: source.files || []
+    };
   }
 
-  function renderMasterChart() {
-    const data = getFilteredData();
-    const elMaster = document.getElementById('masterStockChart');
-    const elBrush = document.getElementById('masterBrushChart');
-    if (!elMaster || !elBrush) return;
+  function renderTradingPulseChart() {
+    const el = document.getElementById('tradingPulseChart');
+    if (!el || !dashboardData) return;
 
-    const isCum = viewMode === 'cumulative';
+    const data = getTradingSeriesData();
 
     const series = [];
     if (activeSeries.transfers) {
       series.push({
-        name: 'Transfers Created',
-        data: data.map(d => [d.timestamp, isCum ? d.cumulativeTransfers : d.dailyTransfers]),
+        name: 'Transfers',
+        data: data.transfers,
         color: METRIC_COLORS.transfers
-      });
-    }
-    if (activeSeries.files) {
-      series.push({
-        name: 'Files Uploaded',
-        data: data.map(d => [d.timestamp, isCum ? d.cumulativeFiles : d.dailyFiles]),
-        color: METRIC_COLORS.files
       });
     }
     if (activeSeries.downloads) {
       series.push({
-        name: 'Downloads Completed',
-        data: data.map(d => [d.timestamp, isCum ? d.cumulativeDownloads : d.dailyDownloads]),
+        name: 'Downloads',
+        data: data.downloads,
         color: METRIC_COLORS.downloads
       });
     }
     if (activeSeries.visitors) {
       series.push({
-        name: 'Unique Visitors',
-        data: data.map(d => [d.timestamp, isCum ? d.cumulativeVisitors : d.dailyVisitors]),
+        name: 'Visitors',
+        data: data.visitors,
         color: METRIC_COLORS.visitors
       });
     }
-    if (activeSeries.active) {
+    if (activeSeries.files) {
       series.push({
-        name: 'Active Transfers',
-        data: data.map(d => [d.timestamp, d.activeTransfers]),
-        color: METRIC_COLORS.active
-      });
-    }
-    if (activeSeries.storage) {
-      series.push({
-        name: 'Storage (MB)',
-        data: data.map(d => [d.timestamp, isCum ? d.cumulativeStorageMB : d.storageMB]),
-        color: METRIC_COLORS.storage
+        name: 'Files',
+        data: data.files,
+        color: METRIC_COLORS.files
       });
     }
 
-    // If masterChart already exists, update smoothly
-    if (masterChart) {
-      masterChart.updateSeries(series);
-      if (brushChart) {
-        brushChart.updateSeries([{
-          name: 'Volume',
-          data: data.map(d => [d.timestamp, isCum ? d.cumulativeTransfers : d.dailyTransfers])
-        }]);
-      }
+    // If chart instance already exists, update smoothly
+    if (tradingChartInstance) {
+      tradingChartInstance.updateOptions({
+        xaxis: {
+          labels: {
+            format: chartMode === 'dayWise' ? 'dd MMM' : 'HH:mm'
+          }
+        },
+        tooltip: {
+          x: {
+            format: chartMode === 'dayWise' ? 'dd MMM yyyy' : 'dd MMM HH:mm'
+          }
+        }
+      }, false, false);
+      tradingChartInstance.updateSeries(series);
       return;
     }
 
-    // Build Master Stock Chart Options
-    const masterOptions = {
+    const options = {
       series,
       chart: {
-        id: 'masterStockArea',
+        id: 'tradingStockChart',
         type: 'area',
-        height: 380,
+        height: 420,
         background: 'transparent',
         toolbar: {
           show: true,
+          autoSelected: 'pan', // Trading pan by default: drag forward and backward across time
           tools: {
             download: true,
             selection: true,
@@ -519,425 +552,150 @@
             reset: true
           }
         },
-        animations: { enabled: true, easing: 'easeinout', speed: 600 }
+        zoom: {
+          enabled: true,
+          type: 'x',
+          autoScaleYaxis: true
+        },
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 500
+        }
       },
       colors: series.map(s => s.color),
-      dataLabels: { enabled: false },
-      stroke: { curve: 'smooth', width: 2.5 },
+      stroke: {
+        curve: 'smooth',
+        width: 3
+      },
       fill: {
         type: 'gradient',
         gradient: {
           shadeIntensity: 1,
-          opacityFrom: 0.65,
-          opacityTo: 0.08,
-          stops: [0, 95, 100]
+          opacityFrom: 0.55,
+          opacityTo: 0.04,
+          stops: [0, 90, 100]
         }
       },
-      xaxis: {
-        type: 'datetime',
-        labels: {
-          style: { colors: '#9CA3AF', fontSize: '11px', fontFamily: 'inherit' },
-          datetimeUTC: false
+      // Data labels badges matching the user's reference screenshot
+      dataLabels: {
+        enabled: true,
+        style: {
+          fontSize: '11px',
+          fontFamily: 'Inter, system-ui, sans-serif',
+          fontWeight: '700'
         },
-        axisBorder: { color: 'rgba(255, 255, 255, 0.08)' },
-        axisTicks: { color: 'rgba(255, 255, 255, 0.08)' }
-      },
-      yaxis: {
-        labels: {
-          style: { colors: '#9CA3AF', fontSize: '11px', fontFamily: 'inherit' },
-          formatter: (val) => formatNumber(Math.round(val))
-        }
-      },
-      grid: {
-        borderColor: 'rgba(255, 255, 255, 0.06)',
-        strokeDashArray: 4
-      },
-      theme: { mode: 'dark' },
-      tooltip: {
-        theme: 'dark',
-        x: {
-          format: activeRange === '24H' ? 'HH:mm' : 'dd MMM yyyy'
-        },
-        y: {
-          formatter: (val) => formatNumber(val)
-        }
-      },
-      legend: { show: false } // Controlled via custom header pills
-    };
-
-    masterChart = new ApexCharts(elMaster, masterOptions);
-    masterChart.render();
-
-    // Brush Scrubber Chart
-    const brushOptions = {
-      series: [{
-        name: 'Volume',
-        data: data.map(d => [d.timestamp, isCum ? d.cumulativeTransfers : d.dailyTransfers])
-      }],
-      chart: {
-        id: 'masterStockBrush',
-        height: 110,
-        type: 'area',
-        background: 'transparent',
-        brush: {
-          target: 'masterStockArea',
-          enabled: true
-        },
-        selection: {
+        background: {
           enabled: true,
-          xaxis: {
-            min: data[Math.max(0, data.length - 14)] ? data[Math.max(0, data.length - 14)].timestamp : data[0].timestamp,
-            max: data[data.length - 1].timestamp
-          }
-        }
-      },
-      colors: [METRIC_COLORS.transfers],
-      fill: {
-        type: 'gradient',
-        gradient: {
-          opacityFrom: 0.4,
-          opacityTo: 0.05
-        }
-      },
-      stroke: { width: 1.5 },
-      xaxis: {
-        type: 'datetime',
-        tooltip: { enabled: false },
-        labels: { show: false }
-      },
-      yaxis: {
-        tickAmount: 2,
-        labels: { show: false }
-      },
-      grid: { show: false }
-    };
-
-    brushChart = new ApexCharts(elBrush, brushOptions);
-    brushChart.render();
-  }
-
-  function updateMasterChartSeries() {
-    if (!masterChart) return;
-    const data = getFilteredData();
-    const isCum = viewMode === 'cumulative';
-
-    const series = [];
-    if (activeSeries.transfers) {
-      series.push({
-        name: 'Transfers Created',
-        data: data.map(d => [d.timestamp, isCum ? d.cumulativeTransfers : d.dailyTransfers]),
-        color: METRIC_COLORS.transfers
-      });
-    }
-    if (activeSeries.files) {
-      series.push({
-        name: 'Files Uploaded',
-        data: data.map(d => [d.timestamp, isCum ? d.cumulativeFiles : d.dailyFiles]),
-        color: METRIC_COLORS.files
-      });
-    }
-    if (activeSeries.downloads) {
-      series.push({
-        name: 'Downloads Completed',
-        data: data.map(d => [d.timestamp, isCum ? d.cumulativeDownloads : d.dailyDownloads]),
-        color: METRIC_COLORS.downloads
-      });
-    }
-    if (activeSeries.visitors) {
-      series.push({
-        name: 'Unique Visitors',
-        data: data.map(d => [d.timestamp, isCum ? d.cumulativeVisitors : d.dailyVisitors]),
-        color: METRIC_COLORS.visitors
-      });
-    }
-    if (activeSeries.active) {
-      series.push({
-        name: 'Active Transfers',
-        data: data.map(d => [d.timestamp, d.activeTransfers]),
-        color: METRIC_COLORS.active
-      });
-    }
-    if (activeSeries.storage) {
-      series.push({
-        name: 'Storage (MB)',
-        data: data.map(d => [d.timestamp, isCum ? d.cumulativeStorageMB : d.storageMB]),
-        color: METRIC_COLORS.storage
-      });
-    }
-
-    masterChart.updateOptions({ colors: series.map(s => s.color) });
-    masterChart.updateSeries(series);
-  }
-
-  // ============================================================
-  // Dedicated Individual Stock Charts (Charts for EVERY Count)
-  // ============================================================
-
-  function renderDedicatedStockCharts() {
-    const data = getFilteredData();
-    const isCum = viewMode === 'cumulative';
-
-    // 1. Transfers Stock Chart
-    renderSingleStockChart({
-      chartKey: 'transfers',
-      containerId: 'chartTransfers',
-      metricTitle: 'Transfers Created',
-      seriesData: data.map(d => [d.timestamp, isCum ? d.cumulativeTransfers : d.dailyTransfers]),
-      color: METRIC_COLORS.transfers,
-      unit: '',
-      statTotalId: 'statTransfersTotal',
-      statHighId: 'statTransfersHigh',
-      statLowId: 'statTransfersLow',
-      statAvgId: 'statTransfersAvg'
-    });
-
-    // 2. Files Uploaded Stock Chart
-    renderSingleStockChart({
-      chartKey: 'files',
-      containerId: 'chartFiles',
-      metricTitle: 'Files Uploaded',
-      seriesData: data.map(d => [d.timestamp, isCum ? d.cumulativeFiles : d.dailyFiles]),
-      color: METRIC_COLORS.files,
-      unit: '',
-      statTotalId: 'statFilesTotal',
-      statHighId: 'statFilesHigh',
-      statLowId: 'statFilesLow',
-      statAvgId: 'statFilesAvg'
-    });
-
-    // 3. Downloads Completed Stock Chart
-    renderSingleStockChart({
-      chartKey: 'downloads',
-      containerId: 'chartDownloads',
-      metricTitle: 'Downloads Completed',
-      seriesData: data.map(d => [d.timestamp, isCum ? d.cumulativeDownloads : d.dailyDownloads]),
-      color: METRIC_COLORS.downloads,
-      unit: '',
-      statTotalId: 'statDownloadsTotal',
-      statHighId: 'statDownloadsHigh',
-      statLowId: 'statDownloadsLow',
-      statAvgId: 'statDownloadsAvg'
-    });
-
-    // 4. Unique Visitors Stock Chart
-    renderSingleStockChart({
-      chartKey: 'visitors',
-      containerId: 'chartVisitors',
-      metricTitle: 'Unique Visitors / Devices',
-      seriesData: data.map(d => [d.timestamp, isCum ? d.cumulativeVisitors : d.dailyVisitors]),
-      color: METRIC_COLORS.visitors,
-      unit: '',
-      statTotalId: 'statVisitorsTotal',
-      statHighId: 'statVisitorsHigh',
-      statLowId: 'statVisitorsLow',
-      statAvgId: 'statVisitorsAvg'
-    });
-
-    // 5. Active Concurrent Transfers Stock Chart
-    renderSingleStockChart({
-      chartKey: 'active',
-      containerId: 'chartActive',
-      metricTitle: 'Active Live Transfers',
-      seriesData: data.map(d => [d.timestamp, d.activeTransfers]),
-      color: METRIC_COLORS.active,
-      unit: '',
-      statTotalId: 'statActiveTotal',
-      statHighId: 'statActiveHigh',
-      statLowId: 'statActiveLow',
-      statAvgId: 'statActiveAvg'
-    });
-
-    // 6. Transferred Storage Volume Stock Chart
-    renderSingleStockChart({
-      chartKey: 'storage',
-      containerId: 'chartStorage',
-      metricTitle: 'Transferred Storage (MB)',
-      seriesData: data.map(d => [d.timestamp, isCum ? d.cumulativeStorageMB : d.storageMB]),
-      color: METRIC_COLORS.storage,
-      unit: ' MB',
-      statTotalId: 'statStorageTotal',
-      statHighId: 'statStorageHigh',
-      statLowId: 'statStorageLow',
-      statAvgId: 'statStorageAvg'
-    });
-  }
-
-  function renderSingleStockChart({
-    chartKey,
-    containerId,
-    metricTitle,
-    seriesData,
-    color,
-    unit = '',
-    statTotalId,
-    statHighId,
-    statLowId,
-    statAvgId
-  }) {
-    const el = document.getElementById(containerId);
-    if (!el) return;
-
-    // Calculate High, Low, Average, Total for this timeframe
-    const values = seriesData.map(pt => pt[1]);
-    const maxVal = values.length ? Math.max(...values) : 0;
-    const minVal = values.length ? Math.min(...values) : 0;
-    const sumVal = values.reduce((a, b) => a + b, 0);
-    const avgVal = values.length ? (sumVal / values.length).toFixed(1) : '0';
-
-    setElementText(statHighId, `${formatNumber(maxVal)}${unit}`);
-    setElementText(statLowId, `${formatNumber(minVal)}${unit}`);
-    setElementText(statAvgId, `${formatNumber(avgVal)}${unit}`);
-    setElementText(statTotalId, `${formatNumber(viewMode === 'cumulative' ? (values[values.length - 1] || 0) : sumVal)}${unit}`);
-
-    // If chart already exists, update series
-    if (stockCharts[chartKey]) {
-      stockCharts[chartKey].updateSeries([{
-        name: metricTitle,
-        data: seriesData
-      }]);
-      return;
-    }
-
-    const options = {
-      series: [{
-        name: metricTitle,
-        data: seriesData
-      }],
-      chart: {
-        type: 'area',
-        height: 280,
-        background: 'transparent',
-        toolbar: {
-          show: true,
-          tools: {
-            download: true,
-            selection: false,
-            zoom: true,
-            zoomin: true,
-            zoomout: true,
-            pan: true,
-            reset: true
+          foreColor: '#ffffff',
+          padding: 4,
+          borderRadius: 4,
+          borderWidth: 0,
+          opacity: 0.92,
+          dropShadow: {
+            enabled: true,
+            top: 1,
+            left: 1,
+            blur: 2,
+            color: '#000',
+            opacity: 0.35
           }
         },
-        animations: { enabled: true, easing: 'easeinout', speed: 500 }
+        offsetY: -6,
+        formatter: (val) => val
       },
-      colors: [color],
-      dataLabels: { enabled: false },
-      stroke: { curve: 'smooth', width: 2.2 },
-      fill: {
-        type: 'gradient',
-        gradient: {
-          shadeIntensity: 1,
-          opacityFrom: 0.6,
-          opacityTo: 0.05,
-          stops: [0, 95, 100]
-        }
+      markers: {
+        size: 5,
+        strokeWidth: 2,
+        strokeColors: '#0a0d14',
+        hover: { size: 7 }
       },
       xaxis: {
         type: 'datetime',
         labels: {
           style: { colors: '#9CA3AF', fontSize: '11px', fontFamily: 'inherit' },
-          datetimeUTC: false
+          datetimeUTC: false,
+          format: chartMode === 'dayWise' ? 'dd MMM' : 'HH:mm'
         },
         axisBorder: { color: 'rgba(255, 255, 255, 0.08)' },
         axisTicks: { color: 'rgba(255, 255, 255, 0.08)' }
       },
+      // Non-zero baseline! Start count from current counter values like a stock price chart at 100
       yaxis: {
+        min: function(min) {
+          return Math.max(0, Math.floor(min - 5));
+        },
+        max: function(max) {
+          return Math.ceil(max + 5);
+        },
+        forceNiceScale: true,
         labels: {
           style: { colors: '#9CA3AF', fontSize: '11px', fontFamily: 'inherit' },
-          formatter: (val) => `${formatNumber(Math.round(val))}${unit}`
-        }
-      },
-      grid: {
-        borderColor: 'rgba(255, 255, 255, 0.06)',
-        strokeDashArray: 4
-      },
-      theme: { mode: 'dark' },
-      tooltip: {
-        theme: 'dark',
-        x: {
-          format: activeRange === '24H' ? 'HH:mm' : 'dd MMM yyyy'
-        },
-        y: {
-          formatter: (val) => `${formatNumber(val)}${unit}`
-        }
-      }
-    };
-
-    stockCharts[chartKey] = new ApexCharts(el, options);
-    stockCharts[chartKey].render();
-  }
-
-  // ============================================================
-  // Intraday 24-Hour Velocity Pulse Chart
-  // ============================================================
-
-  function renderIntradayChart() {
-    const el = document.getElementById('chartIntraday');
-    if (!el || !dashboardData) return;
-    const intraday = dashboardData.intraday || [];
-
-    const series = [
-      {
-        name: 'Transfers',
-        data: intraday.map(h => [h.timestamp, h.transfers])
-      },
-      {
-        name: 'Downloads',
-        data: intraday.map(h => [h.timestamp, h.downloads])
-      },
-      {
-        name: 'Visitors',
-        data: intraday.map(h => [h.timestamp, h.visitors])
-      }
-    ];
-
-    if (stockCharts.intraday) {
-      stockCharts.intraday.updateSeries(series);
-      return;
-    }
-
-    const options = {
-      series,
-      chart: {
-        type: 'area',
-        height: 280,
-        background: 'transparent',
-        toolbar: { show: true }
-      },
-      colors: [METRIC_COLORS.transfers, METRIC_COLORS.downloads, METRIC_COLORS.visitors],
-      stroke: { curve: 'smooth', width: 2 },
-      fill: {
-        type: 'gradient',
-        gradient: { opacityFrom: 0.5, opacityTo: 0.05 }
-      },
-      xaxis: {
-        type: 'datetime',
-        labels: {
-          style: { colors: '#9CA3AF', fontSize: '11px' },
-          datetimeUTC: false,
-          format: 'HH:mm'
-        }
-      },
-      yaxis: {
-        labels: {
-          style: { colors: '#9CA3AF', fontSize: '11px' },
           formatter: (val) => Math.round(val)
         }
       },
       grid: {
         borderColor: 'rgba(255, 255, 255, 0.06)',
-        strokeDashArray: 4
+        strokeDashArray: 4,
+        padding: {
+          left: 20,
+          right: 35,
+          top: 10,
+          bottom: 10
+        }
       },
       theme: { mode: 'dark' },
+      // Centered bottom legend matching screenshot
+      legend: {
+        show: true,
+        position: 'bottom',
+        horizontalAlign: 'center',
+        fontSize: '12px',
+        labels: { colors: '#E5E7EB' },
+        markers: { radius: 12, width: 10, height: 10 },
+        itemMargin: { horizontal: 14, vertical: 8 }
+      },
       tooltip: {
         theme: 'dark',
-        x: { format: 'HH:mm' }
+        x: {
+          format: chartMode === 'dayWise' ? 'dd MMM yyyy' : 'dd MMM yyyy HH:mm'
+        },
+        y: {
+          formatter: (val) => `${val} count`
+        }
       }
     };
 
-    stockCharts.intraday = new ApexCharts(el, options);
-    stockCharts.intraday.render();
+    tradingChartInstance = new ApexCharts(el, options);
+    tradingChartInstance.render();
+  }
+
+  function updateTradingChartSeries() {
+    if (!tradingChartInstance) {
+      renderTradingPulseChart();
+      return;
+    }
+    const data = getTradingSeriesData();
+    const series = [];
+    if (activeSeries.transfers) series.push({ name: 'Transfers', data: data.transfers, color: METRIC_COLORS.transfers });
+    if (activeSeries.downloads) series.push({ name: 'Downloads', data: data.downloads, color: METRIC_COLORS.downloads });
+    if (activeSeries.visitors) series.push({ name: 'Visitors', data: data.visitors, color: METRIC_COLORS.visitors });
+    if (activeSeries.files) series.push({ name: 'Files', data: data.files, color: METRIC_COLORS.files });
+
+    tradingChartInstance.updateOptions({
+      colors: series.map(s => s.color),
+      xaxis: {
+        labels: {
+          format: chartMode === 'dayWise' ? 'dd MMM' : 'HH:mm'
+        }
+      },
+      tooltip: {
+        x: {
+          format: chartMode === 'dayWise' ? 'dd MMM yyyy' : 'dd MMM HH:mm'
+        }
+      }
+    }, false, false);
+    tradingChartInstance.updateSeries(series);
   }
 
   // ============================================================
