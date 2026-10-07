@@ -20,13 +20,14 @@
   // Chart instances
   let tradingChartInstance = null;
   let sparklines = {};
-  let chartMode = 'intraday'; // 'intraday' (default matching user reference) or 'dayWise'
+  let chartMode = 'dayWise'; // 'dayWise' (primary slidable growth view) or 'intraday'
+  let currentWindowSpan = null; // null means full or auto sliding window
 
   const activeSeries = {
     transfers: true,
     downloads: true,
     visitors: true,
-    files: false
+    files: true
   };
 
   const METRIC_COLORS = {
@@ -169,37 +170,64 @@
 
     function setChartMode(mode) {
       chartMode = mode;
-      if (mode === 'intraday') {
-        if (btnModeIntraday) btnModeIntraday.classList.add('active');
-        if (btnModeDayWise) btnModeDayWise.classList.remove('active');
-        if (chartTitleIcon) chartTitleIcon.textContent = '⏱️';
-        if (chartTitleText) chartTitleText.textContent = "Today's Intraday 24-Hour Pulse";
-        if (chartSubtitleText) chartSubtitleText.textContent = 'Hourly velocity showing activity distribution across morning, afternoon, and evening';
-        // Hide files pill by default in intraday mode matching reference screenshot
-        const pillFiles = document.getElementById('pillFiles');
-        if (pillFiles) {
-          activeSeries.files = false;
-          pillFiles.classList.remove('active');
-        }
-      } else {
+      currentWindowSpan = null;
+      if (mode === 'dayWise') {
         if (btnModeDayWise) btnModeDayWise.classList.add('active');
         if (btnModeIntraday) btnModeIntraday.classList.remove('active');
         if (chartTitleIcon) chartTitleIcon.textContent = '📈';
         if (chartTitleText) chartTitleText.textContent = 'LabDrop Day-Wise Growth';
-        if (chartSubtitleText) chartSubtitleText.textContent = 'Event timeline recorded strictly on count increases starting from current counters';
+        if (chartSubtitleText) chartSubtitleText.textContent = 'Event timeline recorded on count increases starting from current counters — Slidable across time';
         const pillFiles = document.getElementById('pillFiles');
         if (pillFiles) {
           activeSeries.files = true;
           pillFiles.classList.add('active');
         }
+      } else {
+        if (btnModeIntraday) btnModeIntraday.classList.add('active');
+        if (btnModeDayWise) btnModeDayWise.classList.remove('active');
+        if (chartTitleIcon) chartTitleIcon.textContent = '⏱️';
+        if (chartTitleText) chartTitleText.textContent = "Today's Intraday 24-Hour Pulse";
+        if (chartSubtitleText) chartSubtitleText.textContent = 'Hourly velocity showing activity distribution across morning, afternoon, and evening';
+        const pillFiles = document.getElementById('pillFiles');
+        if (pillFiles) {
+          activeSeries.files = false;
+          pillFiles.classList.remove('active');
+        }
       }
       updateTradingChartSeries();
+      const slider = document.getElementById('timelineRangeSlider');
+      if (slider) slider.value = 100;
+      const bounds = getTimelineBounds();
+      if (bounds) updateSliderLabels(bounds.minT, bounds.maxT, bounds.minT, bounds.maxT);
     }
 
     if (btnModeIntraday && btnModeDayWise) {
       btnModeIntraday.addEventListener('click', () => setChartMode('intraday'));
       btnModeDayWise.addEventListener('click', () => setChartMode('dayWise'));
     }
+
+    // Interactive Timeline Range Slider Scrubber
+    const timelineSlider = document.getElementById('timelineRangeSlider');
+    const btnSlideBarLeft = document.getElementById('btnSlideBarLeft');
+    const btnSlideBarRight = document.getElementById('btnSlideBarRight');
+
+    if (timelineSlider) {
+      timelineSlider.addEventListener('input', (e) => {
+        applySliderWindow(parseInt(e.target.value, 10));
+      });
+    }
+
+    const slideTimelineStep = (direction) => {
+      if (!timelineSlider) return;
+      const cur = parseInt(timelineSlider.value, 10);
+      const step = 15;
+      const next = direction === 'left' ? Math.max(0, cur - step) : Math.min(100, cur + step);
+      timelineSlider.value = next;
+      applySliderWindow(next);
+    };
+
+    if (btnSlideBarLeft) btnSlideBarLeft.addEventListener('click', () => slideTimelineStep('left'));
+    if (btnSlideBarRight) btnSlideBarRight.addEventListener('click', () => slideTimelineStep('right'));
 
     // Trading Navigation Controls (Pan Left/Right, Zoom In/Out, Reset)
     const btnPanLeft = document.getElementById('btnPanLeft');
@@ -208,41 +236,36 @@
     const btnZoomOut = document.getElementById('btnZoomOut');
     const btnChartReset = document.getElementById('btnChartReset');
 
-    if (btnPanLeft) {
-      btnPanLeft.addEventListener('click', () => {
-        if (!tradingChartInstance || !tradingChartInstance.w) return;
-        const { min, max } = tradingChartInstance.w.globals;
-        const shift = (max - min) * 0.25;
-        tradingChartInstance.zoomX(min - shift, max - shift);
-      });
-    }
-    if (btnPanRight) {
-      btnPanRight.addEventListener('click', () => {
-        if (!tradingChartInstance || !tradingChartInstance.w) return;
-        const { min, max } = tradingChartInstance.w.globals;
-        const shift = (max - min) * 0.25;
-        tradingChartInstance.zoomX(min + shift, max + shift);
-      });
-    }
+    if (btnPanLeft) btnPanLeft.addEventListener('click', () => slideTimelineStep('left'));
+    if (btnPanRight) btnPanRight.addEventListener('click', () => slideTimelineStep('right'));
+
     if (btnZoomIn) {
       btnZoomIn.addEventListener('click', () => {
-        if (!tradingChartInstance || !tradingChartInstance.w) return;
-        const { min, max } = tradingChartInstance.w.globals;
-        const shift = (max - min) * 0.2;
-        tradingChartInstance.zoomX(min + shift, max - shift);
+        const bounds = getTimelineBounds();
+        if (!bounds) return;
+        const totalSpan = bounds.maxT - bounds.minT;
+        currentWindowSpan = Math.max(3600 * 1000 * 2, (currentWindowSpan || totalSpan * 0.65) * 0.7);
+        const curVal = timelineSlider ? parseInt(timelineSlider.value, 10) : 100;
+        applySliderWindow(curVal);
       });
     }
     if (btnZoomOut) {
       btnZoomOut.addEventListener('click', () => {
-        if (!tradingChartInstance || !tradingChartInstance.w) return;
-        const { min, max } = tradingChartInstance.w.globals;
-        const shift = (max - min) * 0.25;
-        tradingChartInstance.zoomX(min - shift, max + shift);
+        const bounds = getTimelineBounds();
+        if (!bounds) return;
+        const totalSpan = bounds.maxT - bounds.minT;
+        currentWindowSpan = Math.min(totalSpan, (currentWindowSpan || totalSpan * 0.65) * 1.35);
+        const curVal = timelineSlider ? parseInt(timelineSlider.value, 10) : 100;
+        applySliderWindow(curVal);
       });
     }
     if (btnChartReset) {
       btnChartReset.addEventListener('click', () => {
+        currentWindowSpan = null;
+        if (timelineSlider) timelineSlider.value = 100;
         if (tradingChartInstance) tradingChartInstance.resetSeries();
+        const bounds = getTimelineBounds();
+        if (bounds) updateSliderLabels(bounds.minT, bounds.maxT, bounds.minT, bounds.maxT);
       });
     }
 
@@ -479,9 +502,91 @@
 
   // ============================================================
   // Trading Pulse Chart (Attached Reference Style Everywhere)
-  // Day-Wise Growth Recorded Strictly on Count Increases
-  // Stock-style Non-Zero Baselines & Pan/Zoom Trading Navigation
+  // Day-Wise Growth Recorded Strictly on Count Increases — Slidable Timeline
+  // Stock-style Non-Zero Baselines & Interactive Range Slider
   // ============================================================
+
+  function formatTimelineDate(ts, short = false) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = d.getDate().toString().padStart(2, '0');
+    const mo = months[d.getMonth()];
+    const hh = d.getHours().toString().padStart(2, '0');
+    const mm = d.getMinutes().toString().padStart(2, '0');
+    if (short) return `${day} ${mo}`;
+    return `${day} ${mo} ${hh}:${mm}`;
+  }
+
+  function getTimelineBounds() {
+    const data = getTradingSeriesData();
+    const allPts = [];
+    if (activeSeries.transfers) allPts.push(...(data.transfers || []));
+    if (activeSeries.downloads) allPts.push(...(data.downloads || []));
+    if (activeSeries.visitors) allPts.push(...(data.visitors || []));
+    if (activeSeries.files) allPts.push(...(data.files || []));
+
+    if (allPts.length === 0) return null;
+    const times = allPts.map(p => p[0]);
+    return {
+      minT: Math.min(...times),
+      maxT: Math.max(...times)
+    };
+  }
+
+  function updateSliderLabels(startT, endT, minT, maxT) {
+    const elMin = document.getElementById('sliderDateMin');
+    const elMax = document.getElementById('sliderDateMax');
+    const elText = document.getElementById('sliderRangeText');
+    if (elMin) elMin.textContent = formatTimelineDate(minT, true);
+    if (elMax) elMax.textContent = formatTimelineDate(maxT, true) + ' (Live)';
+    if (elText) {
+      elText.textContent = `${formatTimelineDate(startT)} — ${formatTimelineDate(endT)}`;
+    }
+  }
+
+  function applySliderWindow(sliderVal) {
+    if (!tradingChartInstance) return;
+    const bounds = getTimelineBounds();
+    if (!bounds) return;
+    const { minT, maxT } = bounds;
+    const totalSpan = maxT - minT;
+
+    if (totalSpan <= 0) {
+      updateSliderLabels(minT, maxT, minT, maxT);
+      return;
+    }
+
+    const effectiveWindow = currentWindowSpan || Math.max(3600 * 1000 * 3, totalSpan * 0.65);
+    const travel = Math.max(0, totalSpan - effectiveWindow);
+
+    const progress = sliderVal / 100;
+    const startT = minT + (travel * progress);
+    const endT = Math.min(maxT, startT + effectiveWindow);
+
+    tradingChartInstance.zoomX(startT, endT);
+    updateSliderLabels(startT, endT, minT, maxT);
+  }
+
+  function syncSliderFromChart(chartContext, { xaxis }) {
+    if (!xaxis) return;
+    const bounds = getTimelineBounds();
+    if (!bounds) return;
+    const { minT, maxT } = bounds;
+    const totalSpan = maxT - minT;
+    if (totalSpan <= 0) return;
+
+    const visibleSpan = xaxis.max - xaxis.min;
+    currentWindowSpan = visibleSpan;
+    const travel = totalSpan - visibleSpan;
+
+    const slider = document.getElementById('timelineRangeSlider');
+    if (slider && travel > 0) {
+      const progress = Math.max(0, Math.min(1, (xaxis.min - minT) / travel));
+      slider.value = Math.round(progress * 100);
+    }
+    updateSliderLabels(xaxis.min, xaxis.max, minT, maxT);
+  }
 
   function renderAllCharts() {
     if (!dashboardData) return;
@@ -499,8 +604,11 @@
         files: intraday.map(h => [h.timestamp, h.files || 0])
       };
     }
+    // Day-Wise Growth: plot increase milestones across days so each event has a badge!
     const inc = dashboardData.increaseSeries || {};
-    const source = inc.dayWise || {};
+    const source = (inc.eventTicks && inc.eventTicks.transfers && inc.eventTicks.transfers.length > 0)
+      ? inc.eventTicks
+      : (inc.dayWise || {});
 
     return {
       transfers: source.transfers || [],
@@ -560,7 +668,7 @@
         background: 'transparent',
         toolbar: {
           show: true,
-          autoSelected: 'pan', // Trading pan by default
+          autoSelected: 'pan', // Trading pan by default: drag to slide across timeline
           tools: {
             download: true,
             selection: true,
@@ -579,7 +687,11 @@
         animations: {
           enabled: true,
           easing: 'easeinout',
-          speed: 400
+          speed: 350
+        },
+        events: {
+          scrolled: syncSliderFromChart,
+          zoomed: syncSliderFromChart
         }
       },
       colors: series.map(s => s.color),
@@ -634,7 +746,7 @@
         labels: {
           style: { colors: '#9CA3AF', fontSize: '11px', fontFamily: 'inherit' },
           datetimeUTC: false,
-          format: chartMode === 'dayWise' ? 'dd MMM' : 'HH:mm'
+          format: chartMode === 'dayWise' ? 'dd MMM HH:mm' : 'HH:mm'
         },
         axisBorder: { color: 'rgba(255, 255, 255, 0.08)' },
         axisTicks: { color: 'rgba(255, 255, 255, 0.08)' }
@@ -687,7 +799,7 @@
       tooltip: {
         theme: 'dark',
         x: {
-          format: chartMode === 'dayWise' ? 'dd MMM yyyy' : 'dd MMM yyyy HH:mm'
+          format: 'dd MMM yyyy HH:mm'
         },
         y: {
           formatter: (val) => `${val} count`
@@ -697,6 +809,11 @@
 
     tradingChartInstance = new ApexCharts(el, options);
     tradingChartInstance.render();
+
+    const bounds = getTimelineBounds();
+    if (bounds) {
+      applySliderWindow(100);
+    }
   }
 
   function updateTradingChartSeries() {
@@ -722,7 +839,7 @@
       },
       xaxis: {
         labels: {
-          format: chartMode === 'dayWise' ? 'dd MMM' : 'HH:mm'
+          format: chartMode === 'dayWise' ? 'dd MMM HH:mm' : 'HH:mm'
         }
       },
       yaxis: chartMode === 'intraday' ? {
@@ -750,11 +867,18 @@
       },
       tooltip: {
         x: {
-          format: chartMode === 'dayWise' ? 'dd MMM yyyy' : 'dd MMM HH:mm'
+          format: 'dd MMM yyyy HH:mm'
         }
       }
     }, false, false);
     tradingChartInstance.updateSeries(series);
+
+    const bounds = getTimelineBounds();
+    if (bounds) {
+      const slider = document.getElementById('timelineRangeSlider');
+      const curVal = slider ? parseInt(slider.value, 10) : 100;
+      applySliderWindow(curVal);
+    }
   }
 
   // ============================================================

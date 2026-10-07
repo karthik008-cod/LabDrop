@@ -187,28 +187,28 @@
     </section>
 
     <!-- Dedicated Trading Chart: Genuine Day-Wise Growth Recorded on Count Increases -->
-    <!-- Dedicated Chart: Today's Intraday 24-Hour Velocity Pulse & Day-Wise Growth -->
+    <!-- Dedicated Chart: Slidable Day-Wise Growth & Intraday 24-Hour Velocity Pulse -->
     <section class="chart-card-master" id="tradingChartCard">
       <div class="chart-card-header">
         <div class="chart-heading-group">
           <h2 class="chart-title">
-            <span id="chartTitleIcon">⏱️</span>
-            <span id="chartTitleText">Today's Intraday 24-Hour Pulse</span>
+            <span id="chartTitleIcon">📈</span>
+            <span id="chartTitleText">LabDrop Day-Wise Growth</span>
           </h2>
-          <p class="chart-subtitle" id="chartSubtitleText">Hourly velocity showing activity distribution across morning, afternoon, and evening</p>
+          <p class="chart-subtitle" id="chartSubtitleText">Event timeline recorded on count increases starting from current counters — Slidable across time</p>
         </div>
 
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-          <!-- View Mode Toggle: Intraday Pulse vs Day-Wise Growth -->
+          <!-- View Mode Toggle: Day-Wise Growth vs Intraday Pulse -->
           <div class="seg-button-group">
-            <button class="seg-btn active" id="btnModeIntraday" data-chart-mode="intraday" title="Today's 24-Hour Velocity Pulse across hours">⏱️ 24H Pulse</button>
-            <button class="seg-btn" id="btnModeDayWise" data-chart-mode="dayWise" title="Day-Wise Growth starting from current counters">📅 Day-Wise Growth</button>
+            <button class="seg-btn active" id="btnModeDayWise" data-chart-mode="dayWise" title="Day-Wise Growth starting from current counters (Slidable)">📅 Day-Wise Growth</button>
+            <button class="seg-btn" id="btnModeIntraday" data-chart-mode="intraday" title="Today's 24-Hour Velocity Pulse across hours">⏱️ 24H Pulse</button>
           </div>
 
           <!-- Trading Navigation Buttons -->
           <div class="seg-button-group">
-            <button class="seg-btn" id="btnPanLeft" title="Pan backward">◀ Pan</button>
-            <button class="seg-btn" id="btnPanRight" title="Pan forward">Pan ▶</button>
+            <button class="seg-btn" id="btnPanLeft" title="Slide backward">◀ Slide</button>
+            <button class="seg-btn" id="btnPanRight" title="Slide forward">Slide ▶</button>
             <button class="seg-btn" id="btnZoomIn" title="Zoom in">+</button>
             <button class="seg-btn" id="btnZoomOut" title="Zoom out">-</button>
             <button class="seg-btn" id="btnChartReset" title="Reset view">↺</button>
@@ -225,7 +225,7 @@
             <button class="toggle-pill active" data-toggle-metric="visitors" style="--pill-color: var(--sunset-rose);">
               <span class="pill-dot"></span> Visitors
             </button>
-            <button class="toggle-pill" id="pillFiles" data-toggle-metric="files" style="--pill-color: var(--electric-cyan);">
+            <button class="toggle-pill active" id="pillFiles" data-toggle-metric="files" style="--pill-color: var(--electric-cyan);">
               <span class="pill-dot"></span> Files
             </button>
           </div>
@@ -234,6 +234,29 @@
 
       <!-- Trading Chart Container -->
       <div class="chart-container-master" id="tradingPulseChart" style="min-height: 400px;"></div>
+
+      <!-- Interactive Timeline Slider Scrubber (Slidable across days) -->
+      <div class="timeline-slider-bar" id="timelineSliderBar">
+        <button class="slider-nav-btn" id="btnSlideBarLeft" title="Slide timeline backward">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Slide
+        </button>
+        <div class="slider-track-wrap">
+          <div class="slider-track-labels">
+            <span class="slider-bound-label" id="sliderDateMin">06 Oct</span>
+            <span class="slider-status-pill" id="sliderStatusPill">
+              <span class="slider-live-dot"></span>
+              <span id="sliderRangeText">Drag to Slide Across Timeline</span>
+            </span>
+            <span class="slider-bound-label" id="sliderDateMax">Today (Live)</span>
+          </div>
+          <input type="range" class="timeline-range-input" id="timelineRangeSlider" min="0" max="100" value="100" step="1" aria-label="Timeline Scrubber">
+        </div>
+        <button class="slider-nav-btn" id="btnSlideBarRight" title="Slide timeline forward">
+          Slide
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
     </section>
 
     <!-- Operational Tables Section -->

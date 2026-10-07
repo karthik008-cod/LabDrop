@@ -963,3 +963,158 @@ body {
     align-items: stretch;
   }
 }
+
+/* ============================================================
+   Interactive Timeline Slider Scrubber (Slidable Day-Wise Chart)
+   ============================================================ */
+
+.timeline-slider-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(17, 24, 39, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  margin-top: 10px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.timeline-slider-bar:hover {
+  border-color: rgba(255, 209, 102, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 209, 102, 0.05);
+}
+
+.slider-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #E5E7EB;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.slider-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: var(--accent-gold);
+  transform: translateY(-1px);
+}
+
+.slider-nav-btn:active {
+  transform: translateY(0);
+}
+
+.slider-track-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 140px;
+}
+
+.slider-track-labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.slider-bound-label {
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.slider-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 2px 10px;
+  border-radius: 12px;
+  color: #E5E7EB;
+  font-weight: 600;
+  font-size: 0.72rem;
+}
+
+.slider-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--emerald-green);
+  box-shadow: 0 0 6px var(--emerald-green);
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+.timeline-range-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(255, 209, 102, 0.4), rgba(139, 92, 246, 0.5), rgba(6, 214, 160, 0.6));
+  outline: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.timeline-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid var(--accent-gold);
+  box-shadow: 0 0 10px rgba(255, 209, 102, 0.7), 0 2px 6px rgba(0, 0, 0, 0.6);
+  cursor: ew-resize;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.timeline-range-input::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 14px rgba(255, 209, 102, 0.9), 0 3px 8px rgba(0, 0, 0, 0.7);
+}
+
+.timeline-range-input::-webkit-slider-thumb:active {
+  transform: scale(1.25);
+  box-shadow: 0 0 18px var(--accent-gold), 0 4px 10px rgba(0, 0, 0, 0.8);
+}
+
+.timeline-range-input::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid var(--accent-gold);
+  box-shadow: 0 0 10px rgba(255, 209, 102, 0.7), 0 2px 6px rgba(0, 0, 0, 0.6);
+  cursor: ew-resize;
+  transition: transform 0.15s ease;
+}
+
+/* Grabbable chart canvas for intuitive sliding / panning */
+#tradingPulseChart .apexcharts-canvas {
+  cursor: grab !important;
+}
+
+#tradingPulseChart .apexcharts-canvas:active {
+  cursor: grabbing !important;
+}
