@@ -187,26 +187,28 @@
     </section>
 
     <!-- Dedicated Trading Chart: Genuine Day-Wise Growth Recorded on Count Increases -->
+    <!-- Dedicated Chart: Today's Intraday 24-Hour Velocity Pulse & Day-Wise Growth -->
     <section class="chart-card-master" id="tradingChartCard">
       <div class="chart-card-header">
         <div class="chart-heading-group">
           <h2 class="chart-title">
-            <span>📈 LabDrop Growth & Trading Pulse</span>
+            <span id="chartTitleIcon">⏱️</span>
+            <span id="chartTitleText">Today's Intraday 24-Hour Pulse</span>
           </h2>
-          <p class="chart-subtitle">Event timeline recorded strictly on count increases starting from current counters. Pan forward/backward and zoom horizontally like a trading chart.</p>
+          <p class="chart-subtitle" id="chartSubtitleText">Hourly velocity showing activity distribution across morning, afternoon, and evening</p>
         </div>
 
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-          <!-- Timeline View Mode Toggle -->
+          <!-- View Mode Toggle: Intraday Pulse vs Day-Wise Growth -->
           <div class="seg-button-group">
-            <button class="seg-btn active" id="btnModeDayWise" data-chart-mode="dayWise" title="Show points only on dates with count increases">📅 Day-Wise</button>
-            <button class="seg-btn" id="btnModeTicks" data-chart-mode="eventTicks" title="Show all granular event timestamps with count increases">⏱️ Event Ticks</button>
+            <button class="seg-btn active" id="btnModeIntraday" data-chart-mode="intraday" title="Today's 24-Hour Velocity Pulse across hours">⏱️ 24H Pulse</button>
+            <button class="seg-btn" id="btnModeDayWise" data-chart-mode="dayWise" title="Day-Wise Growth starting from current counters">📅 Day-Wise Growth</button>
           </div>
 
           <!-- Trading Navigation Buttons -->
           <div class="seg-button-group">
-            <button class="seg-btn" id="btnPanLeft" title="Pan timeline backward">◀ Pan</button>
-            <button class="seg-btn" id="btnPanRight" title="Pan timeline forward">Pan ▶</button>
+            <button class="seg-btn" id="btnPanLeft" title="Pan backward">◀ Pan</button>
+            <button class="seg-btn" id="btnPanRight" title="Pan forward">Pan ▶</button>
             <button class="seg-btn" id="btnZoomIn" title="Zoom in">+</button>
             <button class="seg-btn" id="btnZoomOut" title="Zoom out">-</button>
             <button class="seg-btn" id="btnChartReset" title="Reset view">↺</button>
@@ -223,7 +225,7 @@
             <button class="toggle-pill active" data-toggle-metric="visitors" style="--pill-color: var(--sunset-rose);">
               <span class="pill-dot"></span> Visitors
             </button>
-            <button class="toggle-pill active" data-toggle-metric="files" style="--pill-color: var(--electric-cyan);">
+            <button class="toggle-pill" id="pillFiles" data-toggle-metric="files" style="--pill-color: var(--electric-cyan);">
               <span class="pill-dot"></span> Files
             </button>
           </div>
@@ -231,7 +233,7 @@
       </div>
 
       <!-- Trading Chart Container -->
-      <div class="chart-container-master" id="tradingPulseChart" style="min-height: 420px;"></div>
+      <div class="chart-container-master" id="tradingPulseChart" style="min-height: 400px;"></div>
     </section>
 
     <!-- Operational Tables Section -->

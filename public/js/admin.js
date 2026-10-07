@@ -20,13 +20,13 @@
   // Chart instances
   let tradingChartInstance = null;
   let sparklines = {};
-  let chartMode = 'dayWise'; // 'dayWise' or 'eventTicks'
+  let chartMode = 'intraday'; // 'intraday' (default matching user reference) or 'dayWise'
 
   const activeSeries = {
     transfers: true,
     downloads: true,
     visitors: true,
-    files: true
+    files: false
   };
 
   const METRIC_COLORS = {
@@ -160,22 +160,45 @@
       });
     });
 
-    // Chart Mode Toggles (Day-Wise vs Granular Event Ticks)
+    // Chart Mode Toggles (Intraday 24H Pulse vs Day-Wise Growth)
+    const btnModeIntraday = document.getElementById('btnModeIntraday');
     const btnModeDayWise = document.getElementById('btnModeDayWise');
-    const btnModeTicks = document.getElementById('btnModeTicks');
-    if (btnModeDayWise && btnModeTicks) {
-      btnModeDayWise.addEventListener('click', () => {
-        chartMode = 'dayWise';
-        btnModeDayWise.classList.add('active');
-        btnModeTicks.classList.remove('active');
-        updateTradingChartSeries();
-      });
-      btnModeTicks.addEventListener('click', () => {
-        chartMode = 'eventTicks';
-        btnModeTicks.classList.add('active');
-        btnModeDayWise.classList.remove('active');
-        updateTradingChartSeries();
-      });
+    const chartTitleIcon = document.getElementById('chartTitleIcon');
+    const chartTitleText = document.getElementById('chartTitleText');
+    const chartSubtitleText = document.getElementById('chartSubtitleText');
+
+    function setChartMode(mode) {
+      chartMode = mode;
+      if (mode === 'intraday') {
+        if (btnModeIntraday) btnModeIntraday.classList.add('active');
+        if (btnModeDayWise) btnModeDayWise.classList.remove('active');
+        if (chartTitleIcon) chartTitleIcon.textContent = '⏱️';
+        if (chartTitleText) chartTitleText.textContent = "Today's Intraday 24-Hour Pulse";
+        if (chartSubtitleText) chartSubtitleText.textContent = 'Hourly velocity showing activity distribution across morning, afternoon, and evening';
+        // Hide files pill by default in intraday mode matching reference screenshot
+        const pillFiles = document.getElementById('pillFiles');
+        if (pillFiles) {
+          activeSeries.files = false;
+          pillFiles.classList.remove('active');
+        }
+      } else {
+        if (btnModeDayWise) btnModeDayWise.classList.add('active');
+        if (btnModeIntraday) btnModeIntraday.classList.remove('active');
+        if (chartTitleIcon) chartTitleIcon.textContent = '📈';
+        if (chartTitleText) chartTitleText.textContent = 'LabDrop Day-Wise Growth';
+        if (chartSubtitleText) chartSubtitleText.textContent = 'Event timeline recorded strictly on count increases starting from current counters';
+        const pillFiles = document.getElementById('pillFiles');
+        if (pillFiles) {
+          activeSeries.files = true;
+          pillFiles.classList.add('active');
+        }
+      }
+      updateTradingChartSeries();
+    }
+
+    if (btnModeIntraday && btnModeDayWise) {
+      btnModeIntraday.addEventListener('click', () => setChartMode('intraday'));
+      btnModeDayWise.addEventListener('click', () => setChartMode('dayWise'));
     }
 
     // Trading Navigation Controls (Pan Left/Right, Zoom In/Out, Reset)
@@ -467,8 +490,17 @@
 
   function getTradingSeriesData() {
     if (!dashboardData) return { transfers: [], downloads: [], visitors: [], files: [] };
+    if (chartMode === 'intraday') {
+      const intraday = dashboardData.intraday || [];
+      return {
+        transfers: intraday.map(h => [h.timestamp, h.transfers || 0]),
+        downloads: intraday.map(h => [h.timestamp, h.downloads || 0]),
+        visitors: intraday.map(h => [h.timestamp, h.visitors || 0]),
+        files: intraday.map(h => [h.timestamp, h.files || 0])
+      };
+    }
     const inc = dashboardData.increaseSeries || {};
-    const source = chartMode === 'dayWise' ? (inc.dayWise || {}) : (inc.eventTicks || {});
+    const source = inc.dayWise || {};
 
     return {
       transfers: source.transfers || [],
@@ -482,8 +514,13 @@
     const el = document.getElementById('tradingPulseChart');
     if (!el || !dashboardData) return;
 
-    const data = getTradingSeriesData();
+    // If chart instance already exists, update smoothly
+    if (tradingChartInstance) {
+      updateTradingChartSeries();
+      return;
+    }
 
+    const data = getTradingSeriesData();
     const series = [];
     if (activeSeries.transfers) {
       series.push({
@@ -514,34 +551,16 @@
       });
     }
 
-    // If chart instance already exists, update smoothly
-    if (tradingChartInstance) {
-      tradingChartInstance.updateOptions({
-        xaxis: {
-          labels: {
-            format: chartMode === 'dayWise' ? 'dd MMM' : 'HH:mm'
-          }
-        },
-        tooltip: {
-          x: {
-            format: chartMode === 'dayWise' ? 'dd MMM yyyy' : 'dd MMM HH:mm'
-          }
-        }
-      }, false, false);
-      tradingChartInstance.updateSeries(series);
-      return;
-    }
-
     const options = {
       series,
       chart: {
         id: 'tradingStockChart',
         type: 'area',
-        height: 420,
+        height: 380,
         background: 'transparent',
         toolbar: {
           show: true,
-          autoSelected: 'pan', // Trading pan by default: drag forward and backward across time
+          autoSelected: 'pan', // Trading pan by default
           tools: {
             download: true,
             selection: true,
@@ -560,20 +579,20 @@
         animations: {
           enabled: true,
           easing: 'easeinout',
-          speed: 500
+          speed: 400
         }
       },
       colors: series.map(s => s.color),
       stroke: {
         curve: 'smooth',
-        width: 3
+        width: chartMode === 'intraday' ? 2.5 : 3
       },
       fill: {
         type: 'gradient',
         gradient: {
           shadeIntensity: 1,
-          opacityFrom: 0.55,
-          opacityTo: 0.04,
+          opacityFrom: 0.52,
+          opacityTo: 0.05,
           stops: [0, 90, 100]
         }
       },
@@ -581,15 +600,15 @@
       dataLabels: {
         enabled: true,
         style: {
-          fontSize: '11px',
+          fontSize: '10px',
           fontFamily: 'Inter, system-ui, sans-serif',
           fontWeight: '700'
         },
         background: {
           enabled: true,
           foreColor: '#ffffff',
-          padding: 4,
-          borderRadius: 4,
+          padding: 3,
+          borderRadius: 3,
           borderWidth: 0,
           opacity: 0.92,
           dropShadow: {
@@ -601,11 +620,11 @@
             opacity: 0.35
           }
         },
-        offsetY: -6,
+        offsetY: -5,
         formatter: (val) => val
       },
       markers: {
-        size: 5,
+        size: chartMode === 'intraday' ? 4 : 5,
         strokeWidth: 2,
         strokeColors: '#0a0d14',
         hover: { size: 7 }
@@ -620,8 +639,18 @@
         axisBorder: { color: 'rgba(255, 255, 255, 0.08)' },
         axisTicks: { color: 'rgba(255, 255, 255, 0.08)' }
       },
-      // Non-zero baseline! Start count from current counter values like a stock price chart at 100
-      yaxis: {
+      // Intraday: 0-6 nice integer scale; DayWise: Non-zero baseline starting from current counters
+      yaxis: chartMode === 'intraday' ? {
+        min: 0,
+        max: function(max) {
+          return max <= 8 ? Math.max(6, Math.ceil(max)) : Math.ceil(max + 1);
+        },
+        forceNiceScale: true,
+        labels: {
+          style: { colors: '#9CA3AF', fontSize: '11px', fontFamily: 'inherit' },
+          formatter: (val) => Math.round(val)
+        }
+      } : {
         min: function(min) {
           return Math.max(0, Math.floor(min - 5));
         },
@@ -638,14 +667,14 @@
         borderColor: 'rgba(255, 255, 255, 0.06)',
         strokeDashArray: 4,
         padding: {
-          left: 20,
-          right: 35,
+          left: 15,
+          right: 25,
           top: 10,
           bottom: 10
         }
       },
       theme: { mode: 'dark' },
-      // Centered bottom legend matching screenshot
+      // Centered bottom legend matching reference screenshot
       legend: {
         show: true,
         position: 'bottom',
@@ -684,9 +713,39 @@
 
     tradingChartInstance.updateOptions({
       colors: series.map(s => s.color),
+      stroke: {
+        curve: 'smooth',
+        width: chartMode === 'intraday' ? 2.5 : 3
+      },
+      markers: {
+        size: chartMode === 'intraday' ? 4 : 5
+      },
       xaxis: {
         labels: {
           format: chartMode === 'dayWise' ? 'dd MMM' : 'HH:mm'
+        }
+      },
+      yaxis: chartMode === 'intraday' ? {
+        min: 0,
+        max: function(max) {
+          return max <= 8 ? Math.max(6, Math.ceil(max)) : Math.ceil(max + 1);
+        },
+        forceNiceScale: true,
+        labels: {
+          style: { colors: '#9CA3AF', fontSize: '11px', fontFamily: 'inherit' },
+          formatter: (val) => Math.round(val)
+        }
+      } : {
+        min: function(min) {
+          return Math.max(0, Math.floor(min - 5));
+        },
+        max: function(max) {
+          return Math.ceil(max + 5);
+        },
+        forceNiceScale: true,
+        labels: {
+          style: { colors: '#9CA3AF', fontSize: '11px', fontFamily: 'inherit' },
+          formatter: (val) => Math.round(val)
         }
       },
       tooltip: {
