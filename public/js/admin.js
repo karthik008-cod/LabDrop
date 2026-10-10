@@ -9,8 +9,6 @@
   // --- Global State ---
   let adminKey = '';
   let dashboardData = null;
-  let activeRange = '30D'; // '24H', '7D', '14D', '30D', '90D', 'ALL'
-  let viewMode = 'daily';   // 'daily' (volume spikes) or 'cumulative' (rising curve)
   let autoRefreshActive = true;
   let autoRefreshIntervalSec = 15;
   let refreshCountdown = autoRefreshIntervalSec;
@@ -31,12 +29,12 @@
   };
 
   const METRIC_COLORS = {
-    transfers: '#FFD166', // Gold
-    files: '#06D6A0',     // Emerald / Cyan
-    downloads: '#8B5CF6', // Purple
-    visitors: '#F43F5E',  // Sunset Rose
-    active: '#FB923C',    // Orange
-    storage: '#38BDF8'    // Blue
+    transfers: '#F59E0B', // Amber Gold
+    files: '#059669',     // Emerald Green
+    downloads: '#7C3AED', // Royal Purple
+    visitors: '#E11D48',  // Sunset Rose
+    active: '#EA580C',    // Coral Orange
+    storage: '#0284C7'    // Cyber/Sky Blue
   };
 
   // --- DOM Elements ---
@@ -129,28 +127,6 @@
       }
     });
 
-    // Range Buttons
-    document.querySelectorAll('[data-range]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('[data-range]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        activeRange = btn.dataset.range;
-        if (tradingChartInstance && tradingChartInstance.w) {
-          const { max } = tradingChartInstance.w.globals;
-          let days = 30;
-          if (activeRange === '7D') days = 7;
-          else if (activeRange === '14D') days = 14;
-          else if (activeRange === '90D') days = 90;
-          else if (activeRange === 'ALL') {
-            tradingChartInstance.resetSeries();
-            return;
-          }
-          const minTime = max - (days * 24 * 3600 * 1000);
-          tradingChartInstance.zoomX(minTime, max);
-        }
-      });
-    });
-
     // Metric Series Toggles
     document.querySelectorAll('[data-toggle-metric]').forEach(pill => {
       pill.addEventListener('click', () => {
@@ -166,7 +142,6 @@
     const btnModeDayWise = document.getElementById('btnModeDayWise');
     const chartTitleIcon = document.getElementById('chartTitleIcon');
     const chartTitleText = document.getElementById('chartTitleText');
-    const chartSubtitleText = document.getElementById('chartSubtitleText');
 
     function setChartMode(mode) {
       chartMode = mode;
@@ -176,7 +151,6 @@
         if (btnModeIntraday) btnModeIntraday.classList.remove('active');
         if (chartTitleIcon) chartTitleIcon.textContent = '📈';
         if (chartTitleText) chartTitleText.textContent = 'LabDrop Day-Wise Growth';
-        if (chartSubtitleText) chartSubtitleText.textContent = 'Event timeline recorded on count increases starting from current counters — Slidable across time';
         const pillFiles = document.getElementById('pillFiles');
         if (pillFiles) {
           activeSeries.files = true;
@@ -187,7 +161,6 @@
         if (btnModeDayWise) btnModeDayWise.classList.remove('active');
         if (chartTitleIcon) chartTitleIcon.textContent = '⏱️';
         if (chartTitleText) chartTitleText.textContent = "Today's Intraday 24-Hour Pulse";
-        if (chartSubtitleText) chartSubtitleText.textContent = 'Hourly velocity showing activity distribution across morning, afternoon, and evening';
         const pillFiles = document.getElementById('pillFiles');
         if (pillFiles) {
           activeSeries.files = false;
@@ -228,46 +201,6 @@
 
     if (btnSlideBarLeft) btnSlideBarLeft.addEventListener('click', () => slideTimelineStep('left'));
     if (btnSlideBarRight) btnSlideBarRight.addEventListener('click', () => slideTimelineStep('right'));
-
-    // Trading Navigation Controls (Pan Left/Right, Zoom In/Out, Reset)
-    const btnPanLeft = document.getElementById('btnPanLeft');
-    const btnPanRight = document.getElementById('btnPanRight');
-    const btnZoomIn = document.getElementById('btnZoomIn');
-    const btnZoomOut = document.getElementById('btnZoomOut');
-    const btnChartReset = document.getElementById('btnChartReset');
-
-    if (btnPanLeft) btnPanLeft.addEventListener('click', () => slideTimelineStep('left'));
-    if (btnPanRight) btnPanRight.addEventListener('click', () => slideTimelineStep('right'));
-
-    if (btnZoomIn) {
-      btnZoomIn.addEventListener('click', () => {
-        const bounds = getTimelineBounds();
-        if (!bounds) return;
-        const totalSpan = bounds.maxT - bounds.minT;
-        currentWindowSpan = Math.max(3600 * 1000 * 2, (currentWindowSpan || totalSpan * 0.65) * 0.7);
-        const curVal = timelineSlider ? parseInt(timelineSlider.value, 10) : 100;
-        applySliderWindow(curVal);
-      });
-    }
-    if (btnZoomOut) {
-      btnZoomOut.addEventListener('click', () => {
-        const bounds = getTimelineBounds();
-        if (!bounds) return;
-        const totalSpan = bounds.maxT - bounds.minT;
-        currentWindowSpan = Math.min(totalSpan, (currentWindowSpan || totalSpan * 0.65) * 1.35);
-        const curVal = timelineSlider ? parseInt(timelineSlider.value, 10) : 100;
-        applySliderWindow(curVal);
-      });
-    }
-    if (btnChartReset) {
-      btnChartReset.addEventListener('click', () => {
-        currentWindowSpan = null;
-        if (timelineSlider) timelineSlider.value = 100;
-        if (tradingChartInstance) tradingChartInstance.resetSeries();
-        const bounds = getTimelineBounds();
-        if (bounds) updateSliderLabels(bounds.minT, bounds.maxT, bounds.minT, bounds.maxT);
-      });
-    }
 
     // Daily Ledger Search
     const searchInput = document.getElementById('ledgerSearch');
@@ -328,7 +261,6 @@
       hideAuthModal();
       authError.classList.remove('visible');
 
-      updateHeaderSystemMeta();
       updateKPICards();
       renderAllCharts();
       renderActiveTransfersTable();
@@ -344,28 +276,6 @@
         authError.classList.add('visible');
       }
     }
-  }
-
-  // ============================================================
-  // Header & Meta Updates
-  // ============================================================
-
-  function updateHeaderSystemMeta() {
-    if (!dashboardData) return;
-    const sys = dashboardData.system || {};
-    const sysUptime = document.getElementById('sysUptime');
-    const sysRam = document.getElementById('sysRam');
-    const sysMongo = document.getElementById('sysMongo');
-    const sysSockets = document.getElementById('sysSockets');
-
-    if (sysUptime) {
-      const mins = Math.floor((sys.uptimeSeconds || 0) / 60);
-      const hrs = Math.floor(mins / 60);
-      sysUptime.textContent = hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
-    }
-    if (sysRam) sysRam.textContent = `${sys.memoryRssMB || 0} MB`;
-    if (sysMongo) sysMongo.textContent = sys.mongoStatus || 'Connected';
-    if (sysSockets) sysSockets.textContent = `${sys.activeSockets || 0}`;
   }
 
   // ============================================================
@@ -403,7 +313,7 @@
     setElementText('kpiFilesSub', `Avg: ${avgFiles} files / transfer`);
     const dlRatio = totals.transfers > 0 ? (totals.downloads / totals.transfers).toFixed(2) : '1.0';
     setElementText('kpiDownloadsSub', `Conversion: ${dlRatio}x per transfer`);
-    setElementText('kpiVisitorsSub', `Baseline: 240 | +${trends.visitors.today} today`);
+    setElementText('kpiVisitorsSub', `48 verified devices | +${trends.visitors.today} today`);
     setElementText('kpiActiveSub', `${totals.activeFiles} files currently live`);
     setElementText('kpiStorageSub', `Uploaded today: ${formatBytes(totals.todayStorageBytes)}`);
 
@@ -421,7 +331,7 @@
     }
     const isPos = change > 0;
     const isZero = change === 0;
-    el.className = `kpi-delta ${isZero ? 'delta-neutral' : isPos ? 'delta-positive' : 'delta-neutral'}`;
+    el.className = `kpi-delta ${isZero ? 'delta-neutral' : isPos ? 'delta-positive' : 'delta-negative'}`;
     const sign = isPos ? '▲ +' : isZero ? '● ' : '▼ ';
     el.textContent = `${sign}${change} (${pct}%)`;
   }
@@ -477,7 +387,7 @@
           }
         },
         tooltip: {
-          theme: 'dark',
+          theme: 'light',
           fixed: { enabled: false },
           x: { show: false },
           y: {
@@ -708,7 +618,7 @@
           stops: [0, 90, 100]
         }
       },
-      // Data labels badges matching the user's reference screenshot
+      // Data labels badges matching LabDrop theme
       dataLabels: {
         enabled: true,
         style: {
@@ -718,18 +628,14 @@
         },
         background: {
           enabled: true,
-          foreColor: '#ffffff',
+          foreColor: '#2C2C2C',
           padding: 3,
-          borderRadius: 3,
-          borderWidth: 0,
-          opacity: 0.92,
+          borderRadius: 4,
+          borderWidth: 1,
+          borderColor: '#E2D6B8',
+          opacity: 0.96,
           dropShadow: {
-            enabled: true,
-            top: 1,
-            left: 1,
-            blur: 2,
-            color: '#000',
-            opacity: 0.35
+            enabled: false
           }
         },
         offsetY: -5,
@@ -738,18 +644,18 @@
       markers: {
         size: chartMode === 'intraday' ? 4 : 5,
         strokeWidth: 2,
-        strokeColors: '#0a0d14',
+        strokeColors: '#FFFDF8',
         hover: { size: 7 }
       },
       xaxis: {
         type: 'datetime',
         labels: {
-          style: { colors: '#9CA3AF', fontSize: '11px', fontFamily: 'inherit' },
+          style: { colors: '#78716C', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600 },
           datetimeUTC: false,
           format: chartMode === 'dayWise' ? 'dd MMM HH:mm' : 'HH:mm'
         },
-        axisBorder: { color: 'rgba(255, 255, 255, 0.08)' },
-        axisTicks: { color: 'rgba(255, 255, 255, 0.08)' }
+        axisBorder: { color: '#E2D6B8' },
+        axisTicks: { color: '#E2D6B8' }
       },
       // Intraday: 0-6 nice integer scale; DayWise: Non-zero baseline starting from current counters
       yaxis: chartMode === 'intraday' ? {
@@ -759,7 +665,7 @@
         },
         forceNiceScale: true,
         labels: {
-          style: { colors: '#9CA3AF', fontSize: '11px', fontFamily: 'inherit' },
+          style: { colors: '#78716C', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600 },
           formatter: (val) => Math.round(val)
         }
       } : {
@@ -771,12 +677,12 @@
         },
         forceNiceScale: true,
         labels: {
-          style: { colors: '#9CA3AF', fontSize: '11px', fontFamily: 'inherit' },
+          style: { colors: '#78716C', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600 },
           formatter: (val) => Math.round(val)
         }
       },
       grid: {
-        borderColor: 'rgba(255, 255, 255, 0.06)',
+        borderColor: '#E8DFC8',
         strokeDashArray: 4,
         padding: {
           left: 15,
@@ -785,19 +691,19 @@
           bottom: 10
         }
       },
-      theme: { mode: 'dark' },
-      // Centered bottom legend matching reference screenshot
+      theme: { mode: 'light' },
+      // Centered bottom legend matching reference theme
       legend: {
         show: true,
         position: 'bottom',
         horizontalAlign: 'center',
         fontSize: '12px',
-        labels: { colors: '#E5E7EB' },
+        labels: { colors: '#2C2C2C' },
         markers: { radius: 12, width: 10, height: 10 },
         itemMargin: { horizontal: 14, vertical: 8 }
       },
       tooltip: {
-        theme: 'dark',
+        theme: 'light',
         x: {
           format: 'dd MMM yyyy HH:mm'
         },
@@ -835,12 +741,16 @@
         width: chartMode === 'intraday' ? 2.5 : 3
       },
       markers: {
-        size: chartMode === 'intraday' ? 4 : 5
+        size: chartMode === 'intraday' ? 4 : 5,
+        strokeColors: '#FFFDF8'
       },
       xaxis: {
         labels: {
+          style: { colors: '#78716C', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600 },
           format: chartMode === 'dayWise' ? 'dd MMM HH:mm' : 'HH:mm'
-        }
+        },
+        axisBorder: { color: '#E2D6B8' },
+        axisTicks: { color: '#E2D6B8' }
       },
       yaxis: chartMode === 'intraday' ? {
         min: 0,
@@ -849,7 +759,7 @@
         },
         forceNiceScale: true,
         labels: {
-          style: { colors: '#9CA3AF', fontSize: '11px', fontFamily: 'inherit' },
+          style: { colors: '#78716C', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600 },
           formatter: (val) => Math.round(val)
         }
       } : {
@@ -861,11 +771,12 @@
         },
         forceNiceScale: true,
         labels: {
-          style: { colors: '#9CA3AF', fontSize: '11px', fontFamily: 'inherit' },
+          style: { colors: '#78716C', fontSize: '11px', fontFamily: 'Inter, sans-serif', fontWeight: 600 },
           formatter: (val) => Math.round(val)
         }
       },
       tooltip: {
+        theme: 'light',
         x: {
           format: 'dd MMM yyyy HH:mm'
         }

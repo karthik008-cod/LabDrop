@@ -206,7 +206,7 @@ let analytics = {
 
 let analyticsLoaded = false;
 
-const RESET_MIGRATION_VERSION = 'v3_calibrate_visitors_240_r1';
+const RESET_MIGRATION_VERSION = 'v4_genuine_real_visitors_clean';
 
 // Initialize analytics from DB
 async function initAnalytics() {
@@ -216,14 +216,14 @@ async function initAnalytics() {
     analytics.totalFilesUploaded = stats.totalFilesUploaded || 0;
     analytics.totalDownloads = stats.totalDownloads || 0;
 
-    // Filter and sanitize unique devices to only valid recent client devices (never 3500+ bots)
+    // Filter and sanitize unique devices to only valid recent client devices
     const rawDevs = Array.isArray(stats.uniqueDevices) ? stats.uniqueDevices : [];
     const validDevs = rawDevs.filter(d => typeof d === 'string' && /^v2_[a-z0-9]{10,40}$/i.test(d));
-    analytics.uniqueDevices = new Set(validDevs.slice(-100));
+    analytics.uniqueDevices = new Set(validDevs);
     analyticsLoaded = true;
 
     if (stats.resetMigration !== RESET_MIGRATION_VERSION) {
-      console.log('⚡ Applying one-time visitor calibration to 240 baseline...');
+      console.log('⚡ Applying genuine visitor calibration...');
       await storage.analytics.set({
         id: 'global',
         totalTransfersCreated: analytics.totalTransfersCreated,
@@ -232,7 +232,7 @@ async function initAnalytics() {
         uniqueDevices: Array.from(analytics.uniqueDevices),
         resetMigration: RESET_MIGRATION_VERSION
       });
-      console.log('✅ Visitor calibration applied. Unique devices set to:', analytics.uniqueDevices.size);
+      console.log('✅ Genuine visitor calibration applied. Unique devices set to:', analytics.uniqueDevices.size);
     }
   } catch (err) {
     console.error('Failed to load analytics from DB', err);
@@ -601,7 +601,7 @@ app.get('/api/admin/dashboard-data', async (req, res) => {
       dailyDownloads: d.downloads || 0,
       cumulativeDownloads: d.cumulativeDownloads || totalDownloads,
       dailyVisitors: d.visitors || 0,
-      cumulativeVisitors: (d.cumulativeVisitors && d.cumulativeVisitors < 1000) ? d.cumulativeVisitors : totalUnique,
+      cumulativeVisitors: d.cumulativeVisitors || totalUnique,
       activeTransfers: d.activeTransfers || 0,
       storageBytes: d.storageBytes || 0,
       storageMB: Number(((d.storageBytes || 0) / (1024 * 1024)).toFixed(2))
@@ -624,7 +624,7 @@ app.get('/api/admin/dashboard-data', async (req, res) => {
       const tVal = d.cumulativeTransfers || totalTransfers;
       const fVal = d.cumulativeFiles || totalFiles;
       const dVal = d.cumulativeDownloads || totalDownloads;
-      const vVal = (d.cumulativeVisitors && d.cumulativeVisitors < 1000) ? d.cumulativeVisitors : totalUnique;
+      const vVal = d.cumulativeVisitors || totalUnique;
 
       if (idx === 0) {
         // Base starting point
@@ -654,7 +654,7 @@ app.get('/api/admin/dashboard-data', async (req, res) => {
       let runningT = firstDoc.cumulativeTransfers || (totalTransfers - (todayRecord.transfers || 0));
       let runningF = firstDoc.cumulativeFiles || (totalFiles - (todayRecord.files || 0));
       let runningD = firstDoc.cumulativeDownloads || (totalDownloads - (todayRecord.downloads || 0));
-      let runningV = (firstDoc.cumulativeVisitors && firstDoc.cumulativeVisitors < 1000) ? firstDoc.cumulativeVisitors : 240;
+      let runningV = firstDoc.cumulativeVisitors || 240;
 
       eventTicks.transfers.push([firstDoc.timestamp, runningT]);
       eventTicks.files.push([firstDoc.timestamp, runningF]);

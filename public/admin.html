@@ -6,7 +6,12 @@
   <title>LabDrop Intelligence — Admin Mission Control & Stock Analytics</title>
   <meta name="description" content="LabDrop Admin Mission Control with interactive financial stock charts, real-time counters, active transfer monitors, and telemetry.">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
-  <meta name="theme-color" content="#0a0d14">
+  <meta name="theme-color" content="#FAF5E8">
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Admin Theme Styles -->
   <link rel="stylesheet" href="/css/admin.css">
@@ -28,30 +33,11 @@
   <header class="admin-header">
     <div class="brand-section">
       <a href="/" class="brand-logo-link" title="Back to LabDrop Home">
-        <div class="brand-icon">🧪</div>
-        <div class="brand-title">Lab<span>Drop</span></div>
+        <picture>
+          <source srcset="/LabDropTextLogoNoBG.webp" type="image/webp" />
+          <img class="brand-logo-img" src="/LabDropTextLogoNoBG.png" alt="LabDrop" height="38" style="height: 38px; width: auto; display: block;" loading="eager" fetchpriority="high" decoding="async" />
+        </picture>
       </a>
-      <span class="badge-tag">ADMIN INTELLIGENCE</span>
-    </div>
-
-    <!-- Live Telemetry Badges -->
-    <div class="header-system-meta">
-      <div class="live-beacon">
-        <span class="beacon-dot"></span>
-        <span>Live Stream</span>
-      </div>
-      <div class="sys-pill" title="MongoDB Connection Status">
-        <span>🍃 Mongo:</span>
-        <strong id="sysMongo" style="color:var(--emerald-green);">Connected</strong>
-      </div>
-      <div class="sys-pill" title="Server Node.js Uptime">
-        <span>⏱️ Uptime:</span>
-        <strong id="sysUptime">0m</strong>
-      </div>
-      <div class="sys-pill" title="Node.js Process RSS Memory">
-        <span>🧠 RAM:</span>
-        <strong id="sysRam">0 MB</strong>
-      </div>
     </div>
 
     <!-- Controls Toolbar -->
@@ -75,33 +61,6 @@
 
   <!-- Main Dashboard Container -->
   <main class="admin-container">
-
-    <!-- Global Toolbar & Stock Range Selectors -->
-    <section class="toolbar-strip">
-      <div class="toolbar-group">
-        <span class="toolbar-label">Timeframe:</span>
-        <div class="seg-button-group">
-          <button class="seg-btn" data-range="7D">7D</button>
-          <button class="seg-btn" data-range="14D">14D</button>
-          <button class="seg-btn active" data-range="30D">30D</button>
-          <button class="seg-btn" data-range="90D">90D</button>
-          <button class="seg-btn" data-range="ALL">ALL</button>
-        </div>
-      </div>
-      <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
-        <span style="color: var(--emerald-green);">●</span>
-        <span>Trading Mode: <strong>Cumulative Counters on Increase Ticks</strong></span>
-      </div>
-    </section>
-
-    <!-- Real-Time Data Integrity Ribbon -->
-    <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); padding: 10px 16px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-      <div style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: #E5E7EB;">
-        <span style="font-size: 1.15rem;">🛡️</span>
-        <span><strong>100% Genuine Telemetry Active:</strong> All metric counters, hourly pulse, and tables are verified live from MongoDB. Real-time logging started today with true current counters.</span>
-      </div>
-      <span class="live-beacon" style="font-size: 0.72rem; padding: 3px 10px;">Zero Synthetic Data</span>
-    </div>
 
     <!-- Financial KPI Ticker Ribbon (Stock Quote Cards) -->
     <section class="kpi-grid">
@@ -195,7 +154,6 @@
             <span id="chartTitleIcon">📈</span>
             <span id="chartTitleText">LabDrop Day-Wise Growth</span>
           </h2>
-          <p class="chart-subtitle" id="chartSubtitleText">Event timeline recorded on count increases starting from current counters — Slidable across time</p>
         </div>
 
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
@@ -203,15 +161,6 @@
           <div class="seg-button-group">
             <button class="seg-btn active" id="btnModeDayWise" data-chart-mode="dayWise" title="Day-Wise Growth starting from current counters (Slidable)">📅 Day-Wise Growth</button>
             <button class="seg-btn" id="btnModeIntraday" data-chart-mode="intraday" title="Today's 24-Hour Velocity Pulse across hours">⏱️ 24H Pulse</button>
-          </div>
-
-          <!-- Trading Navigation Buttons -->
-          <div class="seg-button-group">
-            <button class="seg-btn" id="btnPanLeft" title="Slide backward">◀ Slide</button>
-            <button class="seg-btn" id="btnPanRight" title="Slide forward">Slide ▶</button>
-            <button class="seg-btn" id="btnZoomIn" title="Zoom in">+</button>
-            <button class="seg-btn" id="btnZoomOut" title="Zoom out">-</button>
-            <button class="seg-btn" id="btnChartReset" title="Reset view">↺</button>
           </div>
 
           <!-- Series Toggle Pills -->
