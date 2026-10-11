@@ -9,10 +9,6 @@
   // --- Global State ---
   let adminKey = '';
   let dashboardData = null;
-  let autoRefreshActive = true;
-  let autoRefreshIntervalSec = 15;
-  let refreshCountdown = autoRefreshIntervalSec;
-  let countdownTimerId = null;
   let tickerIntervalId = null;
 
   // Chart instances
@@ -43,8 +39,6 @@
   const authForm = document.getElementById('authForm');
   const authError = document.getElementById('authError');
   const btnRefresh = document.getElementById('btnRefresh');
-  const btnAutoRefresh = document.getElementById('btnAutoRefresh');
-  const autoRefreshText = document.getElementById('autoRefreshText');
   const btnLogout = document.getElementById('btnLogout');
   const toastNotice = document.getElementById('toastNotice');
 
@@ -112,19 +106,6 @@
       fetchDashboardData().finally(() => {
         setTimeout(() => btnRefresh.classList.remove('spinning'), 600);
       });
-    });
-
-    // Auto-refresh Toggle
-    btnAutoRefresh.addEventListener('click', () => {
-      autoRefreshActive = !autoRefreshActive;
-      if (autoRefreshActive) {
-        btnAutoRefresh.classList.add('active');
-        refreshCountdown = autoRefreshIntervalSec;
-        autoRefreshText.textContent = `Auto-Refresh: ${refreshCountdown}s`;
-      } else {
-        btnAutoRefresh.classList.remove('active');
-        autoRefreshText.textContent = 'Auto-Refresh: Paused';
-      }
     });
 
     // Metric Series Toggles
@@ -216,24 +197,8 @@
       btnExportCsv.addEventListener('click', exportLedgerCsv);
     }
 
-    // Auto-refresh countdown loop
-    startCountdownLoop();
-
     // Start live countdown ticker for active transfers
     tickerIntervalId = setInterval(updateActiveTransferTimers, 1000);
-  }
-
-  function startCountdownLoop() {
-    if (countdownTimerId) clearInterval(countdownTimerId);
-    countdownTimerId = setInterval(() => {
-      if (!autoRefreshActive || !dashboardData) return;
-      refreshCountdown--;
-      if (refreshCountdown <= 0) {
-        refreshCountdown = autoRefreshIntervalSec;
-        fetchDashboardData(false, true);
-      }
-      autoRefreshText.textContent = `Auto-Refresh: ${refreshCountdown}s`;
-    }, 1000);
   }
 
   // ============================================================
