@@ -36,5 +36,9 @@
   },
   "devDependencies": {
     "sharp": "^0.35.4"
+  },
+  "overrides": {
+    "axios": "^1.20.0",
+    "argparse": "^2.0.1"
   }
 }
