@@ -1147,6 +1147,7 @@ body:has(.sidebar--open) .header {
   justify-content: space-between;
   align-items: center;
   overflow: hidden;
+  min-width: 0;
 }
 
 .file-item__name {
@@ -1168,13 +1169,30 @@ body:has(.sidebar--open) .header {
 
 .file-item__actions {
   display: flex;
+  align-items: center;
   gap: var(--space-xs);
-  opacity: 0; /* Hidden by default */
-  transition: opacity var(--transition-fast);
+  opacity: 1; /* Always visible without hover animation */
+  flex-shrink: 0;
 }
 
-.file-item:hover .file-item__actions {
-  opacity: 1;
+.file-item__remove {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.8rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-item__remove:hover {
+  background: rgba(239, 71, 111, 0.1);
+  color: var(--color-danger);
+  border-color: rgba(239, 71, 111, 0.3);
 }
 
 @media (max-width: 800px) {
