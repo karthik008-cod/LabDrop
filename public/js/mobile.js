@@ -278,7 +278,7 @@
         </div>
         <div class="file-item__actions" style="display:flex; gap: 4px; align-items: center;">
           <input type="checkbox" class="file-checkbox" data-file-id="${file.id}" style="margin-right: 8px; transform: scale(1.2);" />
-          <button class="btn btn--outline btn--icon ai-file-btn" data-file-id="${file.id}" title="AI Viva & Exam Prep for ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px; color: #B45309; border-color: rgba(245, 158, 11, 0.35); background: rgba(255, 209, 102, 0.15);">
+          <button class="btn btn--outline btn--icon ai-file-btn" data-file-id="${file.id}" title="AI Viva &amp; Exam Prep (Beta) for ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px; color: #B45309; border-color: rgba(245, 158, 11, 0.35); background: rgba(255, 209, 102, 0.15);">
             AI
           </button>
           <button class="btn btn--outline btn--icon rename-file-btn" data-file-id="${file.id}" title="Rename ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px;">

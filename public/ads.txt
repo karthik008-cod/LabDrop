@@ -1,0 +1,3 @@
+# Google AdSense Publisher Verification for labdrop.online
+google.com, pub-6259663778050569, DIRECT, f08c47fec0942fa0
+

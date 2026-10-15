@@ -23,6 +23,9 @@
 
   <link rel="stylesheet" href="/css/style.css?v=6.7" />
   <script src="/js/site-config.js"></script>
+
+  <!-- Google AdSense (Replace ca-pub-XXXXXXXXXXXXXXXX with your actual Publisher ID) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6259663778050569" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -235,19 +238,38 @@
 
       </div>
 
+      <!-- Google AdSense Transfer Banner -->
+      <div class="labdrop-ad-wrapper" id="transferAdWrapper">
+        <span class="labdrop-ad-label">Advertisement</span>
+        <div class="labdrop-ad-container">
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-6259663778050569"
+               data-ad-slot="1234567890"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+          <script>
+            try { (adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+          </script>
+        </div>
+      </div>
+
     </main>
 
     </div>
 
   <!-- Floating Circular AI Bot Button -->
-  <button class="ai-fab-btn open-ai-modal-btn" id="aiFloatingBtn" title="LabDrop AI Assistant (Viva, Exam Prep, Summarize)" aria-label="Open AI Assistant">
+  <button class="ai-fab-btn open-ai-modal-btn" id="aiFloatingBtn" title="LabDrop AI Assistant (Viva, Exam Prep, Summarize) · BETA" aria-label="Open AI Assistant (Beta)">
     <div class="ai-fab-pulse"></div>
     <span class="ai-fab-badge">AI</span>
     <picture>
       <source srcset="/LabDropAILogo-icon.webp" type="image/webp" />
       <img src="/LabDropAILogo-icon.png" alt="LabDrop AI" width="60" height="60" loading="eager" />
     </picture>
-    <div class="ai-fab-tooltip">✨ LabDrop AI</div>
+    <div class="ai-fab-beta-strip">
+      <span class="ai-fab-beta-dot"></span>BETA
+    </div>
+    <div class="ai-fab-tooltip">✨ LabDrop AI <span class="ai-fab-tooltip-beta">BETA</span></div>
   </button>
 
   <!-- Download Options Modal -->
@@ -300,18 +322,39 @@
 
         <div class="modal__header ai-modal-header" id="aiModalHeader" style="background: var(--color-bg-secondary); border-bottom: 1px solid var(--color-border); padding: 12px 18px; cursor: move; user-select: none; flex-shrink: 0;">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <picture>
-              <source srcset="/LabDropAILogo-icon.webp" type="image/webp" />
-              <img src="/LabDropAILogo-icon.png" alt="LabDrop AI" width="32" height="32" style="border-radius: 50%; border: 1.5px solid #fbbf24; display: block;" />
-            </picture>
+            <div class="ai-header-avatar-wrap">
+              <picture>
+                <source srcset="/LabDropAILogo-icon.webp" type="image/webp" />
+                <img src="/LabDropAILogo-icon.png" alt="LabDrop AI" width="32" height="32" style="border-radius: 50%; border: 1.5px solid #fbbf24; display: block;" />
+              </picture>
+              <span class="ai-avatar-beta-strip">BETA</span>
+            </div>
             <div>
-              <div class="modal__title" style="font-size: 1.15rem; font-weight: 700; background: linear-gradient(135deg, #f59e0b, #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">LabDrop AI Assistant</div>
+              <div class="modal__title" style="font-size: 1.15rem; font-weight: 700; background: linear-gradient(135deg, #f59e0b, #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 8px;">
+                LabDrop AI Assistant
+                <span class="ai-title-beta-tag">BETA</span>
+              </div>
               <div style="font-size: 0.72rem; color: var(--color-text-secondary);">Lab Records · Viva Prep · Summary · Chat</div>
             </div>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
             <button class="modal__close" id="aiModalResetPos" title="Reset Window" style="font-size: 0.85rem; padding: 2px 6px; border-radius: 4px; background: transparent; border: 1px solid var(--color-border); cursor: pointer; color: var(--color-text-secondary);">⟲</button>
             <button class="modal__close" id="aiModalClose">✕</button>
+          </div>
+        </div>
+
+        <!-- LabDrop AI Beta Advisory Strip -->
+        <div class="ai-beta-advisory-strip">
+          <div class="ai-beta-advisory-badge">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 2px;">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            BETA
+          </div>
+          <div class="ai-beta-advisory-text">
+            <strong>Experimental Assistant:</strong> LabDrop AI can make mistakes. Always cross-check calculations, formulas, and viva answers with your lab syllabus.
           </div>
         </div>
 
@@ -512,20 +555,27 @@
               <!-- Messages Feed (Spacious Chat Container) -->
               <div id="vivaChatMessages" class="ai-chat-messages-container" style="display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); flex: 1; min-height: 280px; overflow-y: auto; margin-top: 10px;">
                 <div class="ai-chat-bot-bubble">
-                  <strong>Welcome to LabDrop Viva & Exam Prep!</strong><br />
-                  Select your study, code, or diagram file above and click <strong>Generate Exam & Viva Prep</strong>, or chat below with AI for practice questions, explanations, and key concepts.
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
+                    <strong>Welcome to LabDrop Viva &amp; Exam Prep!</strong>
+                    <span class="ai-bubble-beta-badge">BETA</span>
+                  </div>
+                  Select your study, code, or diagram file above and click <strong>Generate Exam &amp; Viva Prep</strong>, or chat below with AI for practice questions, explanations, and key concepts.
+                  <div class="ai-chat-beta-disclaimer">
+                    ⚡ <em>Experimental Beta: AI answers may contain inaccuracies. Cross-reference with standard textbooks.</em>
+                  </div>
                 </div>
               </div>
 
             </div>
 
             <!-- Docked Bottom Chat Box (Always visible at the bottom of the AI window) -->
-            <div id="vivaChatBottomBar" style="flex-shrink: 0; background: var(--color-bg-secondary); border-top: 1px solid var(--color-border); padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -2px 10px rgba(0,0,0,0.03); z-index: 10;">
+            <div id="vivaChatBottomBar" style="flex-shrink: 0; background: var(--color-bg-secondary); border-top: 1px solid var(--color-border); padding: 10px 16px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 -2px 10px rgba(0,0,0,0.03); z-index: 10;">
               <!-- Chat Input Form -->
               <form id="vivaChatForm" autocomplete="off" style="display: flex; gap: 8px; width: 100%;">
                 <input type="text" id="vivaChatInput" name="labdrop_viva_chat_transfer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="form-input" placeholder="Ask AI a question or request a summary..." style="flex: 1; font-size: 0.88rem; padding: 9px 12px; border-radius: var(--radius-sm);" required />
                 <button type="submit" class="btn btn--primary" id="vivaChatSubmitBtn" style="padding: 0 18px; font-weight: 600; white-space: nowrap;">Send</button>
               </form>
+              <div class="ai-chat-footnote">LabDrop AI is in Beta and may make mistakes. Verify critical academic details.</div>
             </div>
 
           </div>
@@ -688,8 +738,14 @@
               <!-- Messages Feed (Spacious Chat Container) -->
               <div id="labRecordChatMessagesTransfer" class="ai-chat-messages-container" style="display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); flex: 1; min-height: 280px; overflow-y: auto; margin-top: 10px;">
                 <div class="ai-chat-bot-bubble">
-                  <strong>Welcome to LabDrop AI!</strong><br />
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
+                    <strong>Welcome to LabDrop AI!</strong>
+                    <span class="ai-bubble-beta-badge">BETA</span>
+                  </div>
                   Select your code or diagram file above and click <strong>Generate Full Lab Record</strong>, or ask any question about code, algorithms, data structures, or lab experiments below.
+                  <div class="ai-chat-beta-disclaimer">
+                    ⚡ <em>Experimental Beta: Responses are AI-generated — always verify formulas and code before lab submission.</em>
+                  </div>
                 </div>
               </div>
 
@@ -701,6 +757,7 @@
                 <input type="text" id="labRecordChatInputTransfer" name="labdrop_record_chat_transfer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="form-input" placeholder="Ask AI about this lab record..." style="flex: 1; font-size: 0.88rem; padding: 9px 12px; border-radius: var(--radius-sm);" required />
                 <button type="submit" class="btn btn--primary" id="labRecordChatSubmitBtnTransfer" style="padding: 0 18px; font-weight: 600; white-space: nowrap;">Send</button>
               </form>
+              <div class="ai-chat-footnote">LabDrop AI is in Beta and may make mistakes. Verify critical academic details.</div>
             </div>
           </div>
 

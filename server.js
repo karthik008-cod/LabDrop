@@ -268,7 +268,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Explicit SEO routes for robots.txt and sitemap.xml
+// Explicit SEO & Monetization routes for robots.txt, sitemap.xml, and ads.txt
 app.get('/robots.txt', (req, res) => {
   res.type('text/plain; charset=utf-8');
   res.sendFile(path.join(__dirname, 'public', 'robots.txt'));
@@ -277,6 +277,11 @@ app.get('/robots.txt', (req, res) => {
 app.get('/sitemap.xml', (req, res) => {
   res.type('application/xml; charset=utf-8');
   res.sendFile(path.join(__dirname, 'public', 'sitemap.xml'));
+});
+
+app.get('/ads.txt', (req, res) => {
+  res.type('text/plain; charset=utf-8');
+  res.sendFile(path.join(__dirname, 'public', 'ads.txt'));
 });
 
 // Dynamic site configuration from environment variables
