@@ -261,6 +261,24 @@ function scheduleAnalyticsSave() {
   }, 5000); // Debounce save every 5 seconds
 }
 
+// Canonical Domain 301 Redirect Middleware:
+// Automatically forward any old *.onrender.com deployments or non-custom domains to https://labdrop.online
+app.use((req, res, next) => {
+  const host = (req.headers.host || '').toLowerCase();
+
+  // Keep local development intact
+  if (host.includes('localhost') || host.includes('127.0.0.1') || host.startsWith('192.168.') || host.startsWith('10.')) {
+    return next();
+  }
+
+  // If traffic hits an onrender.com subdomain or old deployment, redirect 301 permanently to official domain
+  if (host.includes('onrender.com') || (process.env.RENDER && host !== 'labdrop.online' && host !== 'www.labdrop.online')) {
+    return res.redirect(301, `https://labdrop.online${req.originalUrl}`);
+  }
+
+  next();
+});
+
 // Security & SEO Headers Middleware
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
