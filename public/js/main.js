@@ -1629,7 +1629,7 @@
   // ---- PWA, Desktop File Handling & Web Share Target Logic ----
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js?v=8.0').then(reg => {
+      navigator.serviceWorker.register('/sw.js?v=8.1').then(reg => {
         if (reg && reg.update) {
           reg.update();
         }
@@ -1709,8 +1709,22 @@
             const data = await res.json();
             const incomingFiles = [];
             if (data.files && Array.isArray(data.files)) {
-              data.files.forEach(f => {
-                if (f.base64) {
+              for (const f of data.files) {
+                if (f.fileUrl) {
+                  try {
+                    const fileRes = await fetch(f.fileUrl);
+                    if (fileRes.ok) {
+                      const fileBlob = await fileRes.blob();
+                      const fileObj = new File([fileBlob], f.name || 'shared_file', {
+                        type: f.mimetype || fileBlob.type || 'application/octet-stream',
+                        lastModified: Date.now()
+                      });
+                      incomingFiles.push(fileObj);
+                    }
+                  } catch (fetchErr) {
+                    console.warn('[ShareTarget] Failed to fetch shared file from server:', fetchErr);
+                  }
+                } else if (f.base64) {
                   const blob = b64toBlob(f.base64, f.mimetype || 'application/octet-stream');
                   const fileObj = new File([blob], f.name || 'shared_file', {
                     type: f.mimetype || 'application/octet-stream',
@@ -1718,7 +1732,7 @@
                   });
                   incomingFiles.push(fileObj);
                 }
-              });
+              }
             }
 
             let hasAdded = false;

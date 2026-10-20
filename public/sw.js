@@ -1,5 +1,5 @@
-// LabDrop — Service Worker (sw.js v8.0)
-const CACHE_NAME = 'labdrop-v8.0';
+// LabDrop — Service Worker (sw.js v8.1)
+const CACHE_NAME = 'labdrop-v8.1';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -15,12 +15,9 @@ self.addEventListener('fetch', (event) => {
   // Intercept Web Share Target POST request (from mobile WhatsApp, Gallery, file managers, or share sheet)
   if (event.request.method === 'POST' && (url.pathname === '/share-target' || url.pathname.endsWith('/share-target'))) {
     event.respondWith((async () => {
-      let reqClone = null;
       try {
-        reqClone = event.request.clone();
-      } catch (_) {}
-
-      try {
+        // Read formData directly. NOTE: DO NOT call event.request.clone() here,
+        // because cloning non-seekable Android IPC streams consumes the native body pipe.
         const formData = await event.request.formData();
         const files = [];
 
@@ -51,14 +48,12 @@ self.addEventListener('fetch', (event) => {
         const shareUrl = formData.get('url');
         const title = formData.get('title');
 
-        let savedCount = 0;
         if (files.length > 0) {
-          savedCount = await saveSharedDataToIndexedDB(files, { title, text });
+          await saveSharedDataToIndexedDB(files, { title, text });
         } else if (text || shareUrl) {
           const linkToShare = shareUrl || (text && /^https?:\/\//i.test(text.trim()) ? text.trim() : null);
           if (linkToShare) {
             await saveSharedDataToIndexedDB([], { url: linkToShare, title });
-            savedCount = 1;
           } else if (text && text.trim()) {
             const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
             const filename = (title ? title.trim().replace(/[^a-zA-Z0-9_-]/g, '_') : 'shared-note') + '.txt';
@@ -69,17 +64,6 @@ self.addEventListener('fetch', (event) => {
               lastModified: Date.now(),
               blob: blob
             }]);
-            savedCount = 1;
-          }
-        }
-
-        // If SW extracted 0 files and no text/url, forward request clone to server multer
-        if (savedCount === 0 && reqClone) {
-          try {
-            console.log('[ServiceWorker] No files in SW formData, forwarding to server fallback...');
-            return await fetch(reqClone);
-          } catch (netErr) {
-            console.warn('[ServiceWorker] Server forward failed:', netErr);
           }
         }
 
@@ -94,17 +78,12 @@ self.addEventListener('fetch', (event) => {
         // Standard W3C Web Share Target HTTP 303 redirect to root with share marker
         return Response.redirect('/?shared=1', 303);
       } catch (error) {
-        console.warn('[ServiceWorker] Share target parsing error, attempting server fallback:', error);
-        if (reqClone) {
-          try {
-            return await fetch(reqClone);
-          } catch (netErr) {
-            console.error('[ServiceWorker] Server fallback fetch failed:', netErr);
-          }
-        }
-        return Response.redirect('/?shared=1', 303);
+        console.warn('[ServiceWorker] Share target parsing error:', error);
+        // CRITICAL: NEVER call fetch(reqClone) or rethrow! Always redirect safely to root so the browser never closes the connection.
+        return Response.redirect('/?shared=1&share_error=1', 303);
       }
     })());
+    return;
   }
 });
 
@@ -127,35 +106,35 @@ async function saveSharedDataToIndexedDB(files = [], extra = {}) {
     'application/x-zip-compressed': '.zip'
   };
 
-  // Step 1: Read all files into memory ArrayBuffers BEFORE starting the transaction!
-  // Storing pure ArrayBuffers avoids DataCloneError on Android ContentProvider File objects
-  // and ensures data survives request termination.
   const processedFiles = [];
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     if (!file) continue;
     try {
       const rawBlob = file.blob || file;
-      let buffer = null;
+      let fileName = file.name || rawBlob.name || (extra.title ? extra.title.trim() : null) || `shared_file_${Date.now()}_${i}`;
+      const fileType = file.type || rawBlob.type || 'application/octet-stream';
+      const lastMod = file.lastModified || rawBlob.lastModified || Date.now();
 
-      if (typeof rawBlob.arrayBuffer === 'function') {
-        buffer = await rawBlob.arrayBuffer();
-      } else if (typeof rawBlob.slice === 'function') {
-        const sliced = rawBlob.slice(0, rawBlob.size);
-        buffer = await sliced.arrayBuffer();
+      if (!fileName.includes('.')) {
+        if (mimeMap[fileType]) {
+          fileName += mimeMap[fileType];
+        }
+      }
+
+      // Try arrayBuffer first for cross-context persistence; fallback to direct blob
+      let buffer = null;
+      try {
+        if (typeof rawBlob.arrayBuffer === 'function') {
+          buffer = await rawBlob.arrayBuffer();
+        } else if (typeof rawBlob.slice === 'function') {
+          buffer = await rawBlob.slice(0, rawBlob.size).arrayBuffer();
+        }
+      } catch (bufErr) {
+        console.warn('[ServiceWorker] arrayBuffer conversion failed, using direct blob:', bufErr);
       }
 
       if (buffer && buffer.byteLength > 0) {
-        let fileName = file.name || rawBlob.name || (extra.title ? extra.title.trim() : null) || `shared_file_${Date.now()}_${i}`;
-        const fileType = file.type || rawBlob.type || 'application/octet-stream';
-        const lastMod = file.lastModified || rawBlob.lastModified || Date.now();
-
-        if (!fileName.includes('.')) {
-          if (mimeMap[fileType]) {
-            fileName += mimeMap[fileType];
-          }
-        }
-
         processedFiles.push({
           name: fileName,
           type: fileType,
@@ -163,68 +142,80 @@ async function saveSharedDataToIndexedDB(files = [], extra = {}) {
           lastModified: lastMod,
           buffer: buffer
         });
+      } else {
+        processedFiles.push({
+          name: fileName,
+          type: fileType,
+          size: rawBlob.size || file.size || 0,
+          lastModified: lastMod,
+          blob: rawBlob
+        });
       }
     } catch (readErr) {
-      console.warn('[ServiceWorker] Failed to read file arrayBuffer:', readErr);
+      console.warn('[ServiceWorker] Failed to process shared file:', readErr);
     }
   }
 
-  // Step 2: Open IndexedDB and store processed files synchronously
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('LabDropSharedFiles', 2);
+  // Open IndexedDB and store processed files
+  return new Promise((resolve) => {
+    try {
+      const request = indexedDB.open('LabDropSharedFiles', 2);
 
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains('files')) {
-        db.createObjectStore('files', { autoIncrement: true });
-      }
-      if (!db.objectStoreNames.contains('meta')) {
-        db.createObjectStore('meta', { keyPath: 'id' });
-      }
-    };
-
-    request.onsuccess = (event) => {
-      const db = event.target.result;
-      try {
-        const storeNames = Array.from(db.objectStoreNames);
-        const transaction = db.transaction(storeNames, 'readwrite');
-        const store = transaction.objectStore('files');
-        
-        // Clear previous files to ensure a fresh share drop
-        store.clear();
-
-        processedFiles.forEach((item) => {
-          store.add(item);
-        });
-
-        if (storeNames.includes('meta')) {
-          const metaStore = transaction.objectStore('meta');
-          metaStore.clear();
-          if (extra && (extra.url || extra.title || extra.text)) {
-            metaStore.put({ id: 'share_meta', ...extra, timestamp: Date.now() });
-          }
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('files')) {
+          db.createObjectStore('files', { autoIncrement: true });
         }
+        if (!db.objectStoreNames.contains('meta')) {
+          db.createObjectStore('meta', { keyPath: 'id' });
+        }
+      };
 
-        transaction.oncomplete = () => {
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        try {
+          const storeNames = Array.from(db.objectStoreNames);
+          const transaction = db.transaction(storeNames, 'readwrite');
+          const store = transaction.objectStore('files');
+          
+          // Clear previous files to ensure a fresh share drop
+          store.clear();
+
+          processedFiles.forEach((item) => {
+            store.add(item);
+          });
+
+          if (storeNames.includes('meta')) {
+            const metaStore = transaction.objectStore('meta');
+            metaStore.clear();
+            if (extra && (extra.url || extra.title || extra.text)) {
+              metaStore.put({ id: 'share_meta', ...extra, timestamp: Date.now() });
+            }
+          }
+
+          transaction.oncomplete = () => {
+            try { db.close(); } catch (_) {}
+            resolve(processedFiles.length);
+          };
+          transaction.onerror = () => {
+            try { db.close(); } catch (_) {}
+            resolve(processedFiles.length);
+          };
+          transaction.onabort = () => {
+            try { db.close(); } catch (_) {}
+            resolve(processedFiles.length);
+          };
+        } catch (err) {
           try { db.close(); } catch (_) {}
           resolve(processedFiles.length);
-        };
-        transaction.onerror = (e) => {
-          try { db.close(); } catch (_) {}
-          reject(e.target ? e.target.error : e);
-        };
-        transaction.onabort = (e) => {
-          try { db.close(); } catch (_) {}
-          reject(e.target ? e.target.error : e);
-        };
-      } catch (err) {
-        try { db.close(); } catch (_) {}
-        reject(err);
-      }
-    };
+        }
+      };
 
-    request.onerror = (event) => {
-      reject(event.target ? event.target.error : new Error('IndexedDB open error'));
-    };
+      request.onerror = () => {
+        resolve(processedFiles.length);
+      };
+    } catch (e) {
+      resolve(0);
+    }
   });
 }

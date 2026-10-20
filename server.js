@@ -380,23 +380,47 @@ app.use((req, res, next) => {
   next();
 });
 
-// In-memory multer storage for Web Share Target fallback (used when Service Worker is bypassed)
-const shareTargetMemoryUpload = multer({
-  storage: multer.memoryStorage(),
+// Disk-backed multer storage for Web Share Target fallback (streams files safely to disk, preventing RAM exhaustion)
+const shareTargetUploadDir = path.join(os.tmpdir(), 'labdrop-shares');
+try {
+  if (!fs.existsSync(shareTargetUploadDir)) {
+    fs.mkdirSync(shareTargetUploadDir, { recursive: true });
+  }
+} catch (_) {}
+
+const shareTargetDiskStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, shareTargetUploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '');
+    cb(null, `share_${Date.now()}_${uuidv4()}${ext}`);
+  }
+});
+
+const shareTargetUpload = multer({
+  storage: shareTargetDiskStorage,
   limits: {
     fileSize: CONFIG.MAX_FILE_SIZE,
     files: CONFIG.MAX_FILES_PER_TRANSFER,
   }
 });
 
-// Temporary in-memory cache for shared files received directly by the server
+// Temporary cache for shared files received directly by the server
 const serverShareSessions = new Map();
 
-// Periodic sweep of sessions older than 5 minutes
+// Periodic sweep of sessions older than 5 minutes (clean up temp files from disk)
 setInterval(() => {
   const now = Date.now();
   for (const [id, session] of serverShareSessions.entries()) {
     if (session.expiresAt && session.expiresAt < now) {
+      if (session.files && Array.isArray(session.files)) {
+        session.files.forEach(f => {
+          if (f.filePath && fs.existsSync(f.filePath)) {
+            try { fs.unlinkSync(f.filePath); } catch (_) {}
+          }
+        });
+      }
       serverShareSessions.delete(id);
     }
   }
@@ -404,39 +428,49 @@ setInterval(() => {
 
 // Fallback POST for Web Share Target (e.g. Android intent or iOS share sheet bypassing SW)
 app.post('/share-target', (req, res) => {
-  shareTargetMemoryUpload.any()(req, res, (err) => {
+  shareTargetUpload.any()(req, res, (err) => {
+    if (res.headersSent) return;
+
     if (err) {
       console.warn('[ShareTarget Server Fallback] Multer error:', err.message);
       return res.redirect(303, '/?share_error=1');
     }
 
-    const files = req.files || [];
-    const text = (req.body && req.body.text) ? String(req.body.text) : '';
-    const title = (req.body && req.body.title) ? String(req.body.title) : '';
-    const url = (req.body && req.body.url) ? String(req.body.url) : '';
+    try {
+      const files = req.files || [];
+      const text = (req.body && req.body.text) ? String(req.body.text) : '';
+      const title = (req.body && req.body.title) ? String(req.body.title) : '';
+      const url = (req.body && req.body.url) ? String(req.body.url) : '';
 
-    if (files.length === 0 && !text && !url) {
-      return res.redirect(303, '/?shared=1');
+      if (files.length === 0 && !text && !url) {
+        return res.redirect(303, '/?shared=1');
+      }
+
+      const sessionId = uuidv4();
+      const storedFiles = files.map((f, idx) => ({
+        name: sanitizeFilename(f.originalname || 'shared_file'),
+        mimetype: f.mimetype || 'application/octet-stream',
+        size: f.size,
+        filePath: f.path,
+        fileUrl: `/api/share-session/${sessionId}/file/${idx}`
+      }));
+
+      serverShareSessions.set(sessionId, {
+        files: storedFiles,
+        text,
+        title,
+        url,
+        expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes
+      });
+
+      console.log(`[ShareTarget Server Fallback] Received ${files.length} file(s), text length ${text.length}. Session: ${sessionId}`);
+      res.redirect(303, `/?shared_session=${sessionId}`);
+    } catch (procErr) {
+      console.error('[ShareTarget Server Fallback] Processing error:', procErr);
+      if (!res.headersSent) {
+        res.redirect(303, '/?share_error=1');
+      }
     }
-
-    const sessionId = uuidv4();
-    const storedFiles = files.map(f => ({
-      name: f.originalname || 'shared_file',
-      mimetype: f.mimetype || 'application/octet-stream',
-      size: f.size,
-      base64: f.buffer ? f.buffer.toString('base64') : ''
-    }));
-
-    serverShareSessions.set(sessionId, {
-      files: storedFiles,
-      text,
-      title,
-      url,
-      expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes
-    });
-
-    console.log(`[ShareTarget Server Fallback] Received ${files.length} file(s), text length ${text.length}. Session: ${sessionId}`);
-    res.redirect(303, `/?shared_session=${sessionId}`);
   });
 });
 
@@ -444,7 +478,25 @@ app.get('/share-target', (req, res) => {
   res.redirect(303, '/?shared=1');
 });
 
-// Retrieve and consume shared session data (single-use)
+// Stream specific shared file from disk
+app.get('/api/share-session/:id/file/:index', (req, res) => {
+  const { id, index } = req.params;
+  const session = serverShareSessions.get(id);
+  if (!session || !session.files) {
+    return res.status(404).json({ error: 'Share session not found or expired' });
+  }
+  const fileIdx = parseInt(index, 10);
+  const file = session.files[fileIdx];
+  if (!file || !file.filePath || !fs.existsSync(file.filePath)) {
+    return res.status(404).json({ error: 'Shared file not found or expired' });
+  }
+
+  res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
+  res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.name)}"`);
+  res.sendFile(path.resolve(file.filePath));
+});
+
+// Retrieve and consume shared session data
 app.get('/api/share-session/:id', (req, res) => {
   const sessionId = req.params.id;
   const session = serverShareSessions.get(sessionId);
@@ -453,10 +505,26 @@ app.get('/api/share-session/:id', (req, res) => {
   }
 
   // Delete after a brief grace period so transient reconnects or retries don't fail
-  setTimeout(() => serverShareSessions.delete(sessionId), 60000);
+  setTimeout(() => {
+    const s = serverShareSessions.get(sessionId);
+    if (s && s.files) {
+      s.files.forEach(f => {
+        if (f.filePath && fs.existsSync(f.filePath)) {
+          try { fs.unlinkSync(f.filePath); } catch (_) {}
+        }
+      });
+    }
+    serverShareSessions.delete(sessionId);
+  }, 120000); // 2 minutes grace period
+
   res.json({
     success: true,
-    files: session.files,
+    files: session.files.map(f => ({
+      name: f.name,
+      mimetype: f.mimetype,
+      size: f.size,
+      fileUrl: f.fileUrl
+    })),
     text: session.text,
     title: session.title,
     url: session.url
