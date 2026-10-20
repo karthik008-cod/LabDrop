@@ -201,3 +201,58 @@ window.LabDialog = (function() {
     }
 })();
 
+// --- User Profile Dropdown Menu Controller (Global for all pages) ---
+(function() {
+    function initUserProfileMenu() {
+        document.addEventListener('click', function(e) {
+            var trigger = e.target.closest('#userMenuTrigger');
+            var dropdown = document.getElementById('userProfileDropdown');
+            var wrapper = document.getElementById('userMenuWrapper');
+
+            if (trigger) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (dropdown) {
+                    var isOpen = dropdown.classList.toggle('open');
+                    trigger.classList.toggle('active', isOpen);
+                    trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                }
+                return;
+            }
+
+            if (dropdown && dropdown.classList.contains('open')) {
+                if (!wrapper || !wrapper.contains(e.target)) {
+                    dropdown.classList.remove('open');
+                    var t = document.getElementById('userMenuTrigger');
+                    if (t) {
+                        t.classList.remove('active');
+                        t.setAttribute('aria-expanded', 'false');
+                    }
+                }
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                var dropdown = document.getElementById('userProfileDropdown');
+                if (dropdown && dropdown.classList.contains('open')) {
+                    dropdown.classList.remove('open');
+                    var t = document.getElementById('userMenuTrigger');
+                    if (t) {
+                        t.classList.remove('active');
+                        t.setAttribute('aria-expanded', 'false');
+                        t.focus();
+                    }
+                }
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initUserProfileMenu);
+    } else {
+        initUserProfileMenu();
+    }
+})();
+
+

@@ -333,7 +333,11 @@
     if (authUser) {
       authLoggedOut.style.display = 'none';
       authLoggedIn.style.display = 'flex';
-      navUserEmail.textContent = authUser.email;
+      if (navUserEmail) navUserEmail.textContent = authUser.email;
+      const dropdownUserEmail = $('#dropdownUserEmail');
+      if (dropdownUserEmail) dropdownUserEmail.textContent = authUser.email;
+      const drawerSavedTransfersLink = $('#drawerSavedTransfersLink');
+      if (drawerSavedTransfersLink) drawerSavedTransfersLink.style.display = 'flex';
       if (drawerAuthLoggedOut) drawerAuthLoggedOut.style.display = 'none';
       if (drawerAuthLoggedIn) {
         drawerAuthLoggedIn.style.display = 'flex';
@@ -342,8 +346,17 @@
     } else {
       authLoggedOut.style.display = 'flex';
       authLoggedIn.style.display = 'none';
+      const drawerSavedTransfersLink = $('#drawerSavedTransfersLink');
+      if (drawerSavedTransfersLink) drawerSavedTransfersLink.style.display = 'none';
       if (drawerAuthLoggedOut) drawerAuthLoggedOut.style.display = 'flex';
       if (drawerAuthLoggedIn) drawerAuthLoggedIn.style.display = 'none';
+      const userProfileDropdown = $('#userProfileDropdown');
+      if (userProfileDropdown) userProfileDropdown.classList.remove('open');
+      const userMenuTrigger = $('#userMenuTrigger');
+      if (userMenuTrigger) {
+        userMenuTrigger.classList.remove('active');
+        userMenuTrigger.setAttribute('aria-expanded', 'false');
+      }
       // If they were on "Save for Later" but logged out, switch to Quick
       if (transferMode === 'save') {
         setTransferMode('quick');

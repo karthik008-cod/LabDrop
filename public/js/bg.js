@@ -97,6 +97,8 @@ if (window.location.pathname !== '/' && window.location.pathname !== '/index.htm
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => {
         if (navUserEmail) navUserEmail.textContent = data.user.email;
+        const dropdownUserEmail = document.getElementById('dropdownUserEmail');
+        if (dropdownUserEmail) dropdownUserEmail.textContent = data.user.email;
       })
       .catch(() => {
         sessionStorage.removeItem('labdrop_token');

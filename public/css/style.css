@@ -5005,6 +5005,254 @@ select.form-input option,
   flex-wrap: wrap;
 }
 
+/* ============================================================
+   User Profile Dropdown Navigation
+   ============================================================ */
+.user-menu-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.user-profile-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 3px 10px 3px 3px;
+  cursor: pointer;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  transition: all var(--transition-fast);
+  outline: none;
+}
+
+.user-profile-trigger:hover,
+.user-profile-trigger.active {
+  border-color: var(--color-primary-dark);
+  background: rgba(255, 209, 102, 0.18);
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.12);
+}
+
+.user-avatar-pill {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.user-trigger-email {
+  font-weight: 600;
+  font-size: 0.82rem;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-chevron {
+  color: var(--color-text-secondary);
+  transition: transform var(--transition-fast);
+}
+
+.user-profile-trigger.active .user-menu-chevron {
+  transform: rotate(180deg);
+}
+
+.user-profile-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 250px;
+  max-width: min(320px, calc(100vw - 24px));
+  width: max-content;
+  background: var(--color-surface, #FFFDF8);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(217, 119, 6, 0.08);
+  padding: 8px;
+  z-index: 1000;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (max-width: 480px) {
+  .user-trigger-email {
+    max-width: 90px;
+  }
+}
+
+.user-profile-dropdown.open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.dropdown-user-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--radius-md);
+  margin-bottom: 4px;
+}
+
+.dropdown-user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dropdown-user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.dropdown-user-email {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: #B45309;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.user-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+  display: inline-block;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 6px 0;
+}
+
+.dropdown-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  text-decoration: none;
+  font-family: inherit;
+  font-size: 0.86rem;
+  border: none;
+  background: transparent;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.dropdown-item:hover {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--color-text);
+}
+
+.dropdown-item-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.dropdown-item:hover .dropdown-item-icon {
+  color: var(--color-primary-dark);
+}
+
+.dropdown-item-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.dropdown-item-title {
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.dropdown-item-subtitle {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  line-height: 1.2;
+}
+
+.dropdown-badge-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(217, 119, 6, 0.15);
+  color: #B45309;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  border: 1px solid rgba(217, 119, 6, 0.3);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.dropdown-item--danger {
+  color: #DC2626;
+}
+
+.dropdown-item--danger .dropdown-item-icon {
+  color: #DC2626;
+}
+
+.dropdown-item--danger:hover {
+  background: #FEF2F2;
+  color: #B91C1C;
+}
+
+.dropdown-item--danger:hover .dropdown-item-icon {
+  color: #B91C1C;
+}
+
+
 
 
 

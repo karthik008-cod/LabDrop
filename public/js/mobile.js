@@ -2519,6 +2519,8 @@
           .then(res => res.ok ? res.json() : Promise.reject())
           .then(data => {
             if (navUserEmail) navUserEmail.textContent = data.user.email;
+            const dropdownUserEmail = document.getElementById('dropdownUserEmail');
+            if (dropdownUserEmail) dropdownUserEmail.textContent = data.user.email;
           })
           .catch(() => {
             authToken = null;

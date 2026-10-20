@@ -89,6 +89,8 @@
       if (!meRes.ok) throw new Error('Not logged in');
       const meData = await meRes.json();
       if (navUserEmail) navUserEmail.textContent = meData.user.email;
+      const dropdownUserEmail = $('#dropdownUserEmail');
+      if (dropdownUserEmail) dropdownUserEmail.textContent = meData.user.email;
     } catch (e) {
       sessionStorage.removeItem('labdrop_token');
       loadingState.style.display = 'none';
