@@ -1780,92 +1780,92 @@ function synthesizeDocumentStudyPrep({ filesData = [], examType = 'viva', diffic
       let breakdownMarkdown = '';
       if (detectedSystems.length > 0) {
         breakdownMarkdown = detectedSystems.map((sys, idx) => `
-#### 🏛️ System ${idx + 1} of ${detectedSystems.length}: **${sys.name}** (${sys.page})
-- 🎯 **Domain & Core Objective:** ${sys.purpose}
-- 🎬 **Initial Trigger & Starting Node:** ${sys.trigger}
-- 🔄 **Step-by-Step Activity Flow:** ${sys.flow}
-- 🔀 **Decision Diamonds & Guard Conditions:** ${sys.decisions}
-- ⚡ **Concurrent / Fork-Join Parallel Operations:** ${sys.forkJoin}
-- ⚠️ **Exception Paths & Rollback States:** ${sys.rollback}
-- 🏁 **Terminal State:** ${sys.finalState}
+#### System ${idx + 1} of ${detectedSystems.length}: **${sys.name}** (${sys.page})
+- **Domain & Core Objective:** ${sys.purpose}
+- **Initial Trigger & Starting Node:** ${sys.trigger}
+- **Step-by-Step Activity Flow:** ${sys.flow}
+- **Decision Diamonds & Guard Conditions:** ${sys.decisions}
+- **Concurrent / Fork-Join Parallel Operations:** ${sys.forkJoin}
+- **Exception Paths & Rollback States:** ${sys.rollback}
+- **Terminal State:** ${sys.finalState}
 `).join('\n---\n');
       } else {
         breakdownMarkdown = `
-#### 🏛️ System 1: **User Authentication & Session Initialization**
-- 🎯 **Domain & Core Objective:** Verify user identity and allocate secure operational context.
-- 🎬 **Initial Trigger & Starting Node:** External stimulus (card insertion, biometric, or credential entry).
-- 🔄 **Step-by-Step Activity Flow:** 1. Capture Credentials → 2. Validate Format → 3. Query Datastore → 4. Evaluate Security Guards → 5. Establish Session → 6. Final State.
-- 🔀 **Decision Diamonds & Guard Conditions:** [Valid Credentials] routes to authorized operational state; [Invalid / Attempts Exceeded] initiates lockout and safe termination.
-- ⚡ **Concurrent / Fork-Join Operations:** Synchronizes security audit logging in parallel with privilege allocation.
-- ⚠️ **Exception Paths:** 3 consecutive failures trigger account lockout and alert dispatch.
-- 🏁 **Terminal State:** User session initiated or transaction safely terminated.
+#### System 1: **User Authentication & Session Initialization**
+- **Domain & Core Objective:** Verify user identity and allocate secure operational context.
+- **Initial Trigger & Starting Node:** External stimulus (card insertion, biometric, or credential entry).
+- **Step-by-Step Activity Flow:** 1. Capture Credentials → 2. Validate Format → 3. Query Datastore → 4. Evaluate Security Guards → 5. Establish Session → 6. Final State.
+- **Decision Diamonds & Guard Conditions:** [Valid Credentials] routes to authorized operational state; [Invalid / Attempts Exceeded] initiates lockout and safe termination.
+- **Concurrent / Fork-Join Operations:** Synchronizes security audit logging in parallel with privilege allocation.
+- **Exception Paths:** 3 consecutive failures trigger account lockout and alert dispatch.
+- **Terminal State:** User session initiated or transaction safely terminated.
 
 ---
 
-#### 🏛️ System 2: **Core Transaction & Workflow Execution**
-- 🎯 **Domain & Core Objective:** Execute primary business operational logic with boundary assertions.
-- 🎬 **Initial Trigger & Starting Node:** Authorized user session issues a processing instruction.
-- 🔄 **Step-by-Step Activity Flow:** 1. Ingest Command → 2. Verify Preconditions → 3. Execute State Transformations → 4. Commit to Database → 5. Final State.
-- 🔀 **Decision Diamonds & Guard Conditions:** [Resource Available] vs [Resource Depleted / Exception].
-- ⚡ **Concurrent / Fork-Join Operations:** Concurrently commits state changes and streams operational telemetry.
-- ⚠️ **Exception Paths:** Rollback transactions upon database write conflicts.
-- 🏁 **Terminal State:** Action acknowledged and state confirmed.
+#### System 2: **Core Transaction & Workflow Execution**
+- **Domain & Core Objective:** Execute primary business operational logic with boundary assertions.
+- **Initial Trigger & Starting Node:** Authorized user session issues a processing instruction.
+- **Step-by-Step Activity Flow:** 1. Ingest Command → 2. Verify Preconditions → 3. Execute State Transformations → 4. Commit to Database → 5. Final State.
+- **Decision Diamonds & Guard Conditions:** [Resource Available] vs [Resource Depleted / Exception].
+- **Concurrent / Fork-Join Operations:** Concurrently commits state changes and streams operational telemetry.
+- **Exception Paths:** Rollback transactions upon database write conflicts.
+- **Terminal State:** Action acknowledged and state confirmed.
 `;
       }
 
-      return `# 📄 Academic Technical Summary & System Architecture Breakdown
+      return `# Academic Technical Summary & System Architecture Breakdown
 **Subject:** ${subject} | **Topic:** ${topic}
 **Source Document:** ${filename} (${detectedSystems.length > 0 ? `${detectedSystems.length} Distinct Systems Identified Across Pages` : 'Multi-Page Activity Modeling'})
 
-### 🎯 Core Topic, Architecture & Document Scope
+### Core Topic, Architecture & Document Scope
 ${pitch}
 
-### 📊 Comprehensive Diagram & System Breakdown (Page-by-Page / System-by-System)
+### Comprehensive Diagram & System Breakdown (Page-by-Page / System-by-System)
 The document specifies **${detectedSystems.length > 0 ? `${detectedSystems.length} complete, independent operational systems` : 'multiple system workflows'}**, each modeled with standard UML activity constructs (Initial Nodes, Action States, Decision Diamonds with explicit bracketed Guard Conditions, Concurrency Fork/Join Bars, and Activity Final Nodes):
 
 ${breakdownMarkdown}
 
-### 🔑 Key Entities, Decision Logic & State Transitions
+### Key Entities, Decision Logic & State Transitions
 - **Control Flows:** Directed edges routing execution tokens across actions in deterministic sequence.
 - **Guard Conditions:** Explicit Boolean gates (enclosed in brackets) determining exclusive state traversal.
 - **Concurrency (Fork/Join):** Fork bars spawn parallel asynchronous threads; Join bars enforce barrier synchronization before downstream progression.
 - **Swimlane Separation:** Architectural boundaries separating User Interface, Controller/Application Logic, and Persistence/Hardware layers.
 
-### 💡 Important Technical Insights & Engineering Takeaways
+### Important Technical Insights & Engineering Takeaways
 - **Zero Ambiguity:** Each of the ${detectedSystems.length > 0 ? detectedSystems.length : 'modeled'} systems establishes complete decision paths covering both nominal success workflows and boundary failure handling.
 - **Deadlock Freedom:** All parallel branches enforce balanced Fork and Join pairings, ensuring no execution token is orphaned or blocked.
 - **Curriculum Alignment:** Fully conforms to standard university Software Engineering and Object-Oriented Modeling specifications.`;
     }
 
-    return `# 📄 Academic Technical Summary
+    return `# Academic Technical Summary
 **Subject:** ${subject} | **Topic:** ${topic}
 
-### 🎯 Core Topic & Purpose
+### Core Topic & Purpose
 ${pitch}
 
-### 🔑 Key Concepts & Mechanisms
+### Key Concepts & Mechanisms
 1. **Theoretical Foundation:** Grounded in standardized university curriculum specifications.
 2. **Architecture:** Clear separation between functional units, inputs, and outputs.
 3. **Execution Safety:** Verification of input preconditions and output invariants.
 
-### 💡 Key Takeaway
+### Key Takeaway
 Ensure comprehensive familiarity with the terminology, internal state transitions, and boundary behaviors outlined in this document.`;
   }
 
-  return `# 🎓 Oral Lab Viva Voce Preparation Guide
+  return `# Oral Lab Viva Voce Preparation Guide
 **Subject:** ${subject} | **Topic:** ${topic}
 
-### 1. 🎯 60-Second Elevator Pitch
+### 1. 60-Second Elevator Pitch
 ${pitch}
 
-### 2. ❓ Top 5 Viva Questions & Spoken Answers
+### 2. Top 5 Viva Questions & Spoken Answers
 ${questions.map((item, idx) => `
 ${idx + 1}. **${item.q}**
-   - *🗣️ How to Speak:* ${item.a}
-   - *⚠️ Examiner Trap:* ${item.t}
+   - *Model Answer:* ${item.a}
+   - *Examiner Trap:* ${item.t}
 `).join('\n')}
 
-### 3. 🔍 Critical Edge Cases & Common Traps
+### 3. Critical Edge Cases & Common Traps
 - Boundary conditions and invalid inputs must be handled gracefully.
 - Understand the underlying resource management and runtime complexity.
 - Be prepared to trace state transitions step-by-step on paper for the examiner.`;

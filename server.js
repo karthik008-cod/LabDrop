@@ -223,7 +223,7 @@ async function initAnalytics() {
     analyticsLoaded = true;
 
     if (stats.resetMigration !== RESET_MIGRATION_VERSION) {
-      console.log('⚡ Applying genuine visitor calibration...');
+      console.log('[System] Applying genuine visitor calibration...');
       await storage.analytics.set({
         id: 'global',
         totalTransfersCreated: analytics.totalTransfersCreated,
@@ -232,7 +232,7 @@ async function initAnalytics() {
         uniqueDevices: Array.from(analytics.uniqueDevices),
         resetMigration: RESET_MIGRATION_VERSION
       });
-      console.log('✅ Genuine visitor calibration applied. Unique devices set to:', analytics.uniqueDevices.size);
+      console.log('[System] Genuine visitor calibration applied. Unique devices set to:', analytics.uniqueDevices.size);
     }
   } catch (err) {
     console.error('Failed to load analytics from DB', err);
@@ -941,16 +941,29 @@ app.get('/api/me', optionalAuth, (req, res) => {
 app.get('/api/my-transfers', optionalAuth, async (req, res) => {
   if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
   
-  const userTransfers = (await storage.transfers.find({ userId: req.user.userId }))
+  const now = Date.now();
+  const allUserTransfers = await storage.transfers.find({ userId: req.user.userId });
+  const activeTransfers = (allUserTransfers || []).filter(t => t.status !== 'EXPIRED' && t.expiresAt > now);
+
+  const userTransfers = activeTransfers
     .map(t => ({
       id: t.id,
       shortCode: t.shortCode,
-      transferName: t.transferName,
+      transferName: t.transferName || 'Lab Files',
       createdAt: t.createdAt,
       expiresAt: t.expiresAt,
-      fileCount: t.files.length,
-      totalSize: t.totalSize,
-      requirePin: !!t.pinHash
+      fileCount: (t.files || []).length,
+      totalSize: t.totalSize || 0,
+      requirePin: !!t.pinHash,
+      isSavedForLater: !!t.isSavedForLater,
+      files: (t.files || []).map(f => ({
+        id: f.id,
+        name: f.originalName || f.name || 'Untitled File',
+        size: f.size || 0,
+        category: f.category || 'file',
+        mimetype: f.mimetype || ''
+      })),
+      links: (t.links || []).map(l => (typeof l === 'string' ? l : l.url || l))
     }))
     .sort((a, b) => b.createdAt - a.createdAt); // newest first
 
@@ -2485,7 +2498,7 @@ app.listen(CONFIG.PORT, '0.0.0.0', async () => {
   console.log('');
   console.log('  ╔═══════════════════════════════════════════════╗');
   console.log('  ║                                               ║');
-  console.log('  ║              🧪  LabDrop  v1.0                ║');
+  console.log('  ║                 LabDrop  v1.0                 ║');
   console.log('  ║                                               ║');
   console.log('  ║   Temporary Lab File Transfer System          ║');
   console.log('  ║                                               ║');

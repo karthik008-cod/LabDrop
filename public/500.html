@@ -93,7 +93,8 @@
           <button class="nav-link" id="navSignupBtn" style="background:none;border:none;cursor:pointer;">Sign Up</button>
         </div>
         <div id="authLoggedIn" style="display: none; gap: var(--space-md); align-items: center;">
-            <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
+          <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
+          <a href="/my-files.html" class="nav-link" style="text-decoration: none;">Saved Transfers</a>
           <div class="nav-icon" title="User Account" style="background: var(--color-bg-secondary); color: var(--color-text); display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           </div>
@@ -122,7 +123,7 @@
             <input class="form-input" type="text" id="newFolderInput" placeholder="Folder name..." maxlength="40" />
             <div style="display: flex; gap: 4px;">
               <button class="btn btn--secondary btn--sm" id="confirmNewFolderBtn" type="button" style="flex:1;">Create</button>
-              <button class="btn btn--ghost btn--sm" id="cancelNewFolderBtn" type="button">✕</button>
+              <button class="btn btn--ghost btn--sm" id="cancelNewFolderBtn" type="button" aria-label="Cancel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
             </div>
           </div>
 
@@ -143,7 +144,13 @@
       <!-- Main Area (Right) -->
       
       <main class="main-area" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 4rem 1rem;">
-        <div style="font-size: 5rem; line-height: 1; margin-bottom: 1rem;">🧪🔥</div>
+        <div style="margin-bottom: 1.5rem; display: inline-flex; align-items: center; justify-content: center; width: 96px; height: 96px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); color: var(--color-danger);">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
         <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--color-danger);">Experiment Failed (500)</h1>
         <p style="font-size: 1.1rem; color: var(--color-text-secondary); max-width: 500px; margin-bottom: 2rem;">
           Oops! It looks like something went wrong with our lab equipment. The server encountered an unexpected error and couldn't complete your request.

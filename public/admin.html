@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LabDrop Intelligence — Admin Mission Control & Stock Analytics</title>
   <meta name="description" content="LabDrop Admin Mission Control with interactive financial stock charts, real-time counters, active transfer monitors, and telemetry.">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+  <link rel="icon" type="image/png" href="/labdroplogo.png">
   <meta name="theme-color" content="#FAF5E8">
 
   <!-- Google Fonts: Inter -->
@@ -48,7 +48,7 @@
       </button>
 
       <button class="btn-ctrl" id="btnLogout" title="Lock Dashboard and Sign Out">
-        <span>🔒</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
         <span>Lock</span>
       </button>
     </div>
@@ -63,7 +63,7 @@
       <!-- 1. Transfers KPI -->
       <article class="kpi-card" style="--kpi-accent: var(--accent-gold);">
         <div class="kpi-header">
-          <span class="kpi-title"><span class="kpi-icon">📦</span> Transfers Created</span>
+          <span class="kpi-title"><span class="kpi-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg></span> Transfers Created</span>
           <span class="kpi-delta delta-positive" id="kpiTransfersDelta">▲ +0 (0%)</span>
         </div>
         <div class="kpi-main-stat">
@@ -76,7 +76,7 @@
       <!-- 2. Files KPI -->
       <article class="kpi-card" style="--kpi-accent: var(--electric-cyan);">
         <div class="kpi-header">
-          <span class="kpi-title"><span class="kpi-icon">📁</span> Files Uploaded</span>
+          <span class="kpi-title"><span class="kpi-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></span> Files Uploaded</span>
           <span class="kpi-delta delta-positive" id="kpiFilesDelta">▲ +0 (0%)</span>
         </div>
         <div class="kpi-main-stat">
@@ -89,7 +89,7 @@
       <!-- 3. Downloads KPI -->
       <article class="kpi-card" style="--kpi-accent: var(--royal-purple);">
         <div class="kpi-header">
-          <span class="kpi-title"><span class="kpi-icon">📥</span> Downloads Completed</span>
+          <span class="kpi-title"><span class="kpi-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></span> Downloads Completed</span>
           <span class="kpi-delta delta-positive" id="kpiDownloadsDelta">▲ +0 (0%)</span>
         </div>
         <div class="kpi-main-stat">
@@ -102,7 +102,7 @@
       <!-- 4. Unique Visitors KPI -->
       <article class="kpi-card" style="--kpi-accent: var(--sunset-rose);">
         <div class="kpi-header">
-          <span class="kpi-title"><span class="kpi-icon">👥</span> Unique Visitors</span>
+          <span class="kpi-title"><span class="kpi-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span> Unique Visitors</span>
           <span class="kpi-delta delta-positive" id="kpiVisitorsDelta">▲ +0 (0%)</span>
         </div>
         <div class="kpi-main-stat">
@@ -115,7 +115,7 @@
       <!-- 5. Active Live Transfers KPI -->
       <article class="kpi-card" style="--kpi-accent: var(--coral-orange);">
         <div class="kpi-header">
-          <span class="kpi-title"><span class="kpi-icon">⚡</span> Active Live Transfers</span>
+          <span class="kpi-title"><span class="kpi-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg></span> Active Live Transfers</span>
           <span class="live-beacon" style="padding: 2px 7px; font-size: 0.65rem;">Live</span>
         </div>
         <div class="kpi-main-stat">
@@ -128,7 +128,7 @@
       <!-- 6. Active Storage KPI (100% Real S3) -->
       <article class="kpi-card" style="--kpi-accent: var(--cyber-blue);">
         <div class="kpi-header">
-          <span class="kpi-title"><span class="kpi-icon">💾</span> Active Storage (S3)</span>
+          <span class="kpi-title"><span class="kpi-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg></span> Active Storage (S3)</span>
           <span class="kpi-delta delta-positive" id="kpiStorageDelta">Real S3</span>
         </div>
         <div class="kpi-main-stat">
@@ -146,7 +146,7 @@
       <div class="chart-card-header">
         <div class="chart-heading-group">
           <h2 class="chart-title">
-            <span id="chartTitleIcon">📈</span>
+            <span id="chartTitleIcon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg></span>
             <span id="chartTitleText">LabDrop Day-Wise Growth</span>
           </h2>
         </div>
@@ -154,8 +154,8 @@
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
           <!-- View Mode Toggle: Day-Wise Growth vs Intraday Pulse -->
           <div class="seg-button-group">
-            <button class="seg-btn active" id="btnModeDayWise" data-chart-mode="dayWise" title="Day-Wise Growth starting from current counters (Slidable)">📅 Day-Wise Growth</button>
-            <button class="seg-btn" id="btnModeIntraday" data-chart-mode="intraday" title="Today's 24-Hour Velocity Pulse across hours">⏱️ 24H Pulse</button>
+            <button class="seg-btn active" id="btnModeDayWise" data-chart-mode="dayWise" title="Day-Wise Growth starting from current counters (Slidable)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon" style="margin-right: 4px; vertical-align: -2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Day-Wise Growth</button>
+            <button class="seg-btn" id="btnModeIntraday" data-chart-mode="intraday" title="Today's 24-Hour Velocity Pulse across hours"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon" style="margin-right: 4px; vertical-align: -2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>24H Pulse</button>
           </div>
 
           <!-- Series Toggle Pills -->
@@ -210,7 +210,7 @@
       <article class="table-card">
         <div class="table-header">
           <div>
-            <h3 class="section-title">⚡ Live Transfers in Transit</h3>
+            <h3 class="section-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon" style="margin-right: 6px; vertical-align: -2px;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>Live Transfers in Transit</h3>
             <p class="section-desc">Transfers currently unexpired and stored in S3/MongoDB</p>
           </div>
         </div>
@@ -233,7 +233,7 @@
             </tbody>
           </table>
           <div id="activeTransfersEmpty" class="empty-state" style="display: none;">
-            <span>🍃 No active transfers currently in transit. All past transfers have expired gracefully.</span>
+            <span>No active transfers currently in transit. All past transfers have expired gracefully.</span>
           </div>
         </div>
       </article>
@@ -242,13 +242,14 @@
       <article class="table-card">
         <div class="table-header">
           <div>
-            <h3 class="section-title">📜 Historical Daily Activity Ledger</h3>
+            <h3 class="section-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon" style="margin-right: 6px; vertical-align: -2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>Historical Daily Activity Ledger</h3>
             <p class="section-desc">Comprehensive daily log with day-over-day changes</p>
           </div>
           <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-            <input type="text" id="ledgerSearch" class="table-search-input" placeholder="🔍 Filter by date (YYYY-MM)...">
+            <input type="text" id="ledgerSearch" class="table-search-input" placeholder="Filter by date (YYYY-MM)...">
             <button class="btn-ctrl" id="btnExportCsv" title="Download all records as CSV">
-              <span>📥 Export CSV</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <span>Export CSV</span>
             </button>
           </div>
         </div>
@@ -281,7 +282,9 @@
   <!-- Security Authentication Modal -->
   <div class="auth-modal-backdrop hidden" id="authModal">
     <div class="auth-modal-card">
-      <div class="auth-card-icon">🛡️</div>
+      <div class="auth-card-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+      </div>
       <div>
         <h2 class="auth-title">LabDrop Terminal Auth</h2>
         <p class="auth-desc">Please enter the administrator passkey to unlock live analytics and control telemetries.</p>
@@ -300,7 +303,7 @@
           >
         </div>
         <button type="submit" class="auth-submit-btn" id="authSubmit">
-          Unlock Dashboard 🚀
+          Unlock Dashboard
         </button>
       </form>
     </div>

@@ -196,12 +196,12 @@
 
   // ---- File icons by category ----
   const FILE_ICONS = {
-    image: '📷',
-    code: '💻',
-    document: '📄',
-    data: '📊',
-    archive: '📦',
-    file: '📎',
+    image: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>',
+    code: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>',
+    document: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>',
+    data: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>',
+    archive: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><line x1="10" y1="12" x2="14" y2="12"></line></svg>',
+    file: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
   };
 
   // ---- Utility: format bytes ----
@@ -233,7 +233,7 @@
   function showAlert(message, type = 'error') {
     const div = document.createElement('div');
     div.className = `alert alert--${type}`;
-    div.innerHTML = `<span>${type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️'}</span> ${escapeHtml(message)}`;
+    div.innerHTML = `<span style="display:inline-flex;align-items:center;margin-right:6px;">${type === 'error' ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' : type === 'success' ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'}</span> ${escapeHtml(message)}`;
     alertArea.prepend(div);
     setTimeout(() => div.remove(), 6000);
   }
@@ -460,7 +460,7 @@
     currentFiles.forEach((file, index) => {
       totalSize += file.size;
       const cat = getFileCategory(file.name);
-      const icon = FILE_ICONS[cat] || '📎';
+      const icon = FILE_ICONS[cat] || FILE_ICONS.file;
       const isEligibleRecord = cat === 'code' || cat === 'pdf' || cat === 'document' || cat === 'image';
       const recordBtnHtml = isEligibleRecord ? `<button type="button" class="file-item__record" data-index="${index}" title="Generate Lab Record with AI" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: rgba(255, 209, 102, 0.2); border: 1px solid rgba(217, 119, 6, 0.4); border-radius: var(--radius-sm); color: #B45309; font-weight: 700; cursor: pointer;">AI Record</button>` : '';
 
@@ -475,7 +475,7 @@
         <div class="file-item__actions">
           ${recordBtnHtml}
           <button type="button" class="file-item__move" data-index="${index}" data-type="file" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
-          <button class="file-item__remove" data-index="${index}" title="Remove file">✕</button>
+          <button class="file-item__remove" data-index="${index}" title="Remove file" aria-label="Remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
         </div>
       `;
       fileList.appendChild(li);
@@ -522,20 +522,20 @@
           </div>
           <div class="file-item__actions">
             <button type="button" class="file-item__move" data-index="${idx}" data-type="link" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
-            <button type="button" class="file-item__remove" data-index="${idx}" title="Remove">✕</button>
+            <button type="button" class="file-item__remove" data-index="${idx}" title="Remove" aria-label="Remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
           </div>
         `;
       } else {
         li.className = 'file-item';
         li.innerHTML = `
-          <div class="file-item__icon file-item__icon--data">🔗</div>
+          <div class="file-item__icon file-item__icon--data"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div>
           <div class="file-item__details">
             <div class="file-item__name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${linkify(link)}</div>
             <div class="file-item__size">Link</div>
           </div>
           <div class="file-item__actions">
             <button type="button" class="file-item__move" data-index="${idx}" data-type="link" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
-            <button type="button" class="file-item__remove" data-index="${idx}" title="Remove">✕</button>
+            <button type="button" class="file-item__remove" data-index="${idx}" title="Remove" aria-label="Remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
           </div>
         `;
       }
@@ -568,7 +568,7 @@
     if (totalLinks > 0) summaryParts.push(`${totalLinks} link(s)`);
     fileSummary.textContent = summaryParts.join(', ') + (totalFiles > 0 ? ` · ${formatBytes(allFilesTotalSize)}` : '');
     if (activeFolder) {
-      fileSummary.textContent = `📁 ${activeFolder.name}: ${currentFiles.length} file(s)` +
+      fileSummary.textContent = `${activeFolder.name}: ${currentFiles.length} file(s)` +
         (currentLinks.length > 0 ? `, ${currentLinks.length} link(s)` : '') +
         ` · ${formatBytes(totalSize)}`;
     }
@@ -616,7 +616,7 @@
       unorgMeta = parts.join(', ');
     }
     unorgItem.innerHTML = `
-      <div class="folder-item__icon">📥</div>
+      <div class="folder-item__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg></div>
       <div class="folder-item__info">
         <div class="folder-item__name">Unorganized</div>
         ${unorgMeta ? `<div class="folder-item__meta">${unorgMeta}</div>` : ''}
@@ -643,15 +643,15 @@
         meta = parts.join(', ');
       }
       item.innerHTML = `
-        <div class="folder-item__icon">📁</div>
+        <div class="folder-item__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></div>
         <div class="folder-item__info">
           <div class="folder-item__name">${escapeHtml(folder.name)}</div>
           ${meta ? `<div class="folder-item__meta">${meta}</div>` : ''}
         </div>
         <div class="folder-item__active-dot"></div>
         <div class="folder-item__actions">
-          <button class="folder-item__action-btn" data-action="rename" title="Rename">✏️</button>
-          <button class="folder-item__action-btn folder-item__action-btn--danger" data-action="delete" title="Delete">🗑️</button>
+          <button class="folder-item__action-btn" data-action="rename" title="Rename" aria-label="Rename"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+          <button class="folder-item__action-btn folder-item__action-btn--danger" data-action="delete" title="Delete" aria-label="Delete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
         </div>
       `;
 
@@ -721,7 +721,7 @@
 
     if (addedCount > 0 && folders.length > 0) {
       const dest = activeFolder ? activeFolder.name : 'Unorganized';
-      showToast(`✓ ${addedCount} file(s) added to <strong>${escapeHtml(dest)}</strong>`);
+      showToast(`${addedCount} file(s) added to <strong>${escapeHtml(dest)}</strong>`);
     }
 
     renderFileList();
@@ -844,7 +844,7 @@
       const btn = document.createElement('button');
       btn.className = 'btn btn--ghost btn--block';
       btn.style.textAlign = 'left';
-      btn.innerHTML = '📥 Unorganized';
+      btn.innerHTML = '<span class="classic-icon" style="margin-right:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg></span> Unorganized';
       btn.addEventListener('click', () => executeMove(null));
       moveFolderList.appendChild(btn);
     }
@@ -855,7 +855,7 @@
       const btn = document.createElement('button');
       btn.className = 'btn btn--ghost btn--block';
       btn.style.textAlign = 'left';
-      btn.innerHTML = `📁 ${escapeHtml(folder.name)}`;
+      btn.innerHTML = `<span class="classic-icon" style="margin-right:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></span> ${escapeHtml(folder.name)}`;
       btn.addEventListener('click', () => executeMove(folder.id));
       moveFolderList.appendChild(btn);
     });
@@ -886,16 +886,16 @@
         selectedFiles.length = 0;
         selectedLinks.length = 0;
       }
-      showToast(`📦 Moved all items to <strong>${escapeHtml(targetName)}</strong>`);
+      showToast(`Moved all items to <strong>${escapeHtml(targetName)}</strong>`);
     } else {
       if (currentMoveState.itemType === 'file') {
         const item = sourceFiles.splice(currentMoveState.itemIndex, 1)[0];
         targetFiles.push(item);
-        showToast(`📦 Moved file to <strong>${escapeHtml(targetName)}</strong>`);
+        showToast(`Moved file to <strong>${escapeHtml(targetName)}</strong>`);
       } else if (currentMoveState.itemType === 'link') {
         const item = sourceLinks.splice(currentMoveState.itemIndex, 1)[0];
         targetLinks.push(item);
-        showToast(`📦 Moved link to <strong>${escapeHtml(targetName)}</strong>`);
+        showToast(`Moved link to <strong>${escapeHtml(targetName)}</strong>`);
       }
     }
     
@@ -921,9 +921,9 @@
     const label = isCode ? 'Code snippet' : 'Text';
     if (folders.length > 0) {
       const dest = activeFolder ? activeFolder.name : 'Unorganized';
-      showToast(`✓ ${label} added to <strong>${escapeHtml(dest)}</strong>`);
+      showToast(`${label} added to <strong>${escapeHtml(dest)}</strong>`);
     } else {
-      showToast(`✓ ${label} added`);
+      showToast(`${label} added`);
     }
 
     renderFileList();
@@ -976,7 +976,7 @@
     activeFolderId = id; // Auto-activate newly created folder
     newFolderRow.style.display = 'none';
     newFolderInput.value = '';
-    showToast(`📁 Folder <strong>${escapeHtml(name)}</strong> created and activated`);
+    showToast(`Folder <strong>${escapeHtml(name)}</strong> created and activated`);
     renderFileList();
   }
 
@@ -1295,7 +1295,7 @@
 
     function renderFileItem(f) {
       const cat = f.category || 'file';
-      const icon = FILE_ICONS[cat] || '📎';
+      const icon = FILE_ICONS[cat] || FILE_ICONS.file;
       const li = document.createElement('li');
       li.className = 'file-item';
       li.innerHTML = `
@@ -1366,7 +1366,7 @@
       } else {
         li.className = 'file-item';
         li.innerHTML = `
-          <div class="file-item__icon file-item__icon--data">🔗</div>
+          <div class="file-item__icon file-item__icon--data"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div>
           <div class="file-item__details">
             <div class="file-item__name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${linkify(link)}</div>
             <div class="file-item__size">Link</div>
@@ -1383,7 +1383,7 @@
     if (rootFiles.length > 0 && Object.keys(groups).length > 0) {
       const header = document.createElement('div');
       header.className = 'folder-group-header';
-      header.innerHTML = '📥 Unorganized';
+      header.innerHTML = '<span class="classic-icon" style="margin-right:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg></span> Unorganized';
       qrFileList.appendChild(header);
     }
     rootFiles.forEach(f => qrFileList.appendChild(renderFileItem(f)));
@@ -1392,7 +1392,7 @@
     Object.keys(groups).forEach(folderName => {
       const header = document.createElement('div');
       header.className = 'folder-group-header';
-      header.innerHTML = `📁 ${escapeHtml(folderName)}`;
+      header.innerHTML = `<span class="classic-icon" style="margin-right:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></span> ${escapeHtml(folderName)}`;
       qrFileList.appendChild(header);
       groups[folderName].files.forEach(f => qrFileList.appendChild(renderFileItem(f)));
       groups[folderName].links.forEach(link => qrFileList.appendChild(renderLinkItem(link)));
@@ -1504,8 +1504,8 @@
   copyUrlBtn.addEventListener('click', () => {
     if (!currentTransfer) return;
     navigator.clipboard.writeText(currentTransfer.url).then(() => {
-      copyUrlBtn.textContent = '✅ Copied!';
-      setTimeout(() => (copyUrlBtn.textContent = '📋 Copy'), 2000);
+      copyUrlBtn.textContent = 'Copied!';
+      setTimeout(() => (copyUrlBtn.textContent = 'Copy Link'), 2000);
     }).catch(() => {
       const textarea = document.createElement('textarea');
       textarea.value = currentTransfer.url;
@@ -1513,8 +1513,8 @@
       textarea.select();
       document.execCommand('copy');
       document.body.removeChild(textarea);
-      copyUrlBtn.textContent = '✅ Copied!';
-      setTimeout(() => (copyUrlBtn.textContent = '📋 Copy'), 2000);
+      copyUrlBtn.textContent = 'Copied!';
+      setTimeout(() => (copyUrlBtn.textContent = 'Copy Link'), 2000);
     });
   });
 
@@ -1522,7 +1522,7 @@
   shareWhatsAppBtn.addEventListener('click', () => {
     if (!currentTransfer) return;
     const name = currentTransfer.transferName || 'Lab Files';
-    const msg = `📁 *${name}* — Download from LabDrop:\n${currentTransfer.url}\n\nCode: *${currentTransfer.shortCode}*`;
+    const msg = `*${name}* — Download from LabDrop:\n${currentTransfer.url}\n\nCode: *${currentTransfer.shortCode}*`;
     const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(waUrl, '_blank');
   });
@@ -1641,7 +1641,7 @@
         const files = await Promise.all(filePromises);
         if (files && files.length > 0) {
           addFiles(files);
-          showAlert(`📥 Added ${files.length} file(s) opened with LabDrop!`, 'success');
+          showAlert(`Added ${files.length} file(s) opened with LabDrop!`, 'success');
         }
       } catch (err) {
         console.error('Error handling files from launchQueue:', err);
@@ -2004,13 +2004,13 @@
   let aiSessionFiles = [];
 
   function getAiFileIcon(fileName) {
-    if (!fileName) return '📄';
+    if (!fileName) return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>';
     const cat = typeof getFileCategory === 'function' ? getFileCategory(fileName) : 'other';
-    if (cat === 'code') return '💻';
-    if (cat === 'pdf') return '📑';
-    if (cat === 'image') return '🖼️';
-    if (cat === 'document') return '📖';
-    return '📄';
+    if (cat === 'code') return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>';
+    if (cat === 'pdf') return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>';
+    if (cat === 'image') return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>';
+    if (cat === 'document') return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>';
+    return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>';
   }
 
   // Pre-reads and caches complete file payload so it is immediately available throughout the session
@@ -2606,19 +2606,19 @@
     const data = currentGeneratedRecord;
     const variants = data.sectionVariants || {};
     const titles = data.sectionTitles || {
-      aim: '🎯 Aim / Objective',
-      requirements: '💻 HW & SW Requirements',
-      apparatus: '🔬 Apparatus & Libraries',
-      description: '📖 Theory & Description',
-      theory: '📖 Theory & Description',
-      algorithm: '🔢 Step-by-Step Algorithm',
-      flowchart: '📊 Visual Flowchart',
-      procedure: '⚙️ Procedure & Commands',
-      program: '💻 Source Code (Program)',
-      table: '📋 Observation Table',
-      precautions: '⚠️ Precautions & Boundary',
-      output: '🖥️ Sample Console Output',
-      result: '🏁 Result Statement'
+      aim: 'Aim / Objective',
+      requirements: 'HW & SW Requirements',
+      apparatus: 'Apparatus & Libraries',
+      description: 'Theory & Description',
+      theory: 'Theory & Description',
+      algorithm: 'Step-by-Step Algorithm',
+      flowchart: 'Visual Flowchart',
+      procedure: 'Procedure & Commands',
+      program: 'Source Code (Program)',
+      table: 'Observation Table',
+      precautions: 'Precautions & Boundary',
+      output: 'Sample Console Output',
+      result: 'Result Statement'
     };
 
     // If variants not present, parse sections from raw markdown so dropdowns are always present
@@ -2736,7 +2736,7 @@
     if (!variants || Object.keys(variants).length === 0) {
       let md = data.markdown || '';
       if (data.mermaidCode && !md.includes(data.mermaidCode)) {
-        md += `\n\n## 📊 Visual Flowchart / Diagram\n\`\`\`mermaid\n${data.mermaidCode}\n\`\`\`\n`;
+        md += `\n\n## Visual Flowchart / Diagram\n\`\`\`mermaid\n${data.mermaidCode}\n\`\`\`\n`;
       }
       return md;
     }
@@ -2747,7 +2747,7 @@
       : Object.keys(variants);
 
     const parts = [];
-    parts.push(`# 📄 LABORATORY OBSERVATION & RECORD`);
+    parts.push(`# LABORATORY OBSERVATION & RECORD`);
     if (data.filename) parts.push(`**Source Code File:** ${data.filename}\n`);
 
     sections.forEach(secKey => {
@@ -2759,7 +2759,7 @@
 
     // Ensure Mermaid diagram / flowchart code is explicitly included for AI chat analysis
     if (data.mermaidCode && !parts.some(p => p.includes(data.mermaidCode))) {
-      parts.push(`## 📊 Visual Flowchart / Architecture Diagram\n\`\`\`mermaid\n${data.mermaidCode}\n\`\`\`\n`);
+      parts.push(`## Visual Flowchart / Architecture Diagram\n\`\`\`mermaid\n${data.mermaidCode}\n\`\`\`\n`);
     }
 
     return parts.join('\n');
@@ -2802,18 +2802,18 @@
 
     let recordLoadingTimer = null;
     const loadingStatusMessages = [
-      '💡 You can share files <strong>without logging in</strong> or signing up',
-      '⚡ <strong>Instant Transfer:</strong> Send files to your lab PC using a <strong>6-digit PIN</strong> or <strong>QR code</strong>',
-      '🔒 <strong>Zero-Trace Privacy:</strong> Uploaded files are <strong>automatically deleted after 30 minutes</strong>',
-      '📄 <strong>1-Click Lab Records:</strong> Turn code or diagrams into full <strong>academic lab observation sheets</strong>',
-      '🎓 <strong>Oral Viva Voce Prep:</strong> Get <strong>60-second elevator pitches</strong>, viva traps & model answers',
-      '📊 <strong>Auto Mermaid Flowcharts:</strong> Automatically draw <strong>interactive visual SVG diagrams</strong>',
-      '🧠 <strong>Multi-Diagram Vision:</strong> PDF scanner detects & breaks down <strong>every diagram separately</strong>',
-      '🎯 <strong>Custom Sizing:</strong> Generate <strong>Brief (1-page)</strong>, Standard, or Detailed academic reports',
-      '📱 <strong>Cross-Device Sync:</strong> Seamless transfer across your <strong>phone, tablet, and lab PC</strong>',
-      '📑 <strong>Word & Docs Ready:</strong> Copy formatted academic tables and code with <strong>1 single click</strong>',
-      '💻 <strong>Zero Setup:</strong> Native support for <strong>C, C++, Java, Python, SQL</strong> & multi-page PDFs',
-      '🖨️ <strong>University A4 Print:</strong> Pre-formatted with <strong>Aim, Algorithm, Tables & Precautions</strong>'
+      'You can share files <strong>without logging in</strong> or signing up',
+      '<strong>Instant Transfer:</strong> Send files to your lab PC using a <strong>6-digit PIN</strong> or <strong>QR code</strong>',
+      '<strong>Zero-Trace Privacy:</strong> Uploaded files are <strong>automatically deleted after 30 minutes</strong>',
+      '<strong>1-Click Lab Records:</strong> Turn code or diagrams into full <strong>academic lab observation sheets</strong>',
+      '<strong>Oral Viva Voce Prep:</strong> Get <strong>60-second elevator pitches</strong>, viva traps & model answers',
+      '<strong>Auto Mermaid Flowcharts:</strong> Automatically draw <strong>interactive visual SVG diagrams</strong>',
+      '<strong>Multi-Diagram Vision:</strong> PDF scanner detects & breaks down <strong>every diagram separately</strong>',
+      '<strong>Custom Sizing:</strong> Generate <strong>Brief (1-page)</strong>, Standard, or Detailed academic reports',
+      '<strong>Cross-Device Sync:</strong> Seamless transfer across your <strong>phone, tablet, and lab PC</strong>',
+      '<strong>Word & Docs Ready:</strong> Copy formatted academic tables and code with <strong>1 single click</strong>',
+      '<strong>Zero Setup:</strong> Native support for <strong>C, C++, Java, Python, SQL</strong> & multi-page PDFs',
+      '<strong>University A4 Print:</strong> Pre-formatted with <strong>Aim, Algorithm, Tables & Precautions</strong>'
     ];
 
     function startRecordLoadingMessages() {
@@ -3034,7 +3034,7 @@
         const md = getCurrentRecordMarkdown();
         await navigator.clipboard.writeText(md);
         const originalText = btnCopyRecordMd.textContent;
-        btnCopyRecordMd.textContent = '✅ Copied!';
+        btnCopyRecordMd.textContent = 'Copied!';
         setTimeout(() => btnCopyRecordMd.textContent = originalText, 2000);
       } catch (e) {
         showRecordModalError('Could not copy to clipboard.');
@@ -3059,7 +3059,7 @@
             })
           ]);
           const originalText = btnCopyRecordRich.textContent;
-          btnCopyRecordRich.textContent = '✅ Copied for Word!';
+          btnCopyRecordRich.textContent = 'Copied for Word!';
           setTimeout(() => btnCopyRecordRich.textContent = originalText, 2000);
         } else {
           await navigator.clipboard.writeText(text);
@@ -3161,7 +3161,7 @@
       labRecordSheet.classList.toggle('is-editing', isEditingReport);
     }
     if (btnToggleEditSheet) {
-      btnToggleEditSheet.textContent = isEditingReport ? '💾 Finish Editing' : '✏️ Edit Content';
+      btnToggleEditSheet.textContent = isEditingReport ? 'Finish Editing' : 'Edit Content';
       btnToggleEditSheet.classList.toggle('active', isEditingReport);
     }
     if (isEditingReport) {
@@ -3433,18 +3433,18 @@
   let homeAiLoadingTimer = null;
 
   const homeAiLoadingQuotes = [
-    '💡 You can share files <strong>without logging in</strong> or signing up',
-    '⚡ <strong>Instant Transfer:</strong> Send files to your lab PC using a <strong>6-digit PIN</strong> or <strong>QR code</strong>',
-    '🔒 <strong>Zero-Trace Privacy:</strong> Uploaded files are <strong>automatically deleted after 30 minutes</strong>',
-    '📄 <strong>1-Click Lab Records:</strong> Turn code or diagrams into full <strong>academic lab observation sheets</strong>',
-    '🎓 <strong>Oral Viva Voce Prep:</strong> Get <strong>60-second elevator pitches</strong>, viva traps & model answers',
-    '📊 <strong>Auto Mermaid Flowcharts:</strong> Automatically draw <strong>interactive visual SVG diagrams</strong>',
-    '🧠 <strong>Multi-Diagram Vision:</strong> PDF scanner detects & breaks down <strong>every diagram separately</strong>',
-    '🎯 <strong>Custom Sizing:</strong> Generate <strong>Brief (1-page)</strong>, Standard, or Detailed academic reports',
-    '📱 <strong>Cross-Device Sync:</strong> Seamless transfer across your <strong>phone, tablet, and lab PC</strong>',
-    '📑 <strong>Word & Docs Ready:</strong> Copy formatted academic tables and code with <strong>1 single click</strong>',
-    '💻 <strong>Zero Setup:</strong> Native support for <strong>C, C++, Java, Python, SQL</strong> & multi-page PDFs',
-    '🖨️ <strong>University A4 Print:</strong> Pre-formatted with <strong>Aim, Algorithm, Tables & Precautions</strong>'
+    'You can share files <strong>without logging in</strong> or signing up',
+    '<strong>Instant Transfer:</strong> Send files to your lab PC using a <strong>6-digit PIN</strong> or <strong>QR code</strong>',
+    '<strong>Zero-Trace Privacy:</strong> Uploaded files are <strong>automatically deleted after 30 minutes</strong>',
+    '<strong>1-Click Lab Records:</strong> Turn code or diagrams into full <strong>academic lab observation sheets</strong>',
+    '<strong>Oral Viva Voce Prep:</strong> Get <strong>60-second elevator pitches</strong>, viva traps & model answers',
+    '<strong>Auto Mermaid Flowcharts:</strong> Automatically draw <strong>interactive visual SVG diagrams</strong>',
+    '<strong>Multi-Diagram Vision:</strong> PDF scanner detects & breaks down <strong>every diagram separately</strong>',
+    '<strong>Custom Sizing:</strong> Generate <strong>Brief (1-page)</strong>, Standard, or Detailed academic reports',
+    '<strong>Cross-Device Sync:</strong> Seamless transfer across your <strong>phone, tablet, and lab PC</strong>',
+    '<strong>Word & Docs Ready:</strong> Copy formatted academic tables and code with <strong>1 single click</strong>',
+    '<strong>Zero Setup:</strong> Native support for <strong>C, C++, Java, Python, SQL</strong> & multi-page PDFs',
+    '<strong>University A4 Print:</strong> Pre-formatted with <strong>Aim, Algorithm, Tables & Precautions</strong>'
   ];
 
   function startHomeAiLoadingMessages(isSummarize = false) {
@@ -3571,19 +3571,19 @@
     if (action === 'summarize') {
       homeAiSecondaryLabel.textContent = 'Summary Length:';
       homeAiSecondaryOption.innerHTML = `
-        <option value="brief">⚡ Brief (8 Lines - Fast Review)</option>
-        <option value="standard" selected>📄 Standard (25 Lines - Balanced)</option>
-        <option value="detailed">📚 Detailed (60 Lines - In-Depth)</option>
-        <option value="custom">✏️ Custom Exact Lines</option>
+        <option value="brief">Brief (8 Lines - Fast Review)</option>
+        <option value="standard" selected>Standard (25 Lines - Balanced)</option>
+        <option value="detailed">Detailed (60 Lines - In-Depth)</option>
+        <option value="custom">Custom Exact Lines</option>
       `;
       if (homeAiCustomLines) homeAiCustomLines.style.display = 'none';
     } else {
       homeAiSecondaryLabel.textContent = 'Difficulty Level:';
       homeAiSecondaryOption.innerHTML = `
-        <option value="easy">🟢 Easy (Fundamentals)</option>
-        <option value="medium" selected>🟡 Medium (Lab Standard)</option>
-        <option value="hard">🔴 Hard (Advanced Traps)</option>
-        <option value="extreme">🔥 Extreme (Compiler & Internals)</option>
+        <option value="easy">Easy (Fundamentals)</option>
+        <option value="medium" selected>Medium (Lab Standard)</option>
+        <option value="hard">Hard (Advanced Traps)</option>
+        <option value="extreme">Extreme (Compiler & Internals)</option>
       `;
       if (homeAiCustomLines) homeAiCustomLines.style.display = 'none';
     }
@@ -3722,7 +3722,7 @@
       try {
         await navigator.clipboard.writeText(lastGeneratedHomeVivaOutput);
         const originalText = homeBtnCopyViva.textContent;
-        homeBtnCopyViva.textContent = '✅ Copied!';
+        homeBtnCopyViva.textContent = 'Copied!';
         setTimeout(() => homeBtnCopyViva.textContent = originalText, 2000);
       } catch (e) {
         alert('Could not copy to clipboard.');

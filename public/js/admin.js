@@ -130,7 +130,7 @@
       if (mode === 'dayWise') {
         if (btnModeDayWise) btnModeDayWise.classList.add('active');
         if (btnModeIntraday) btnModeIntraday.classList.remove('active');
-        if (chartTitleIcon) chartTitleIcon.textContent = '📈';
+        if (chartTitleIcon) chartTitleIcon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>';
         if (chartTitleText) chartTitleText.textContent = 'LabDrop Day-Wise Growth';
         const pillFiles = document.getElementById('pillFiles');
         if (pillFiles) {
@@ -140,7 +140,7 @@
       } else {
         if (btnModeIntraday) btnModeIntraday.classList.add('active');
         if (btnModeDayWise) btnModeDayWise.classList.remove('active');
-        if (chartTitleIcon) chartTitleIcon.textContent = '⏱️';
+        if (chartTitleIcon) chartTitleIcon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>';
         if (chartTitleText) chartTitleText.textContent = "Today's Intraday 24-Hour Pulse";
         const pillFiles = document.getElementById('pillFiles');
         if (pillFiles) {
@@ -788,7 +788,7 @@
       tr.innerHTML = `
         <td>
           <span class="tag-code" data-copy="${shortCode}" title="Click to copy code">
-            ${shortCode} <span style="opacity:0.6;font-size:0.7em;">📋</span>
+            ${shortCode} <span style="opacity:0.6;font-size:0.7em;display:inline-flex;vertical-align:-1px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></span>
           </span>
         </td>
         <td style="font-weight:600;max-width:240px;overflow:hidden;text-overflow:ellipsis;">${name}</td>
@@ -797,12 +797,12 @@
         <td>${t.downloadCount} dl</td>
         <td>
           <span class="expiry-countdown" data-expires="${t.expiresAt}">
-            ⏳ ${minStr}m ${secStr}s
+            ${minStr}m ${secStr}s
           </span>
         </td>
         <td>
-          <a href="/t/${t.id}" target="_blank" style="color:var(--accent-gold);text-decoration:none;font-weight:600;font-size:0.78rem;">
-            Open ↗
+          <a href="/t/${t.id}" target="_blank" style="color:var(--accent-gold);text-decoration:none;font-weight:600;font-size:0.78rem;display:inline-flex;align-items:center;gap:4px;">
+            Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
           </a>
         </td>
       `;
@@ -830,7 +830,7 @@
         el.textContent = 'Expired';
         el.style.color = '#EF4444';
       } else {
-        el.textContent = `⏳ ${mins}m ${secs}s`;
+        el.textContent = `${mins}m ${secs}s`;
       }
     });
   }

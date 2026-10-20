@@ -93,7 +93,8 @@
           <button class="nav-link" id="navSignupBtn" style="background:none;border:none;cursor:pointer;">Sign Up</button>
         </div>
         <div id="authLoggedIn" style="display: none; gap: var(--space-md); align-items: center;">
-            <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
+          <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
+          <a href="/my-files.html" class="nav-link" style="text-decoration: none;">Saved Transfers</a>
           <div class="nav-icon" title="User Account" style="background: var(--color-bg-secondary); color: var(--color-text); display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           </div>
@@ -122,7 +123,7 @@
             <input class="form-input" type="text" id="newFolderInput" placeholder="Folder name..." maxlength="40" />
             <div style="display: flex; gap: 4px;">
               <button class="btn btn--secondary btn--sm" id="confirmNewFolderBtn" type="button" style="flex:1;">Create</button>
-              <button class="btn btn--ghost btn--sm" id="cancelNewFolderBtn" type="button">✕</button>
+              <button class="btn btn--ghost btn--sm" id="cancelNewFolderBtn" type="button" aria-label="Cancel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
             </div>
           </div>
 
@@ -143,7 +144,12 @@
       <!-- Main Area (Right) -->
       
       <main class="main-area" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 4rem 1rem;">
-        <div style="font-size: 5rem; line-height: 1; margin-bottom: 1rem;">⏳</div>
+        <div style="margin-bottom: 1.5rem; display: inline-flex; align-items: center; justify-content: center; width: 96px; height: 96px; border-radius: 50%; background: rgba(245, 158, 11, 0.1); color: var(--color-warning);">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </div>
         <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--color-warning);">Transfer Expired or Not Found</h1>
         <p style="font-size: 1.1rem; color: var(--color-text-secondary); max-width: 500px; margin-bottom: 2rem;">
           The transfer you are looking for has expired or does not exist. LabDrop transfers are temporary and expire automatically.

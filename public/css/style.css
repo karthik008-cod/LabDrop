@@ -4829,6 +4829,183 @@ select.form-input option,
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
 }
 
+/* ============================================================
+   Classic Vector Icons & Utilities (No-Emoji Theme)
+   ============================================================ */
+.classic-icon,
+.icon-svg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -0.15em;
+  stroke: currentColor;
+  fill: none;
+  flex-shrink: 0;
+}
+
+.btn .icon-svg,
+.btn svg:not(.brand__header-logo):not(.origami-jet-svg) {
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+}
+
+.file-item__icon svg,
+.folder-item__icon svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  display: block;
+}
+
+.modal__close svg,
+.file-item__remove svg {
+  display: block;
+  stroke: currentColor;
+}
+
+.code-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #FEF3C7;
+  border: 1.5px solid #FCD34D;
+  color: #92400E;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  font-family: monospace;
+  letter-spacing: 2px;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.15);
+}
+
+.badge-expiry {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.badge-expiry--urgent {
+  background: #FEF2F2;
+  color: #991B1B;
+  border-color: #FECACA;
+}
+
+.badge-expiry--warning {
+  background: #FFFBEB;
+  color: #B45309;
+  border-color: #FDE68A;
+}
+
+.badge-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
+}
+
+/* Saved Transfers Cards */
+.saved-transfer-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.saved-transfer-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.saved-transfer-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.saved-transfer-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.saved-transfer-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.saved-transfer-files-box {
+  margin-top: var(--space-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.saved-transfer-file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--color-border);
+  font-size: var(--font-size-sm);
+  gap: 12px;
+}
+
+.saved-transfer-file-row:last-child {
+  border-bottom: none;
+}
+
+.saved-transfer-file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.saved-transfer-file-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.saved-transfer-file-size {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  flex-shrink: 0;
+}
+
+.saved-transfer-actions-bar {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  flex-wrap: wrap;
+}
+
+
 
 
 

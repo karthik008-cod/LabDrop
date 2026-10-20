@@ -51,12 +51,12 @@
 
   // ---- File icons ----
   const FILE_ICONS = {
-    image: '📷',
-    code: '💻',
-    document: '📄',
-    data: '📊',
-    archive: '📦',
-    file: '📎',
+    image: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>',
+    code: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>',
+    document: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>',
+    data: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>',
+    archive: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><line x1="10" y1="12" x2="14" y2="12"></line></svg>',
+    file: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
   };
 
   // ---- Utility: format bytes ----
@@ -94,7 +94,7 @@
 
   // ---- Show error ----
   function showError(icon, title, message) {
-    errorIcon.textContent = icon;
+    errorIcon.innerHTML = icon;
     errorTitle.textContent = title;
     errorMessage.textContent = message;
     showState('error');
@@ -116,7 +116,7 @@
     const transferId = getTransferId();
 
     if (!transferId) {
-      showError('🔗', 'Invalid Link', 'This transfer link is malformed or incomplete.');
+      showError('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>', 'Invalid Link', 'This transfer link is malformed or incomplete.');
       return;
     }
 
@@ -133,12 +133,12 @@
           setTimeout(() => loadTransfer(retryCount + 1), 1000);
           return;
         }
-        showError('🔍', 'Transfer Not Found', 'This transfer does not exist or is no longer available.');
+        showError('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>', 'Transfer Not Found', 'This transfer does not exist or is no longer available.');
         return;
       }
 
       if (res.status === 410) {
-        showError('⏰', 'Transfer Expired', 'This transfer has expired. Ask the sender to create a new one.');
+        showError('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>', 'Transfer Expired', 'This transfer has expired. Ask the sender to create a new one.');
         return;
       }
 
@@ -151,13 +151,13 @@
       }
       
       if (res.status === 429) {
-         showError('🔒', 'Locked', 'Too many incorrect PIN attempts. This transfer is locked.');
+         showError('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>', 'Locked', 'Too many incorrect PIN attempts. This transfer is locked.');
          return;
       }
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        showError('😕', 'Something Went Wrong', errData.error || 'An unexpected error occurred.');
+        showError('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>', 'Something Went Wrong', errData.error || 'An unexpected error occurred.');
         return;
       }
 
@@ -169,7 +169,7 @@
         // Silent retry for spotty mobile networks
         setTimeout(() => loadTransfer(retryCount + 1), 1000);
       } else {
-        showError('📡', 'Network Error', 'Could not connect to the server. Make sure you are on the same Wi-Fi/LAN network as the lab computer.');
+        showError('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>', 'Network Error', 'Could not connect to the server. Make sure you are on the same Wi-Fi/LAN network as the lab computer.');
       }
     }
   }
@@ -220,11 +220,11 @@
     
     // Rename button state
     if (customZipName || data.transferName) {
-       downloadAllBtn.textContent = `⬇️ Download`;
-       if(shareAllBtn) shareAllBtn.textContent = `📤 Share`;
+       downloadAllBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Download';
+       if(shareAllBtn) shareAllBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg> Share';
     } else {
-       downloadAllBtn.textContent = `⬇️ Download All`;
-       if(shareAllBtn) shareAllBtn.textContent = `📤 Share All`;
+       downloadAllBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Download All';
+       if(shareAllBtn) shareAllBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg> Share All';
     }
 
     selectedFileIds.clear();
@@ -261,7 +261,7 @@
     
     function renderMobileFileItem(file) {
       const cat = file.category || 'file';
-      const icon = FILE_ICONS[cat] || '📎';
+      const icon = FILE_ICONS[cat] || FILE_ICONS.file;
       const fileQs = currentPin ? `?pin=${currentPin}` : '';
       
       const customName = file.customName || file.name;
@@ -281,15 +281,9 @@
           <button class="btn btn--outline btn--icon ai-file-btn" data-file-id="${file.id}" title="AI Viva &amp; Exam Prep (Beta) for ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px; color: #B45309; border-color: rgba(245, 158, 11, 0.35); background: rgba(255, 209, 102, 0.15);">
             AI
           </button>
-          <button class="btn btn--outline btn--icon rename-file-btn" data-file-id="${file.id}" title="Rename ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px;">
-            ✏️
-          </button>
-          <a class="btn btn--secondary btn--icon download-file-btn" href="${downloadUrl}" data-filename="${escapeHtml(customName)}" title="Browse / Download ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 12px;">
-            ⬇️
-          </a>
-          <button class="btn btn--secondary btn--icon share-file-btn" data-filename="${escapeHtml(customName)}" data-href="${downloadUrl}" title="Share ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 12px;">
-            📤
-          </button>
+          <button class="btn btn--outline btn--icon rename-file-btn" data-file-id="${file.id}" title="Rename ${escapeHtml(customName)}" aria-label="Rename" style="font-size: 0.85rem; padding: 6px 10px; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+          <a class="btn btn--secondary btn--icon download-file-btn" href="${downloadUrl}" data-filename="${escapeHtml(customName)}" title="Browse / Download ${escapeHtml(customName)}" aria-label="Download" style="font-size: 0.85rem; padding: 6px 12px; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></a>
+          <button class="btn btn--secondary btn--icon share-file-btn" data-filename="${escapeHtml(customName)}" data-href="${downloadUrl}" title="Share ${escapeHtml(customName)}" aria-label="Share" style="font-size: 0.85rem; padding: 6px 12px; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg></button>
         </div>
       `;
       return li;
@@ -353,13 +347,13 @@
       } else {
         li.className = 'file-item';
         li.innerHTML = `
-          <div class="file-item__icon file-item__icon--data">🔗</div>
+          <div class="file-item__icon file-item__icon--data"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div>
           <div class="file-item__details">
             <div class="file-item__name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${linkify(link)}</div>
             <div class="file-item__size">Link</div>
           </div>
           <div class="file-item__actions">
-            <a class="btn btn--secondary btn--icon" href="${escapeHtml(link.trim())}" target="_blank" title="Open Link" style="font-size: 0.85rem; padding: 6px 12px;">🔗</a>
+            <a class="btn btn--secondary btn--icon" href="${escapeHtml(link.trim())}" target="_blank" title="Open Link" style="font-size: 0.85rem; padding: 6px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a>
           </div>
         `;
       }
@@ -370,7 +364,7 @@
     if (rootFiles.length > 0 && Object.keys(groups).length > 0) {
       const header = document.createElement('div');
       header.className = 'folder-group-header';
-      header.innerHTML = '📥 Unorganized';
+      header.innerHTML = '<span class="classic-icon" style="margin-right:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg></span> Unorganized';
       mFileList.appendChild(header);
     }
     rootFiles.forEach(f => mFileList.appendChild(renderMobileFileItem(f)));
@@ -379,7 +373,7 @@
     Object.keys(groups).forEach(folderName => {
       const header = document.createElement('div');
       header.className = 'folder-group-header';
-      header.innerHTML = `📁 ${escapeHtml(folderName)}`;
+      header.innerHTML = `<span class="classic-icon" style="margin-right:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></span> ${escapeHtml(folderName)}`;
       mFileList.appendChild(header);
       groups[folderName].files.forEach(f => mFileList.appendChild(renderMobileFileItem(f)));
       groups[folderName].links.forEach(link => renderMobileLinkItem(link, mFileList));
@@ -713,12 +707,12 @@
     if (isCancelled) return;
 
     if (navigator.canShare && navigator.canShare({ files: shareFiles })) {
-        text.innerHTML = '✅ Ready to share!';
+        text.innerHTML = 'Ready to share!';
         const shareBtn = document.createElement('button');
         shareBtn.className = 'btn btn--primary btn--lg';
         shareBtn.style.width = '100%';
         shareBtn.style.marginBottom = '8px';
-        shareBtn.innerText = '📤 Share Now';
+        shareBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg> Share Now';
         
         shareBtn.onclick = async () => {
             document.body.removeChild(overlay);
@@ -1720,18 +1714,18 @@
 
   // Loading messages
   const labRecordLoadingQuotes = [
-    '💡 You can share files <strong>without logging in</strong> or signing up',
-    '⚡ <strong>Instant Transfer:</strong> Send files to your lab PC using a <strong>6-digit PIN</strong> or <strong>QR code</strong>',
-    '🔒 <strong>Zero-Trace Privacy:</strong> Uploaded files are <strong>automatically deleted after 30 minutes</strong>',
-    '📄 <strong>1-Click Lab Records:</strong> Turn code or diagrams into full <strong>academic lab observation sheets</strong>',
-    '🎓 <strong>Oral Viva Voce Prep:</strong> Get <strong>60-second elevator pitches</strong>, viva traps & model answers',
-    '📊 <strong>Auto Mermaid Flowcharts:</strong> Automatically draw <strong>interactive visual SVG diagrams</strong>',
-    '🧠 <strong>Multi-Diagram Vision:</strong> PDF scanner detects & breaks down <strong>every diagram separately</strong>',
-    '🎯 <strong>Custom Sizing:</strong> Generate <strong>Brief (1-page)</strong>, Standard, or Detailed academic reports',
-    '📱 <strong>Cross-Device Sync:</strong> Seamless transfer across your <strong>phone, tablet, and lab PC</strong>',
-    '📑 <strong>Word & Docs Ready:</strong> Copy formatted academic tables and code with <strong>1 single click</strong>',
-    '💻 <strong>Zero Setup:</strong> Native support for <strong>C, C++, Java, Python, SQL</strong> & multi-page PDFs',
-    '🖨️ <strong>University A4 Print:</strong> Pre-formatted with <strong>Aim, Algorithm, Tables & Precautions</strong>'
+    'You can share files <strong>without logging in</strong> or signing up',
+    '<strong>Instant Transfer:</strong> Send files to your lab PC using a <strong>6-digit PIN</strong> or <strong>QR code</strong>',
+    '<strong>Zero-Trace Privacy:</strong> Uploaded files are <strong>automatically deleted after 30 minutes</strong>',
+    '<strong>1-Click Lab Records:</strong> Turn code or diagrams into full <strong>academic lab observation sheets</strong>',
+    '<strong>Oral Viva Voce Prep:</strong> Get <strong>60-second elevator pitches</strong>, viva traps & model answers',
+    '<strong>Auto Mermaid Flowcharts:</strong> Automatically draw <strong>interactive visual SVG diagrams</strong>',
+    '<strong>Multi-Diagram Vision:</strong> PDF scanner detects & breaks down <strong>every diagram separately</strong>',
+    '<strong>Custom Sizing:</strong> Generate <strong>Brief (1-page)</strong>, Standard, or Detailed academic reports',
+    '<strong>Cross-Device Sync:</strong> Seamless transfer across your <strong>phone, tablet, and lab PC</strong>',
+    '<strong>Word & Docs Ready:</strong> Copy formatted academic tables and code with <strong>1 single click</strong>',
+    '<strong>Zero Setup:</strong> Native support for <strong>C, C++, Java, Python, SQL</strong> & multi-page PDFs',
+    '<strong>University A4 Print:</strong> Pre-formatted with <strong>Aim, Algorithm, Tables & Precautions</strong>'
   ];
 
   function startLabRecordLoadingCycle() {
@@ -1852,7 +1846,7 @@
       try {
         await navigator.clipboard.writeText(currentLabRecordMarkdown);
         const orig = btnCopyLabRecordMdT.textContent;
-        btnCopyLabRecordMdT.textContent = '✅ Copied!';
+        btnCopyLabRecordMdT.textContent = 'Copied!';
         setTimeout(() => btnCopyLabRecordMdT.textContent = orig, 2000);
       } catch (e) {}
     });
@@ -1867,7 +1861,7 @@
         const blob = new Blob([html], { type: 'text/html' });
         await navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': new Blob([labRecordOutput.innerText], { type: 'text/plain' }) })]);
         const orig = btnCopyLabRecordRichT.textContent;
-        btnCopyLabRecordRichT.textContent = '✅ Copied!';
+        btnCopyLabRecordRichT.textContent = 'Copied!';
         setTimeout(() => btnCopyLabRecordRichT.textContent = orig, 2000);
       } catch (e) {}
     });
@@ -2025,18 +2019,18 @@
 
     let aiLoadingTimer = null;
     const aiLoadingQuotes = [
-      '💡 You can share files <strong>without logging in</strong> or signing up',
-      '⚡ <strong>Instant Transfer:</strong> Send files to your lab PC using a <strong>6-digit PIN</strong> or <strong>QR code</strong>',
-      '🔒 <strong>Zero-Trace Privacy:</strong> Uploaded files are <strong>automatically deleted after 30 minutes</strong>',
-      '📄 <strong>1-Click Lab Records:</strong> Turn code or diagrams into full <strong>academic lab observation sheets</strong>',
-      '🎓 <strong>Oral Viva Voce Prep:</strong> Get <strong>60-second elevator pitches</strong>, viva traps & model answers',
-      '📊 <strong>Auto Mermaid Flowcharts:</strong> Automatically draw <strong>interactive visual SVG diagrams</strong>',
-      '🧠 <strong>Multi-Diagram Vision:</strong> PDF scanner detects & breaks down <strong>every diagram separately</strong>',
-      '🎯 <strong>Custom Sizing:</strong> Generate <strong>Brief (1-page)</strong>, Standard, or Detailed academic reports',
-      '📱 <strong>Cross-Device Sync:</strong> Seamless transfer across your <strong>phone, tablet, and lab PC</strong>',
-      '📑 <strong>Word & Docs Ready:</strong> Copy formatted academic tables and code with <strong>1 single click</strong>',
-      '💻 <strong>Zero Setup:</strong> Native support for <strong>C, C++, Java, Python, SQL</strong> & multi-page PDFs',
-      '🖨️ <strong>University A4 Print:</strong> Pre-formatted with <strong>Aim, Algorithm, Tables & Precautions</strong>'
+      'You can share files <strong>without logging in</strong> or signing up',
+      '<strong>Instant Transfer:</strong> Send files to your lab PC using a <strong>6-digit PIN</strong> or <strong>QR code</strong>',
+      '<strong>Zero-Trace Privacy:</strong> Uploaded files are <strong>automatically deleted after 30 minutes</strong>',
+      '<strong>1-Click Lab Records:</strong> Turn code or diagrams into full <strong>academic lab observation sheets</strong>',
+      '<strong>Oral Viva Voce Prep:</strong> Get <strong>60-second elevator pitches</strong>, viva traps & model answers',
+      '<strong>Auto Mermaid Flowcharts:</strong> Automatically draw <strong>interactive visual SVG diagrams</strong>',
+      '<strong>Multi-Diagram Vision:</strong> PDF scanner detects & breaks down <strong>every diagram separately</strong>',
+      '<strong>Custom Sizing:</strong> Generate <strong>Brief (1-page)</strong>, Standard, or Detailed academic reports',
+      '<strong>Cross-Device Sync:</strong> Seamless transfer across your <strong>phone, tablet, and lab PC</strong>',
+      '<strong>Word & Docs Ready:</strong> Copy formatted academic tables and code with <strong>1 single click</strong>',
+      '<strong>Zero Setup:</strong> Native support for <strong>C, C++, Java, Python, SQL</strong> & multi-page PDFs',
+      '<strong>University A4 Print:</strong> Pre-formatted with <strong>Aim, Algorithm, Tables & Precautions</strong>'
     ];
 
     function startAiLoadingCycle() {
@@ -2070,7 +2064,7 @@
 
     if (aiLoadingText) {
       aiLoadingText.textContent = isForceful 
-        ? '⚡ Forcefully analyzing file & formulating technical questions...' 
+        ? 'Forcefully analyzing file & formulating technical questions...' 
         : (isSummarize ? 'Generating structured summary with Gemini AI...' : 'Consulting Gemini AI to prepare high-scoring Exam & Viva questions...');
     }
     aiLoadingSpinner.style.display = 'block';
@@ -2101,7 +2095,7 @@
       if (data.needsForce) {
         aiMediaWarningText.textContent = data.warning || 'This file appears to be a non-study document or media asset that does not typically require viva questions.';
         if (btnForceViva) {
-          btnForceViva.textContent = data.isNonStudyOnly ? '⚡ Formulate Viva Questions Anyway' : '⚡ Create Viva Questions Forcefully';
+          btnForceViva.textContent = data.isNonStudyOnly ? 'Formulate Viva Questions Anyway' : 'Create Viva Questions Forcefully';
         }
         aiMediaWarningBanner.style.display = 'flex';
         return;
@@ -2130,10 +2124,10 @@
             rapid_fire: 'Rapid-Fire Flashcards'
           };
           const diffLabels = {
-            easy: '🟢 Easy',
-            medium: '🟡 Medium',
-            hard: '🔴 Hard',
-            extreme: '🔥 Extreme'
+            easy: 'Easy',
+            medium: 'Medium',
+            hard: 'Hard',
+            extreme: 'Extreme'
           };
           vivaBadge.textContent = `${typeLabels[examType] || 'Exam Prep'} · ${diffLabels[difficulty] || difficulty} · ${selection.count} file(s)`;
         }
@@ -2182,7 +2176,7 @@
       try {
         await navigator.clipboard.writeText(vivaOutput.innerText);
         const originalText = btnCopyViva.textContent;
-        btnCopyViva.textContent = '✅ Copied!';
+        btnCopyViva.textContent = 'Copied!';
         setTimeout(() => btnCopyViva.textContent = originalText, 2000);
       } catch (err) {
         window.LabDialog.alert('Failed to copy to clipboard.');
@@ -2391,7 +2385,7 @@
       try {
         await navigator.clipboard.writeText(vivaOutput.innerText);
         const originalText = btnCopyViva.textContent;
-        btnCopyViva.textContent = '✅ Copied!';
+        btnCopyViva.textContent = 'Copied!';
         setTimeout(() => btnCopyViva.textContent = originalText, 2000);
       } catch (err) {
         window.LabDialog.alert('Failed to copy to clipboard.');
