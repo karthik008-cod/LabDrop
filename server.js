@@ -452,8 +452,8 @@ app.get('/api/share-session/:id', (req, res) => {
     return res.status(404).json({ error: 'Share session not found or expired' });
   }
 
-  // Consume immediately so it cannot be re-fetched
-  serverShareSessions.delete(sessionId);
+  // Delete after a brief grace period so transient reconnects or retries don't fail
+  setTimeout(() => serverShareSessions.delete(sessionId), 60000);
   res.json({
     success: true,
     files: session.files,

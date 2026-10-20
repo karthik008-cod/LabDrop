@@ -1629,7 +1629,7 @@
   // ---- PWA, Desktop File Handling & Web Share Target Logic ----
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js?v=5.1').then(reg => {
+      navigator.serviceWorker.register('/sw.js?v=8.0').then(reg => {
         if (reg && reg.update) {
           reg.update();
         }
@@ -1640,7 +1640,8 @@
 
     navigator.serviceWorker.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'LABDROP_SHARED_FILES_READY') {
-        checkSharedFiles();
+        wasLaunchedFromShare = true;
+        checkSharedFiles(0);
       }
     });
   }
@@ -1662,24 +1663,18 @@
     });
   }
 
-  function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
+  function b64toBlob(b64Data, contentType = '') {
     const byteCharacters = atob(b64Data);
-    const byteArrays = [];
-    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-      const slice = byteCharacters.slice(offset, offset + sliceSize);
-      const byteNumbers = new Array(slice.length);
-      for (let i = 0; i < slice.length; i++) {
-        byteNumbers[i] = slice.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      byteArrays.push(byteArray);
+    const byteNumbers = new Uint8Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
-    return new Blob(byteArrays, { type: contentType });
+    return new Blob([byteNumbers], { type: contentType });
   }
 
   let isCheckingSharedFiles = false;
   let hasPendingSharedCheck = false;
-  const MAX_SHARED_RETRIES = 12; // 12 * 250ms = 3.0s window for background DB write
+  const MAX_SHARED_RETRIES = 15; // 15 * 200ms = 3.0s window for background DB write
 
   // Check if initial page URL had shared marker
   const initialUrlParams = new URLSearchParams(window.location.search);

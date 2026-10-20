@@ -64,25 +64,12 @@
         {
           "name": "shared_files",
           "accept": [
+            "*/*",
             "image/*",
             "video/*",
             "audio/*",
             "text/*",
-            "application/pdf",
-            "application/zip",
-            "application/x-zip-compressed",
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.ms-excel",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.ms-powerpoint",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "application/octet-stream",
-            "application/*",
-            ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
-            ".txt", ".c", ".cpp", ".h", ".hpp", ".py", ".java", ".js", ".ts", ".html", ".css", ".json", ".sql", ".sh",
-            ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".zip", ".rar", ".7z", ".tar", ".gz",
-            ".csv", ".mp4", ".mov", ".avi", ".mkv", ".mp3", ".wav", ".ogg", ".m4a", ".aac", ".vcf", ".apk"
+            "application/*"
           ]
         }
       ]

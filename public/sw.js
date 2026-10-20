@@ -1,5 +1,5 @@
-// LabDrop — Service Worker (sw.js v5.1)
-const CACHE_NAME = 'labdrop-v5.1';
+// LabDrop — Service Worker (sw.js v8.0)
+const CACHE_NAME = 'labdrop-v8.0';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -12,10 +12,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Intercept Web Share Target POST request (from mobile WhatsApp, file managers, or share sheet)
+  // Intercept Web Share Target POST request (from mobile WhatsApp, Gallery, file managers, or share sheet)
   if (event.request.method === 'POST' && (url.pathname === '/share-target' || url.pathname.endsWith('/share-target'))) {
     event.respondWith((async () => {
-      // Clone the request upfront so that if SW parsing fails or returns empty, we can fall back to server fetch
       let reqClone = null;
       try {
         reqClone = event.request.clone();
@@ -23,40 +22,43 @@ self.addEventListener('fetch', (event) => {
 
       try {
         const formData = await event.request.formData();
-        
-        // Extract all shared files regardless of field key (shared_files, files, media, document, etc.)
         const files = [];
-        
-        // 1. Iterate all formData entries
+
+        // 1. Iterate all formData entries to extract all files regardless of key name
         for (const [key, value] of formData.entries()) {
-          if (value && typeof value === 'object' && ('size' in value) && value.size > 0) {
+          if (value && typeof value === 'object' && typeof value.size === 'number' && value.size > 0) {
             files.push(value);
           }
         }
 
         // 2. Also check specifically for manifest declared name 'shared_files' and common fallbacks
-        ['shared_files', 'files', 'file', 'media'].forEach(fieldName => {
+        const candidateKeys = ['shared_files', 'files', 'file', 'media', 'photos', 'attachment'];
+        for (const fieldName of candidateKeys) {
           try {
             const namedFiles = formData.getAll(fieldName);
             if (namedFiles && namedFiles.length > 0) {
-              namedFiles.forEach(f => {
-                if (f && typeof f === 'object' && ('size' in f) && f.size > 0 && !files.includes(f)) {
+              for (const f of namedFiles) {
+                if (f && typeof f === 'object' && typeof f.size === 'number' && f.size > 0 && !files.includes(f)) {
                   files.push(f);
                 }
-              });
+              }
             }
           } catch (_) {}
-        });
+        }
 
         // Check for shared text, url, or title (e.g. text/links shared from WhatsApp)
         const text = formData.get('text');
         const shareUrl = formData.get('url');
         const title = formData.get('title');
 
-        if (files.length === 0 && (text || shareUrl)) {
+        let savedCount = 0;
+        if (files.length > 0) {
+          savedCount = await saveSharedDataToIndexedDB(files, { title, text });
+        } else if (text || shareUrl) {
           const linkToShare = shareUrl || (text && /^https?:\/\//i.test(text.trim()) ? text.trim() : null);
           if (linkToShare) {
             await saveSharedDataToIndexedDB([], { url: linkToShare, title });
+            savedCount = 1;
           } else if (text && text.trim()) {
             const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
             const filename = (title ? title.trim().replace(/[^a-zA-Z0-9_-]/g, '_') : 'shared-note') + '.txt';
@@ -67,13 +69,14 @@ self.addEventListener('fetch', (event) => {
               lastModified: Date.now(),
               blob: blob
             }]);
+            savedCount = 1;
           }
-        } else if (files.length > 0) {
-          await saveSharedDataToIndexedDB(files, { title, text });
-        } else if (reqClone) {
-          // If SW extracted 0 files and no text/url, forward request clone to server multer
+        }
+
+        // If SW extracted 0 files and no text/url, forward request clone to server multer
+        if (savedCount === 0 && reqClone) {
           try {
-            console.log('[ServiceWorker] No files in SW formData, forwarding to server...');
+            console.log('[ServiceWorker] No files in SW formData, forwarding to server fallback...');
             return await fetch(reqClone);
           } catch (netErr) {
             console.warn('[ServiceWorker] Server forward failed:', netErr);
@@ -105,7 +108,68 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-function saveSharedDataToIndexedDB(files = [], extra = {}) {
+async function saveSharedDataToIndexedDB(files = [], extra = {}) {
+  const mimeMap = {
+    'image/jpeg': '.jpg',
+    'image/jpg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+    'image/gif': '.gif',
+    'image/svg+xml': '.svg',
+    'application/pdf': '.pdf',
+    'text/plain': '.txt',
+    'video/mp4': '.mp4',
+    'video/quicktime': '.mov',
+    'audio/mpeg': '.mp3',
+    'audio/ogg': '.ogg',
+    'audio/mp4': '.m4a',
+    'application/zip': '.zip',
+    'application/x-zip-compressed': '.zip'
+  };
+
+  // Step 1: Read all files into memory ArrayBuffers BEFORE starting the transaction!
+  // Storing pure ArrayBuffers avoids DataCloneError on Android ContentProvider File objects
+  // and ensures data survives request termination.
+  const processedFiles = [];
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (!file) continue;
+    try {
+      const rawBlob = file.blob || file;
+      let buffer = null;
+
+      if (typeof rawBlob.arrayBuffer === 'function') {
+        buffer = await rawBlob.arrayBuffer();
+      } else if (typeof rawBlob.slice === 'function') {
+        const sliced = rawBlob.slice(0, rawBlob.size);
+        buffer = await sliced.arrayBuffer();
+      }
+
+      if (buffer && buffer.byteLength > 0) {
+        let fileName = file.name || rawBlob.name || (extra.title ? extra.title.trim() : null) || `shared_file_${Date.now()}_${i}`;
+        const fileType = file.type || rawBlob.type || 'application/octet-stream';
+        const lastMod = file.lastModified || rawBlob.lastModified || Date.now();
+
+        if (!fileName.includes('.')) {
+          if (mimeMap[fileType]) {
+            fileName += mimeMap[fileType];
+          }
+        }
+
+        processedFiles.push({
+          name: fileName,
+          type: fileType,
+          size: buffer.byteLength,
+          lastModified: lastMod,
+          buffer: buffer
+        });
+      }
+    } catch (readErr) {
+      console.warn('[ServiceWorker] Failed to read file arrayBuffer:', readErr);
+    }
+  }
+
+  // Step 2: Open IndexedDB and store processed files synchronously
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('LabDropSharedFiles', 2);
 
@@ -129,43 +193,8 @@ function saveSharedDataToIndexedDB(files = [], extra = {}) {
         // Clear previous files to ensure a fresh share drop
         store.clear();
 
-        files.forEach((file, index) => {
-          if (!file) return;
-
-          // Safely check if file is a Blob/File or an object containing a blob
-          const rawBlob = file.blob || file;
-          const isBlobLike = (typeof Blob !== 'undefined' && rawBlob instanceof Blob) ||
-                             (rawBlob && typeof rawBlob === 'object' && typeof rawBlob.slice === 'function');
-
-          if (isBlobLike && rawBlob.size > 0) {
-            let fileName = file.name || rawBlob.name || (extra.title ? extra.title.trim() : null) || `shared_file_${Date.now()}_${index}`;
-            const fileType = file.type || rawBlob.type || 'application/octet-stream';
-            const lastMod = file.lastModified || rawBlob.lastModified || Date.now();
-
-            if (!fileName.includes('.')) {
-              const mimeMap = {
-                'image/jpeg': '.jpg',
-                'image/png': '.png',
-                'image/webp': '.webp',
-                'image/gif': '.gif',
-                'application/pdf': '.pdf',
-                'text/plain': '.txt',
-                'video/mp4': '.mp4',
-                'audio/mpeg': '.mp3',
-                'audio/ogg': '.ogg',
-                'application/zip': '.zip'
-              };
-              if (mimeMap[fileType]) fileName += mimeMap[fileType];
-            }
-
-            store.add({
-              name: fileName,
-              type: fileType,
-              size: rawBlob.size,
-              lastModified: lastMod,
-              blob: rawBlob
-            });
-          }
+        processedFiles.forEach((item) => {
+          store.add(item);
         });
 
         if (storeNames.includes('meta')) {
@@ -178,7 +207,7 @@ function saveSharedDataToIndexedDB(files = [], extra = {}) {
 
         transaction.oncomplete = () => {
           try { db.close(); } catch (_) {}
-          resolve();
+          resolve(processedFiles.length);
         };
         transaction.onerror = (e) => {
           try { db.close(); } catch (_) {}
