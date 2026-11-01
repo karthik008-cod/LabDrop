@@ -101,6 +101,14 @@
   const previewImage = $('#previewImage');
   const previewFallbackContainer = $('#previewFallbackContainer');
   const previewFallbackMsg = $('#previewFallbackMsg');
+  const previewPdfContainer = $('#previewPdfContainer');
+  const previewPdfFrame = $('#previewPdfFrame');
+  const previewOfficeContainer = $('#previewOfficeContainer');
+  const previewOfficeIcon = $('#previewOfficeIcon');
+  const previewOfficeName = $('#previewOfficeName');
+  const previewOfficeDesc = $('#previewOfficeDesc');
+  const previewOfficeOnlineBtn = $('#previewOfficeOnlineBtn');
+  const previewOfficeDownloadBtn = $('#previewOfficeDownloadBtn');
   let currentPreviewCodeText = '';
   let activeBlobUrl = null;
 
@@ -265,6 +273,7 @@
     'ini', 'conf', 'asm', 's', 'toml', 'env'
   ];
   const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
+  const OFFICE_EXTENSIONS = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'odt', 'odp', 'ods'];
 
   function isCodeFile(filename) {
     if (!filename || !filename.includes('.')) return false;
@@ -276,6 +285,17 @@
     if (!filename || !filename.includes('.')) return false;
     const ext = filename.split('.').pop().toLowerCase();
     return IMAGE_EXTENSIONS.includes(ext);
+  }
+
+  function isPdfFile(filename) {
+    if (!filename || !filename.includes('.')) return false;
+    return filename.split('.').pop().toLowerCase() === 'pdf';
+  }
+
+  function isOfficeFile(filename) {
+    if (!filename || !filename.includes('.')) return false;
+    const ext = filename.split('.').pop().toLowerCase();
+    return OFFICE_EXTENSIONS.includes(ext);
   }
 
   function getLanguageBadge(filename) {
@@ -291,15 +311,19 @@
       kts: 'KOTLIN', rs: 'RUST', go: 'GO', php: 'PHP', cs: 'C#', swift: 'SWIFT',
       yaml: 'YAML', yml: 'YAML', ini: 'CONFIG', conf: 'CONFIG', asm: 'ASSEMBLY',
       s: 'ASSEMBLY', toml: 'TOML', png: 'PNG', jpg: 'JPEG', jpeg: 'JPEG', webp: 'WEBP',
-      gif: 'GIF', svg: 'SVG'
+      gif: 'GIF', svg: 'SVG', pdf: 'PDF',
+      docx: 'WORD', doc: 'WORD', odt: 'DOC',
+      pptx: 'PPT', ppt: 'PPT', odp: 'SLIDES',
+      xlsx: 'EXCEL', xls: 'EXCEL', ods: 'SHEET'
     };
-    return map[ext] || (isCodeFile(filename) ? 'CODE' : (isImageFile(filename) ? 'IMAGE' : 'FILE'));
+    return map[ext] || (isCodeFile(filename) ? 'CODE' : (isImageFile(filename) ? 'IMAGE' : (isPdfFile(filename) ? 'PDF' : 'DOC')));
   }
 
   function closeDesktopFilePreview() {
     if (filePreviewModal) filePreviewModal.classList.remove('active');
     document.body.style.overflow = '';
     if (previewImage) previewImage.src = '';
+    if (previewPdfFrame) previewPdfFrame.src = '';
     if (activeBlobUrl) {
       URL.revokeObjectURL(activeBlobUrl);
       activeBlobUrl = null;
@@ -312,20 +336,25 @@
     const cat = getFileCategory(filename);
     const isCode = isCodeFile(filename) || cat === 'code' || cat === 'data';
     const isImg = isImageFile(filename) || cat === 'image';
+    const isPdf = isPdfFile(filename) || cat === 'pdf';
+    const isOffice = isOfficeFile(filename);
 
-    if (!isCode && !isImg) return;
+    if (!isCode && !isImg && !isPdf && !isOffice) return;
 
     if (previewModalFileName) previewModalFileName.textContent = filename;
     if (previewBadge) previewBadge.textContent = getLanguageBadge(filename);
     if (previewFileSize) previewFileSize.textContent = formatBytes(fileOrMeta.size || 0);
 
+    const transferId = currentTransfer ? (currentTransfer.transferId || currentTransfer.id) : null;
+    const pinQs = currentTransferPin ? `?pin=${currentTransferPin}` : '';
+    const downloadUrl = transferId ? `/download/${transferId}/${fileOrMeta.id}${pinQs}` : '#';
+    const inlineUrl = transferId ? `/download/${transferId}/${fileOrMeta.id}?inline=1${currentTransferPin ? '&pin=' + currentTransferPin : ''}` : '#';
+
     if (previewDownloadBtn) {
       if (isLocalFile || !currentTransfer) {
         previewDownloadBtn.style.display = 'none';
       } else {
-        const transferId = currentTransfer.transferId || currentTransfer.id;
-        const pinQs = currentTransferPin ? `?pin=${currentTransferPin}` : '';
-        previewDownloadBtn.href = `/download/${transferId}/${fileOrMeta.id}${pinQs}`;
+        previewDownloadBtn.href = downloadUrl;
         previewDownloadBtn.setAttribute('download', filename);
         previewDownloadBtn.style.display = 'inline-flex';
       }
@@ -333,10 +362,17 @@
 
     if (previewLoader) {
       previewLoader.style.display = 'flex';
-      if (previewLoaderText) previewLoaderText.textContent = isImg ? 'Loading high-res image preview...' : 'Loading code preview...';
+      if (previewLoaderText) {
+        if (isPdf) previewLoaderText.textContent = 'Rendering PDF document...';
+        else if (isImg) previewLoaderText.textContent = 'Loading high-res image preview...';
+        else if (isOffice) previewLoaderText.textContent = 'Preparing document options...';
+        else previewLoaderText.textContent = 'Loading code preview...';
+      }
     }
     if (previewCodeContainer) previewCodeContainer.style.display = 'none';
     if (previewImageContainer) previewImageContainer.style.display = 'none';
+    if (previewPdfContainer) previewPdfContainer.style.display = 'none';
+    if (previewOfficeContainer) previewOfficeContainer.style.display = 'none';
     if (previewFallbackContainer) previewFallbackContainer.style.display = 'none';
     if (previewCopyBtn) previewCopyBtn.style.display = 'none';
     if (previewLineCount) previewLineCount.style.display = 'none';
@@ -345,7 +381,57 @@
     if (filePreviewModal) filePreviewModal.classList.add('active');
     document.body.style.overflow = 'hidden';
 
-    if (isImg && previewImage) {
+    if (isPdf) {
+      if (isLocalFile && fileOrMeta instanceof Blob) {
+        activeBlobUrl = URL.createObjectURL(fileOrMeta);
+        if (previewPdfFrame) previewPdfFrame.src = activeBlobUrl;
+      } else if (currentTransfer) {
+        if (previewPdfFrame) previewPdfFrame.src = inlineUrl;
+      }
+      if (previewLoader) previewLoader.style.display = 'none';
+      if (previewPdfContainer) previewPdfContainer.style.display = 'flex';
+    } else if (isOffice) {
+      if (previewOfficeName) previewOfficeName.textContent = filename;
+      const ext = filename.split('.').pop().toLowerCase();
+      if (previewOfficeIcon) {
+        if (['doc', 'docx', 'odt'].includes(ext)) {
+          previewOfficeIcon.style.background = 'rgba(37, 99, 235, 0.15)';
+          previewOfficeIcon.style.color = '#3b82f6';
+          if (previewOfficeDesc) previewOfficeDesc.textContent = 'Microsoft Word document. View online with Google Docs Viewer or download to open directly.';
+        } else if (['ppt', 'pptx', 'odp'].includes(ext)) {
+          previewOfficeIcon.style.background = 'rgba(234, 88, 12, 0.15)';
+          previewOfficeIcon.style.color = '#f97316';
+          if (previewOfficeDesc) previewOfficeDesc.textContent = 'PowerPoint presentation. View slides online or download to open in PowerPoint.';
+        } else {
+          previewOfficeIcon.style.background = 'rgba(16, 185, 129, 0.15)';
+          previewOfficeIcon.style.color = '#10b981';
+          if (previewOfficeDesc) previewOfficeDesc.textContent = 'Spreadsheet workbook. View online or download to open in Excel.';
+        }
+      }
+
+      if (previewOfficeDownloadBtn) {
+        if (isLocalFile) {
+          previewOfficeDownloadBtn.style.display = 'none';
+        } else {
+          previewOfficeDownloadBtn.href = downloadUrl;
+          previewOfficeDownloadBtn.setAttribute('download', filename);
+          previewOfficeDownloadBtn.style.display = 'inline-flex';
+        }
+      }
+
+      if (previewOfficeOnlineBtn) {
+        if (isLocalFile || !currentTransfer) {
+          previewOfficeOnlineBtn.style.display = 'none';
+        } else {
+          const publicUrl = window.location.origin + inlineUrl;
+          previewOfficeOnlineBtn.href = `https://docs.google.com/viewer?url=${encodeURIComponent(publicUrl)}&embedded=true`;
+          previewOfficeOnlineBtn.style.display = 'inline-flex';
+        }
+      }
+
+      if (previewLoader) previewLoader.style.display = 'none';
+      if (previewOfficeContainer) previewOfficeContainer.style.display = 'flex';
+    } else if (isImg && previewImage) {
       previewImage.classList.remove('zoomed');
       previewImage.onload = () => {
         if (previewLoader) previewLoader.style.display = 'none';
@@ -361,9 +447,7 @@
         activeBlobUrl = URL.createObjectURL(fileOrMeta);
         previewImage.src = activeBlobUrl;
       } else if (currentTransfer) {
-        const transferId = currentTransfer.transferId || currentTransfer.id;
-        const pinQs = currentTransferPin ? `&pin=${currentTransferPin}` : '';
-        previewImage.src = `/download/${transferId}/${fileOrMeta.id}?inline=1${pinQs}`;
+        previewImage.src = inlineUrl;
       }
     } else if (isCode) {
       try {
@@ -371,9 +455,7 @@
         if (isLocalFile && typeof fileOrMeta.text === 'function') {
           text = await fileOrMeta.text();
         } else if (currentTransfer) {
-          const transferId = currentTransfer.transferId || currentTransfer.id;
-          const pinQs = currentTransferPin ? `&pin=${currentTransferPin}` : '';
-          const res = await fetch(`/download/${transferId}/${fileOrMeta.id}?inline=1${pinQs}`);
+          const res = await fetch(inlineUrl);
           if (!res.ok) throw new Error('Failed to fetch code');
           text = await res.text();
         }
@@ -648,7 +730,7 @@
       const cat = getFileCategory(file.name);
       const icon = FILE_ICONS[cat] || FILE_ICONS.file;
       const isEligibleRecord = cat === 'code' || cat === 'pdf' || cat === 'document' || cat === 'image';
-      const isPreviewable = isCodeFile(file.name) || isImageFile(file.name) || cat === 'code' || cat === 'image';
+      const isPreviewable = isCodeFile(file.name) || isImageFile(file.name) || isPdfFile(file.name) || isOfficeFile(file.name) || cat === 'code' || cat === 'image' || cat === 'pdf';
       const recordBtnHtml = isEligibleRecord ? `<button type="button" class="file-item__record" data-index="${index}" title="Generate Lab Record with AI" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: rgba(255, 209, 102, 0.2); border: 1px solid rgba(217, 119, 6, 0.4); border-radius: var(--radius-sm); color: #B45309; font-weight: 700; cursor: pointer;">AI Record</button>` : '';
       const previewBtnHtml = isPreviewable ? `<button type="button" class="file-item__preview" data-index="${index}" title="Preview ${escapeHtml(file.name)}" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.35); border-radius: var(--radius-sm); color: #0284c7; font-weight: 600; cursor: pointer;">Preview</button>` : '';
 
@@ -658,7 +740,7 @@
         <div class="file-item__icon file-item__icon--${cat}" ${isPreviewable ? `style="cursor: pointer;" title="Preview ${escapeHtml(file.name)}"` : ''}>${icon}</div>
         <div class="file-item__details ${isPreviewable ? 'file-item__details--clickable' : ''}" ${isPreviewable ? `title="Click to preview ${escapeHtml(file.name)}"` : ''} data-index="${index}">
           <div class="file-item__name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
-          <div class="file-item__size">${formatBytes(file.size)}${isPreviewable ? ' · <span style="color: #0284c7; font-weight: 600;">Preview</span>' : ''}</div>
+          <div class="file-item__size">${formatBytes(file.size)}</div>
         </div>
         <div class="file-item__actions">
           ${previewBtnHtml}
@@ -1503,14 +1585,14 @@
     function renderFileItem(f) {
       const cat = f.category || 'file';
       const icon = FILE_ICONS[cat] || FILE_ICONS.file;
-      const isPreviewable = isCodeFile(f.name) || isImageFile(f.name) || cat === 'code' || cat === 'image';
+      const isPreviewable = isCodeFile(f.name) || isImageFile(f.name) || isPdfFile(f.name) || isOfficeFile(f.name) || cat === 'code' || cat === 'image' || cat === 'pdf';
       const li = document.createElement('li');
       li.className = 'file-item';
       li.innerHTML = `
         <div class="file-item__icon file-item__icon--${cat}" ${isPreviewable ? `style="cursor: pointer;" title="Preview ${escapeHtml(f.name)}"` : ''}>${icon}</div>
         <div class="file-item__details ${isPreviewable ? 'file-item__details--clickable' : ''}" ${isPreviewable ? `title="Click to preview ${escapeHtml(f.name)}"` : ''} data-file-id="${f.id}">
           <div class="file-item__name">${escapeHtml(f.name)}</div>
-          <div class="file-item__size">${formatBytes(f.size)}${isPreviewable ? ' · <span style="color: #0284c7; font-weight: 600;">Preview</span>' : ''}</div>
+          <div class="file-item__size">${formatBytes(f.size)}</div>
         </div>
         ${isPreviewable ? `
         <div class="file-item__actions">

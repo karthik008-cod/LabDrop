@@ -62,6 +62,14 @@
   const previewImage = $('#previewImage');
   const previewFallbackContainer = $('#previewFallbackContainer');
   const previewFallbackMsg = $('#previewFallbackMsg');
+  const previewPdfContainer = $('#previewPdfContainer');
+  const previewPdfFrame = $('#previewPdfFrame');
+  const previewOfficeContainer = $('#previewOfficeContainer');
+  const previewOfficeIcon = $('#previewOfficeIcon');
+  const previewOfficeName = $('#previewOfficeName');
+  const previewOfficeDesc = $('#previewOfficeDesc');
+  const previewOfficeOnlineBtn = $('#previewOfficeOnlineBtn');
+  const previewOfficeDownloadBtn = $('#previewOfficeDownloadBtn');
   let currentPreviewCodeText = '';
 
   const CODE_EXTENSIONS = [
@@ -72,6 +80,7 @@
     'ini', 'conf', 'asm', 's', 'toml', 'env'
   ];
   const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
+  const OFFICE_EXTENSIONS = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'odt', 'odp', 'ods'];
 
   function getFileExt(filename) {
     if (!filename || !filename.includes('.')) return '';
@@ -86,6 +95,16 @@
   function isImageFile(filename) {
     const ext = getFileExt(filename);
     return IMAGE_EXTENSIONS.includes(ext);
+  }
+
+  function isPdfFile(filename) {
+    const ext = getFileExt(filename);
+    return ext === 'pdf';
+  }
+
+  function isOfficeFile(filename) {
+    const ext = getFileExt(filename);
+    return OFFICE_EXTENSIONS.includes(ext);
   }
 
   function getLanguageBadge(filename) {
@@ -142,9 +161,19 @@
       jpeg: 'JPEG',
       webp: 'WEBP',
       gif: 'GIF',
-      svg: 'SVG'
+      svg: 'SVG',
+      pdf: 'PDF',
+      docx: 'WORD',
+      doc: 'WORD',
+      odt: 'DOC',
+      pptx: 'PPT',
+      ppt: 'PPT',
+      odp: 'SLIDES',
+      xlsx: 'EXCEL',
+      xls: 'EXCEL',
+      ods: 'SHEET'
     };
-    return map[ext] || (isCodeFile(filename) ? 'CODE' : (isImageFile(filename) ? 'IMAGE' : 'FILE'));
+    return map[ext] || (isCodeFile(filename) ? 'CODE' : (isImageFile(filename) ? 'IMAGE' : (isPdfFile(filename) ? 'PDF' : 'DOC')));
   }
 
   let currentPin = '';
@@ -371,7 +400,7 @@
       const customName = file.customName || file.name;
       const downloadQs = fileQs + (file.customName ? (fileQs ? '&' : '?') + 'name=' + encodeURIComponent(file.customName) : '');
       const downloadUrl = `/download/${data.id}/${file.id}${downloadQs}`;
-      const isPreviewable = isCodeFile(customName) || isImageFile(customName) || cat === 'code' || cat === 'image';
+      const isPreviewable = isCodeFile(customName) || isImageFile(customName) || isPdfFile(customName) || isOfficeFile(customName) || cat === 'code' || cat === 'image' || cat === 'pdf';
       const previewBtnHtml = isPreviewable ? `
         <button type="button" class="btn btn--outline btn--icon preview-file-btn" data-file-id="${file.id}" title="Preview ${escapeHtml(customName)}" aria-label="Preview" style="font-size: 0.85rem; padding: 6px 10px; display: inline-flex; align-items: center; justify-content: center; color: #0284c7; border-color: rgba(14, 165, 233, 0.35); background: rgba(14, 165, 233, 0.08);">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -384,7 +413,7 @@
         <div class="file-item__icon file-item__icon--${cat}" ${isPreviewable ? `style="cursor: pointer;" title="Preview ${escapeHtml(customName)}"` : ''}>${icon}</div>
         <div class="file-item__details ${isPreviewable ? 'file-item__details--clickable' : ''}" ${isPreviewable ? `title="Tap to preview ${escapeHtml(customName)}"` : ''} data-file-id="${file.id}">
           <div class="file-item__name" title="${escapeHtml(customName)}">${escapeHtml(customName)}</div>
-          <div class="file-item__size">${formatBytes(file.size)}${isPreviewable ? ' · <span style="color: #0284c7; font-weight: 600;">Tap to preview</span>' : ''}</div>
+          <div class="file-item__size">${formatBytes(file.size)}</div>
         </div>
         <div class="file-item__actions" style="display:flex; gap: 4px; align-items: center;">
           <input type="checkbox" class="file-checkbox" data-file-id="${file.id}" style="margin-right: 8px; transform: scale(1.2);" />
@@ -571,8 +600,10 @@
     const cat = file.category || 'file';
     const isCode = isCodeFile(customName) || cat === 'code' || cat === 'data';
     const isImg = isImageFile(customName) || cat === 'image';
+    const isPdf = isPdfFile(customName) || cat === 'pdf';
+    const isOffice = isOfficeFile(customName);
 
-    if (!isCode && !isImg) return;
+    if (!isCode && !isImg && !isPdf && !isOffice) return;
 
     const fileQs = currentPin ? `?pin=${currentPin}` : '';
     const downloadQs = fileQs + (file.customName ? (fileQs ? '&' : '?') + 'name=' + encodeURIComponent(file.customName) : '');
@@ -587,15 +618,23 @@
     if (previewDownloadBtn) {
       previewDownloadBtn.href = downloadUrl;
       previewDownloadBtn.setAttribute('download', customName);
+      previewDownloadBtn.style.display = 'inline-flex';
     }
 
     // Reset views
     if (previewLoader) {
       previewLoader.style.display = 'flex';
-      if (previewLoaderText) previewLoaderText.textContent = isImg ? 'Loading high-res image preview...' : 'Loading code preview...';
+      if (previewLoaderText) {
+        if (isPdf) previewLoaderText.textContent = 'Rendering PDF document...';
+        else if (isImg) previewLoaderText.textContent = 'Loading high-res image preview...';
+        else if (isOffice) previewLoaderText.textContent = 'Preparing document options...';
+        else previewLoaderText.textContent = 'Loading code preview...';
+      }
     }
     if (previewCodeContainer) previewCodeContainer.style.display = 'none';
     if (previewImageContainer) previewImageContainer.style.display = 'none';
+    if (previewPdfContainer) previewPdfContainer.style.display = 'none';
+    if (previewOfficeContainer) previewOfficeContainer.style.display = 'none';
     if (previewFallbackContainer) previewFallbackContainer.style.display = 'none';
     if (previewCopyBtn) previewCopyBtn.style.display = 'none';
     if (previewLineCount) previewLineCount.style.display = 'none';
@@ -605,7 +644,42 @@
     if (filePreviewModal) filePreviewModal.classList.add('active');
     document.body.style.overflow = 'hidden';
 
-    if (isImg && previewImage) {
+    if (isPdf) {
+      if (previewPdfFrame) previewPdfFrame.src = inlineUrl;
+      if (previewLoader) previewLoader.style.display = 'none';
+      if (previewPdfContainer) previewPdfContainer.style.display = 'flex';
+    } else if (isOffice) {
+      if (previewOfficeName) previewOfficeName.textContent = customName;
+      const ext = customName.split('.').pop().toLowerCase();
+      if (previewOfficeIcon) {
+        if (['doc', 'docx', 'odt'].includes(ext)) {
+          previewOfficeIcon.style.background = 'rgba(37, 99, 235, 0.15)';
+          previewOfficeIcon.style.color = '#3b82f6';
+          if (previewOfficeDesc) previewOfficeDesc.textContent = 'Microsoft Word document. View online with Google Docs Viewer or download to open directly.';
+        } else if (['ppt', 'pptx', 'odp'].includes(ext)) {
+          previewOfficeIcon.style.background = 'rgba(234, 88, 12, 0.15)';
+          previewOfficeIcon.style.color = '#f97316';
+          if (previewOfficeDesc) previewOfficeDesc.textContent = 'PowerPoint presentation. View slides online or download to open in PowerPoint.';
+        } else {
+          previewOfficeIcon.style.background = 'rgba(16, 185, 129, 0.15)';
+          previewOfficeIcon.style.color = '#10b981';
+          if (previewOfficeDesc) previewOfficeDesc.textContent = 'Spreadsheet workbook. View online or download to open in Excel.';
+        }
+      }
+
+      if (previewOfficeDownloadBtn) {
+        previewOfficeDownloadBtn.href = downloadUrl;
+        previewOfficeDownloadBtn.setAttribute('download', customName);
+      }
+
+      if (previewOfficeOnlineBtn) {
+        const publicUrl = window.location.origin + inlineUrl;
+        previewOfficeOnlineBtn.href = `https://docs.google.com/viewer?url=${encodeURIComponent(publicUrl)}&embedded=true`;
+      }
+
+      if (previewLoader) previewLoader.style.display = 'none';
+      if (previewOfficeContainer) previewOfficeContainer.style.display = 'flex';
+    } else if (isImg && previewImage) {
       previewImage.classList.remove('zoomed');
       previewImage.onload = () => {
         if (previewLoader) previewLoader.style.display = 'none';
@@ -652,6 +726,7 @@
     if (filePreviewModal) filePreviewModal.classList.remove('active');
     document.body.style.overflow = '';
     if (previewImage) previewImage.src = '';
+    if (previewPdfFrame) previewPdfFrame.src = '';
   }
 
   if (filePreviewClose) {

@@ -21,7 +21,7 @@
   <link rel="apple-touch-icon" href="/labdroplogo.png" />
   <link rel="manifest" href="/manifest.json" />
 
-  <link rel="stylesheet" href="/css/style.css?v=6.7" />
+  <link rel="stylesheet" href="/css/style.css?v=7.0" />
   <script src="/js/site-config.js"></script>
 </head>
 <body>
@@ -369,6 +369,30 @@
         <!-- Image container -->
         <div class="preview-image-container" id="previewImageContainer" style="display: none;">
           <img id="previewImage" src="" alt="File Preview" />
+        </div>
+        <!-- PDF container -->
+        <div class="preview-pdf-container" id="previewPdfContainer" style="display: none;">
+          <iframe class="preview-pdf-frame" id="previewPdfFrame" src="" title="PDF Document Preview"></iframe>
+        </div>
+        <!-- Office Document container -->
+        <div class="preview-office-container" id="previewOfficeContainer" style="display: none;">
+          <div class="preview-office-card">
+            <div class="preview-office-icon" id="previewOfficeIcon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            </div>
+            <div class="preview-office-title" id="previewOfficeName">Document.docx</div>
+            <div class="preview-office-desc" id="previewOfficeDesc">Microsoft Office files can be viewed online via Google Docs Viewer or downloaded to open in native apps.</div>
+            <div class="preview-office-actions">
+              <a class="btn btn--primary btn--block" id="previewOfficeOnlineBtn" href="#" target="_blank" rel="noopener noreferrer">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                View Online (Google Docs)
+              </a>
+              <a class="btn btn--outline btn--block" id="previewOfficeDownloadBtn" href="#" download>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Download Document
+              </a>
+            </div>
+          </div>
         </div>
         <!-- Generic / Error fallback container -->
         <div class="preview-fallback-container" id="previewFallbackContainer" style="display: none;">
@@ -903,6 +927,6 @@
       }
     };
   </script>
-  <script src="/js/mobile.js?v=7.3"></script>
+  <script src="/js/mobile.js?v=7.4"></script>
 </body>
 </html>
