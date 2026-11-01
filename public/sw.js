@@ -1,5 +1,5 @@
 // LabDrop — Service Worker (sw.js v8.2)
-const CACHE_NAME = 'labdrop-v8.2';
+const CACHE_NAME = 'labdrop-v8.3';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -167,7 +167,7 @@ async function saveSharedDataToIndexedDB(files = [], extra = {}) {
   // Open IndexedDB and store processed files
   return new Promise((resolve) => {
     try {
-      const request = indexedDB.open('LabDropSharedFiles', 2);
+      const request = indexedDB.open('LabDropSharedFiles', 3);
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
@@ -176,6 +176,9 @@ async function saveSharedDataToIndexedDB(files = [], extra = {}) {
         }
         if (!db.objectStoreNames.contains('meta')) {
           db.createObjectStore('meta', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('workbench')) {
+          db.createObjectStore('workbench', { keyPath: 'id' });
         }
       };
 
@@ -186,9 +189,7 @@ async function saveSharedDataToIndexedDB(files = [], extra = {}) {
           const transaction = db.transaction(storeNames, 'readwrite');
           const store = transaction.objectStore('files');
           
-          // Clear previous files to ensure a fresh share drop
-          store.clear();
-
+          // Queue incoming shared files without erasing unconsumed files from previous apps
           processedFiles.forEach((item) => {
             store.add(item);
           });

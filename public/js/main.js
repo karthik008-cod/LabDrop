@@ -508,6 +508,7 @@
         const idx = parseInt(btn.dataset.index, 10);
         currentFiles.splice(idx, 1);
         renderFileList();
+        saveWorkbenchDraft();
       });
     });
 
@@ -560,6 +561,7 @@
         const idx = parseInt(e.currentTarget.getAttribute('data-index'), 10);
         currentLinks.splice(idx, 1);
         renderFileList();
+        saveWorkbenchDraft();
       });
     });
 
@@ -738,6 +740,7 @@
     }
 
     renderFileList();
+    saveWorkbenchDraft();
   }
 
   // ---- Clipboard Paste (Ctrl+V) ----
@@ -1256,6 +1259,7 @@
   // ---- Show QR / Transfer View ----
   function showTransferView(data) {
     showSection(qrSection);
+    clearWorkbenchDraft();
 
     qrImage.src = data.qrCode;
     transferCode.textContent = data.shortCode;
@@ -1562,6 +1566,7 @@
     selectedLinks = [];
     folders = [];
     activeFolderId = null;
+    clearWorkbenchDraft();
     transferNameInput.value = '';
     requirePinCheck.checked = false;
     renderFileList();
@@ -1629,7 +1634,7 @@
   // ---- PWA, Desktop File Handling & Web Share Target Logic ----
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js?v=8.2').then(reg => {
+      navigator.serviceWorker.register('/sw.js?v=8.3').then(reg => {
         if (reg && reg.update) {
           reg.update();
         }
@@ -1670,6 +1675,204 @@
       byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
     return new Blob([byteNumbers], { type: contentType });
+  }
+
+
+  // ---- Persistent Workbench Draft (Enables accumulating files across WhatsApp, Gmail, Drive, etc.) ----
+  function openSharedDB() {
+    return new Promise((resolve) => {
+      if (!window.indexedDB) return resolve(null);
+      try {
+        const request = indexedDB.open('LabDropSharedFiles', 3);
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains('files')) {
+            db.createObjectStore('files', { autoIncrement: true });
+          }
+          if (!db.objectStoreNames.contains('meta')) {
+            db.createObjectStore('meta', { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains('workbench')) {
+            db.createObjectStore('workbench', { keyPath: 'id' });
+          }
+        };
+        request.onsuccess = (event) => resolve(event.target.result);
+        request.onerror = () => resolve(null);
+        request.onblocked = () => resolve(null);
+      } catch (_) {
+        resolve(null);
+      }
+    });
+  }
+
+  let isSavingDraft = false;
+  let pendingSaveDraft = false;
+
+  async function saveWorkbenchDraft() {
+    if (isSavingDraft) {
+      pendingSaveDraft = true;
+      return;
+    }
+    isSavingDraft = true;
+    try {
+      if (!window.indexedDB) return;
+      if (!hasAnyContent()) {
+        await clearWorkbenchDraft();
+        return;
+      }
+      const db = await openSharedDB();
+      if (!db || !db.objectStoreNames.contains('workbench')) return;
+
+      const serializedRootFiles = selectedFiles.map(f => ({
+        name: f.name,
+        type: f.type || 'application/octet-stream',
+        size: f.size,
+        lastModified: f.lastModified || Date.now(),
+        blob: f
+      }));
+
+      const serializedFolders = folders.map(folder => ({
+        id: folder.id,
+        name: folder.name,
+        links: Array.isArray(folder.links) ? [...folder.links] : [],
+        files: (folder.files || []).map(f => ({
+          name: f.name,
+          type: f.type || 'application/octet-stream',
+          size: f.size,
+          lastModified: f.lastModified || Date.now(),
+          blob: f
+        }))
+      }));
+
+      const draftPayload = {
+        id: 'current_staging',
+        files: serializedRootFiles,
+        links: [...selectedLinks],
+        folders: serializedFolders,
+        activeFolderId: activeFolderId,
+        updatedAt: Date.now()
+      };
+
+      await new Promise((resolve) => {
+        try {
+          const tx = db.transaction(['workbench'], 'readwrite');
+          const store = tx.objectStore('workbench');
+          store.put(draftPayload);
+          tx.oncomplete = () => { try { db.close(); } catch (_) {} resolve(); };
+          tx.onerror = () => { try { db.close(); } catch (_) {} resolve(); };
+          tx.onabort = () => { try { db.close(); } catch (_) {} resolve(); };
+        } catch (_) {
+          try { db.close(); } catch (_) {}
+          resolve();
+        }
+      });
+    } catch (err) {
+      console.warn('[WorkbenchDraft] Save error:', err);
+    } finally {
+      isSavingDraft = false;
+      if (pendingSaveDraft) {
+        pendingSaveDraft = false;
+        saveWorkbenchDraft();
+      }
+    }
+  }
+
+  let isRestoringDraft = false;
+
+  async function restoreWorkbenchDraft() {
+    if (isRestoringDraft) return;
+    isRestoringDraft = true;
+    try {
+      if (!window.indexedDB) return;
+      const db = await openSharedDB();
+      if (!db || !db.objectStoreNames.contains('workbench')) return;
+
+      const draftData = await new Promise((resolve) => {
+        try {
+          const tx = db.transaction(['workbench'], 'readonly');
+          const store = tx.objectStore('workbench');
+          const req = store.get('current_staging');
+          req.onsuccess = () => { try { db.close(); } catch (_) {} resolve(req.result); };
+          req.onerror = () => { try { db.close(); } catch (_) {} resolve(null); };
+        } catch (_) {
+          try { db.close(); } catch (_) {}
+          resolve(null);
+        }
+      });
+
+      if (!draftData) return;
+
+      // Draft auto-expires after 2 hours of inactivity
+      const DRAFT_MAX_AGE = 2 * 60 * 60 * 1000;
+      if (Date.now() - (draftData.updatedAt || 0) > DRAFT_MAX_AGE) {
+        await clearWorkbenchDraft();
+        return;
+      }
+
+      function reconstructFile(item) {
+        if (!item) return null;
+        const rawBlob = item.blob || item;
+        if (rawBlob instanceof File) return rawBlob;
+        try {
+          return new File([rawBlob], item.name || rawBlob.name || 'staged_file', {
+            type: item.type || rawBlob.type || 'application/octet-stream',
+            lastModified: item.lastModified || rawBlob.lastModified || Date.now()
+          });
+        } catch (_) {
+          rawBlob.name = item.name || 'staged_file';
+          return rawBlob;
+        }
+      }
+
+      if (Array.isArray(draftData.files) && draftData.files.length > 0) {
+        selectedFiles = draftData.files.map(reconstructFile).filter(Boolean);
+      }
+      if (Array.isArray(draftData.links) && draftData.links.length > 0) {
+        selectedLinks = [...draftData.links];
+      }
+      if (Array.isArray(draftData.folders) && draftData.folders.length > 0) {
+        folders = draftData.folders.map(fld => ({
+          id: fld.id,
+          name: fld.name,
+          links: Array.isArray(fld.links) ? [...fld.links] : [],
+          files: (fld.files || []).map(reconstructFile).filter(Boolean)
+        }));
+      }
+      if (draftData.activeFolderId !== undefined) {
+        activeFolderId = draftData.activeFolderId;
+      }
+
+      if (hasAnyContent()) {
+        renderFileList();
+      }
+    } catch (err) {
+      console.warn('[WorkbenchDraft] Restore error:', err);
+    } finally {
+      isRestoringDraft = false;
+    }
+  }
+
+  async function clearWorkbenchDraft() {
+    try {
+      if (!window.indexedDB) return;
+      const db = await openSharedDB();
+      if (!db || !db.objectStoreNames.contains('workbench')) return;
+      await new Promise((resolve) => {
+        try {
+          const tx = db.transaction(['workbench'], 'readwrite');
+          const store = tx.objectStore('workbench');
+          store.delete('current_staging');
+          tx.oncomplete = () => { try { db.close(); } catch (_) {} resolve(); };
+          tx.onerror = () => { try { db.close(); } catch (_) {} resolve(); };
+          tx.onabort = () => { try { db.close(); } catch (_) {} resolve(); };
+        } catch (_) {
+          try { db.close(); } catch (_) {}
+          resolve();
+        }
+      });
+    } catch (err) {
+      console.warn('[WorkbenchDraft] Clear error:', err);
+    }
   }
 
   let isCheckingSharedFiles = false;
@@ -1739,8 +1942,14 @@
             if (incomingFiles.length > 0) {
               showSection(selectSection);
               closeMobileSidebar();
+              const prevCount = getTotalFileCount();
               addFiles(incomingFiles);
-              showAlert(`Received ${incomingFiles.length} file(s) from WhatsApp / Share! Ready to transfer.`, 'success');
+              const totalCount = getTotalFileCount();
+              if (prevCount > 0) {
+                showAlert(`Added ${incomingFiles.length} file(s) to transfer! (${totalCount} files total from different apps).`, 'success');
+              } else {
+                showAlert(`Received ${incomingFiles.length} file(s) from Share! Ready to transfer.`, 'success');
+              }
               hasAdded = true;
             }
 
@@ -1788,40 +1997,26 @@
       // Dual-Path 2: Service Worker IndexedDB PWA Web Share Target
       if (!window.indexedDB) return;
 
-      await new Promise((resolve) => {
-        let dbRef = null;
-        const request = indexedDB.open('LabDropSharedFiles', 2);
+      await new Promise(async (resolve) => {
+        let dbRef = await openSharedDB();
+        if (!dbRef || !dbRef.objectStoreNames.contains('files')) {
+          if (dbRef) { try { dbRef.close(); } catch (_) {} }
+          resolve();
+          return;
+        }
 
-        request.onupgradeneeded = (event) => {
-          const db = event.target.result;
-          if (!db.objectStoreNames.contains('files')) {
-            db.createObjectStore('files', { autoIncrement: true });
-          }
-          if (!db.objectStoreNames.contains('meta')) {
-            db.createObjectStore('meta', { keyPath: 'id' });
-          }
-        };
+        const storeNames = Array.from(dbRef.objectStoreNames);
+        let transaction;
+        try {
+          transaction = dbRef.transaction(storeNames, 'readwrite');
+        } catch (tErr) {
+          try { dbRef.close(); } catch (_) {}
+          resolve();
+          return;
+        }
 
-        request.onsuccess = (event) => {
-          dbRef = event.target.result;
-          if (!dbRef.objectStoreNames.contains('files')) {
-            try { dbRef.close(); } catch (_) {}
-            resolve();
-            return;
-          }
-
-          const storeNames = Array.from(dbRef.objectStoreNames);
-          let transaction;
-          try {
-            transaction = dbRef.transaction(storeNames, 'readwrite');
-          } catch (tErr) {
-            try { dbRef.close(); } catch (_) {}
-            resolve();
-            return;
-          }
-
-          const store = transaction.objectStore('files');
-          const getAllRequest = store.getAll();
+        const store = transaction.objectStore('files');
+        const getAllRequest = store.getAll();
 
           getAllRequest.onsuccess = () => {
             const rawItems = getAllRequest.result || [];
@@ -1888,8 +2083,14 @@
               if (normalizedFiles.length > 0) {
                 showSection(selectSection);
                 closeMobileSidebar();
+                const prevCount = getTotalFileCount();
                 addFiles(normalizedFiles);
-                showAlert(`Received ${normalizedFiles.length} file(s) from WhatsApp / Share! Ready to transfer.`, 'success');
+                const totalCount = getTotalFileCount();
+                if (prevCount > 0) {
+                  showAlert(`Added ${normalizedFiles.length} file(s) to transfer! (${totalCount} files total from different apps).`, 'success');
+                } else {
+                  showAlert(`Received ${normalizedFiles.length} file(s) from Share! Ready to transfer.`, 'success');
+                }
                 hasAddedAnything = true;
               }
 
@@ -1949,15 +2150,6 @@
             try { dbRef.close(); } catch (_) {}
             resolve();
           };
-        };
-
-        request.onerror = (err) => {
-          console.warn('Failed to open IndexedDB for shared files', err);
-          if (wasLaunchedFromShare && retryCount < MAX_SHARED_RETRIES) {
-            setTimeout(() => checkSharedFiles(retryCount + 1), 250);
-          }
-          resolve();
-        };
       });
 
     } catch (err) {
@@ -1979,7 +2171,9 @@
 
   // Run on load
   checkAuth();
-  checkSharedFiles();
+  restoreWorkbenchDraft().then(() => {
+    checkSharedFiles();
+  });
   
   const urlParams = new URLSearchParams(window.location.search);
   const action = urlParams.get('action');
