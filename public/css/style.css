@@ -5264,8 +5264,9 @@ select.form-input option,
    ============================================================ */
 .home-docs-section {
   width: 100%;
-  max-width: 860px;
-  margin: var(--space-xl) auto 0 auto;
+  max-width: 900px;
+  margin: 48px auto 16px auto;
+  padding: 0 var(--space-md);
   text-align: left;
 }
 
