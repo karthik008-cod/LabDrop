@@ -1,5 +1,5 @@
-// LabDrop — Service Worker (sw.js v8.1)
-const CACHE_NAME = 'labdrop-v8.1';
+// LabDrop — Service Worker (sw.js v8.2)
+const CACHE_NAME = 'labdrop-v8.2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -23,19 +23,21 @@ self.addEventListener('fetch', (event) => {
 
         // 1. Iterate all formData entries to extract all files regardless of key name
         for (const [key, value] of formData.entries()) {
-          if (value && typeof value === 'object' && typeof value.size === 'number' && value.size > 0) {
-            files.push(value);
+          if (value && typeof value === 'object' && ('size' in value || value instanceof Blob || value instanceof File)) {
+            if (value instanceof Blob || value instanceof File || (typeof value.size === 'number' && (value.name || value.type))) {
+              files.push(value);
+            }
           }
         }
 
         // 2. Also check specifically for manifest declared name 'shared_files' and common fallbacks
-        const candidateKeys = ['shared_files', 'files', 'file', 'media', 'photos', 'attachment'];
+        const candidateKeys = ['shared_files', 'files', 'file', 'media', 'photos', 'attachment', 'document', 'documents'];
         for (const fieldName of candidateKeys) {
           try {
             const namedFiles = formData.getAll(fieldName);
             if (namedFiles && namedFiles.length > 0) {
               for (const f of namedFiles) {
-                if (f && typeof f === 'object' && typeof f.size === 'number' && f.size > 0 && !files.includes(f)) {
+                if (f && typeof f === 'object' && ('size' in f || f instanceof Blob) && !files.includes(f)) {
                   files.push(f);
                 }
               }
@@ -48,23 +50,36 @@ self.addEventListener('fetch', (event) => {
         const shareUrl = formData.get('url');
         const title = formData.get('title');
 
+        const isDroppedMedia = title && /^(document|photo|video|audio|file)\s+from\s+/i.test(title.trim());
+        const looksLikeFilename = text && text.trim().length > 0 && text.trim().length < 260 && !text.includes('\n') && /\.(pdf|docx?|pptx?|xlsx?|zip|rar|7z|tar|png|jpe?g|webp|mp4|mp3|txt|csv)$/i.test(text.trim());
+
         if (files.length > 0) {
-          await saveSharedDataToIndexedDB(files, { title, text });
-        } else if (text || shareUrl) {
-          const linkToShare = shareUrl || (text && /^https?:\/\//i.test(text.trim()) ? text.trim() : null);
-          if (linkToShare) {
-            await saveSharedDataToIndexedDB([], { url: linkToShare, title });
-          } else if (text && text.trim()) {
-            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-            const filename = (title ? title.trim().replace(/[^a-zA-Z0-9_-]/g, '_') : 'shared-note') + '.txt';
-            await saveSharedDataToIndexedDB([{
-              name: filename,
-              type: 'text/plain;charset=utf-8',
-              size: blob.size,
-              lastModified: Date.now(),
-              blob: blob
-            }]);
+          // If files arrived with generic names, see if text/title has the real filename
+          if (text && text.trim() && !text.includes('\n') && text.trim().length < 260) {
+            for (const f of files) {
+              if (f.name === 'blob' || f.name === 'file' || f.name === 'shared_file' || !f.name.includes('.')) {
+                if (/\.[a-zA-Z0-9]{1,6}$/.test(text.trim())) {
+                  try { Object.defineProperty(f, 'name', { value: text.trim(), configurable: true }); } catch (_) { f.name = text.trim(); }
+                }
+              }
+            }
           }
+          await saveSharedDataToIndexedDB(files, { title, text });
+        } else if (isDroppedMedia || looksLikeFilename) {
+          // WhatsApp or another app tried to share a document, but Android/Chrome didn't pass the binary stream!
+          // NEVER create a fake 46-byte .txt file! Notify the UI cleanly.
+          const missingName = text ? text.trim() : (title ? title.trim() : 'Shared Document');
+          await saveSharedDataToIndexedDB([], {
+            shareError: 'file_stream_missing',
+            missingFileName: missingName,
+            title: title || ''
+          });
+        } else if (shareUrl || (text && /^https?:\/\//i.test(text.trim()))) {
+          const link = shareUrl || text.trim();
+          await saveSharedDataToIndexedDB([], { url: link, title });
+        } else if (text && text.trim()) {
+          // Genuine text note / code snippet shared by the user
+          await saveSharedDataToIndexedDB([], { text: text.trim(), title: title || '' });
         }
 
         // Notify any active clients so if LabDrop is already open, it immediately renders the files
@@ -96,14 +111,29 @@ async function saveSharedDataToIndexedDB(files = [], extra = {}) {
     'image/gif': '.gif',
     'image/svg+xml': '.svg',
     'application/pdf': '.pdf',
+    'application/msword': '.doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+    'application/vnd.ms-powerpoint': '.ppt',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+    'application/vnd.ms-excel': '.xls',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+    'application/zip': '.zip',
+    'application/x-zip-compressed': '.zip',
+    'application/x-7z-compressed': '.7z',
+    'application/x-rar-compressed': '.rar',
+    'application/vnd.rar': '.rar',
+    'application/x-tar': '.tar',
     'text/plain': '.txt',
+    'text/csv': '.csv',
+    'text/html': '.html',
+    'text/css': '.css',
+    'text/javascript': '.js',
+    'application/json': '.json',
     'video/mp4': '.mp4',
     'video/quicktime': '.mov',
     'audio/mpeg': '.mp3',
     'audio/ogg': '.ogg',
-    'audio/mp4': '.m4a',
-    'application/zip': '.zip',
-    'application/x-zip-compressed': '.zip'
+    'audio/mp4': '.m4a'
   };
 
   const processedFiles = [];
@@ -112,7 +142,7 @@ async function saveSharedDataToIndexedDB(files = [], extra = {}) {
     if (!file) continue;
     try {
       const rawBlob = file.blob || file;
-      let fileName = file.name || rawBlob.name || (extra.title ? extra.title.trim() : null) || `shared_file_${Date.now()}_${i}`;
+      let fileName = file.name || rawBlob.name || (extra.title && !/^(document|photo|video|audio|file)\s+from\s+/i.test(extra.title.trim()) ? extra.title.trim() : null) || `shared_file_${Date.now()}_${i}`;
       const fileType = file.type || rawBlob.type || 'application/octet-stream';
       const lastMod = file.lastModified || rawBlob.lastModified || Date.now();
 
@@ -122,35 +152,13 @@ async function saveSharedDataToIndexedDB(files = [], extra = {}) {
         }
       }
 
-      // Try arrayBuffer first for cross-context persistence; fallback to direct blob
-      let buffer = null;
-      try {
-        if (typeof rawBlob.arrayBuffer === 'function') {
-          buffer = await rawBlob.arrayBuffer();
-        } else if (typeof rawBlob.slice === 'function') {
-          buffer = await rawBlob.slice(0, rawBlob.size).arrayBuffer();
-        }
-      } catch (bufErr) {
-        console.warn('[ServiceWorker] arrayBuffer conversion failed, using direct blob:', bufErr);
-      }
-
-      if (buffer && buffer.byteLength > 0) {
-        processedFiles.push({
-          name: fileName,
-          type: fileType,
-          size: buffer.byteLength,
-          lastModified: lastMod,
-          buffer: buffer
-        });
-      } else {
-        processedFiles.push({
-          name: fileName,
-          type: fileType,
-          size: rawBlob.size || file.size || 0,
-          lastModified: lastMod,
-          blob: rawBlob
-        });
-      }
+      processedFiles.push({
+        name: fileName,
+        type: fileType,
+        size: rawBlob.size !== undefined ? rawBlob.size : (file.size || 0),
+        lastModified: lastMod,
+        blob: rawBlob
+      });
     } catch (readErr) {
       console.warn('[ServiceWorker] Failed to process shared file:', readErr);
     }
@@ -188,7 +196,7 @@ async function saveSharedDataToIndexedDB(files = [], extra = {}) {
           if (storeNames.includes('meta')) {
             const metaStore = transaction.objectStore('meta');
             metaStore.clear();
-            if (extra && (extra.url || extra.title || extra.text)) {
+            if (extra && (extra.url || extra.title || extra.text || extra.shareError)) {
               metaStore.put({ id: 'share_meta', ...extra, timestamp: Date.now() });
             }
           }

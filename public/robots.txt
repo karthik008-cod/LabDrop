@@ -6,6 +6,11 @@
 User-agent: *
 Allow: /
 Allow: /how-to-use.html
+Allow: /about.html
+Allow: /security.html
+Allow: /privacy.html
+Allow: /terms.html
+Allow: /contact.html
 Allow: /my-files.html
 Allow: /css/
 Allow: /js/

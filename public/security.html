@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Security &amp; Architecture — LabDrop | labdrop.online</title>
+  
+  <!-- Primary SEO Meta Tags -->
+  <meta name="title" content="Security & Architecture — LabDrop | labdrop.online" />
+  <meta name="description" content="Discover how LabDrop protects student data with ephemeral file lifecycles, 30-minute auto-purge, PIN protection, TLS 1.3 transit encryption, and malware shielding." />
+  <meta name="author" content="Yuvaan Kaarthikeyaa Adulapuram" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <link rel="canonical" href="https://labdrop.online/security.html" />
+
+  <!-- Google AdSense -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6259663778050569" crossorigin="anonymous"></script>
+
+  <!-- Google Chrome & Mobile Web App Meta -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="LabDrop Security" />
+  <meta name="application-name" content="LabDrop" />
+
+  <!-- Resource Preconnect Hints -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="LabDrop" />
+  <meta property="og:url" content="https://labdrop.online/security.html" />
+  <meta property="og:title" content="Security & Privacy Architecture — LabDrop" />
+  <meta property="og:description" content="Detailed overview of LabDrop's security protocols, ephemeral file storage, and campus network safety." />
+  <meta property="og:image" content="https://labdrop.online/labdroplogo.png" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Favicons and Manifest -->
+  <link rel="icon" type="image/png" href="/labdroplogo.png" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/labdroplogo.png" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/css/style.css?v=6.9" />
+  <script src="/js/site-config.js" defer></script>
+
+  <style>
+    .security-container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: var(--space-xl) var(--space-md);
+    }
+    .security-card {
+      background: var(--color-surface, #FFFDF8);
+      border: 1.5px solid var(--color-border);
+      border-top: 4px solid var(--color-primary-dark, #F59E0B);
+      border-radius: var(--radius-lg, 12px);
+      padding: var(--space-2xl) var(--space-xl);
+      box-shadow: 0 4px 20px rgba(217, 119, 6, 0.05);
+      line-height: 1.75;
+      color: #374151;
+    }
+    .security-card h1 {
+      font-size: 2.2rem;
+      color: var(--color-text, #2C2C2C);
+      margin-bottom: var(--space-xs);
+    }
+    .security-subtitle {
+      font-size: 1.05rem;
+      color: var(--color-text-secondary, #6B6B6B);
+      margin-bottom: var(--space-xl);
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: var(--space-md);
+    }
+    .security-card h2 {
+      font-size: 1.35rem;
+      color: var(--color-text, #2C2C2C);
+      margin-top: var(--space-xl);
+      margin-bottom: var(--space-sm);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .security-card p, .security-card ul {
+      margin-bottom: var(--space-md);
+      font-size: 0.98rem;
+    }
+    .security-card ul {
+      padding-left: var(--space-lg);
+    }
+    .security-card li {
+      margin-bottom: var(--space-xs);
+    }
+    .security-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.12);
+      color: #065F46;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+    .security-pillar-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: var(--space-md);
+      margin: var(--space-lg) 0;
+    }
+    .security-pillar {
+      background: #FFFDF8;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    .security-pillar h3 {
+      font-size: 1.05rem;
+      color: #1F2937;
+      margin-top: 0;
+      margin-bottom: 6px;
+    }
+    .security-pillar p {
+      font-size: 0.9rem;
+      color: #4B5563;
+      margin-bottom: 0;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-pattern"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header__container">
+      <a href="/" class="header__brand" aria-label="LabDrop Home" style="text-decoration: none; color: inherit;">
+        <picture>
+          <source srcset="/LabDropTextLogoNoBG.webp" type="image/webp" />
+          <img class="brand__header-logo" src="/LabDropTextLogoNoBG.png" alt="LabDrop Logo" width="115" height="46" loading="eager" fetchpriority="high" decoding="async" />
+        </picture>
+      </a>
+      
+      <nav class="header__nav" id="mainNav">
+        <div style="display: flex; gap: var(--space-md); align-items: center; flex-wrap: wrap;">
+          <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
+          <a href="/how-to-use.html" class="nav-link" style="text-decoration: none;">How to Use</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <div class="page-wrapper">
+    <main class="main-area security-container">
+      <div class="security-card">
+        <span class="security-badge">&check; Architecture &amp; Data Protection</span>
+        <h1>Security &amp; Architecture</h1>
+        <div class="security-subtitle">
+          How LabDrop protects student data, eliminates digital footprints on public lab computers, and guarantees ephemeral file destruction.
+        </div>
+
+        <p>
+          Unlike conventional cloud drives that store files permanently and require account credentials, <strong>LabDrop is engineered specifically around zero data persistence and end-to-end ephemeral isolation</strong>. We designed this architecture so students can safely transfer academic work without risking exposed sessions on public workstations.
+        </p>
+
+        <h2>Core Security Pillars</h2>
+        <div class="security-pillar-grid">
+          <div class="security-pillar">
+            <h3>1. Automatic 30-Min Purge</h3>
+            <p>Every guest transfer is assigned a strict 30-minute lifecycle. A recurring daemon on the server permanently removes files and database entries upon timer expiration.</p>
+          </div>
+          <div class="security-pillar">
+            <h3>2. Zero Account Footprint</h3>
+            <p>No phone numbers, social logins, or personal identities are required. You upload, scan the QR code on your phone, and close the browser without leaving login cookies.</p>
+          </div>
+          <div class="security-pillar">
+            <h3>3. In-Transit TLS 1.3</h3>
+            <p>All communication between the lab PC, our application nodes, and recipient mobile devices is encrypted using high-grade TLS 1.3 / SSL cryptographic protocols.</p>
+          </div>
+          <div class="security-pillar">
+            <h3>4. Executable Malware Guard</h3>
+            <p>To prevent malicious students or compromised PCs from propagating viruses, dangerous binary file extensions are blocked at the ingestion layer.</p>
+          </div>
+        </div>
+
+        <h2>Detailed Technical Architecture</h2>
+
+        <h3>1. Ephemeral Lifecycle &amp; Hard Deletion</h3>
+        <p>
+          When files are dragged into the LabDrop workspace, they are assigned a cryptographically random UUIDv4 transfer token and a 4-digit numeric verification code. The files are uploaded to isolated, time-bounded S3-compatible cloud buckets.
+        </p>
+        <p>
+          Our background cron worker checks active transfers every 60 seconds. Any session whose timestamp exceeds the expiry window (30 minutes for guest transfers, or 7 days for saved transfers) is deleted using bulk <code>DeleteObjectsCommand</code> instructions directly on the storage provider, ensuring that data cannot be undeleted or exfiltrated later.
+        </p>
+
+        <h3>2. Optional PIN Protection &amp; Salted Verification</h3>
+        <p>
+          When sharing sensitive research, lab test answers, or personal projects, senders can toggle PIN Protection. The 4-digit PIN is salted and hashed using secure cryptographic primitives before submission. 
+        </p>
+        <p>
+          A recipient attempting to access the transfer code must provide the exact PIN before any pre-signed file download URLs or ZIP download endpoints are returned by our API.
+        </p>
+
+        <h3>3. Prevention of Campus Network Malware</h3>
+        <p>
+          University computer labs are common propagation vectors for USB autorun viruses and malicious batch scripts. LabDrop actively prohibits the upload and transfer of the following executable formats:
+        </p>
+        <ul>
+          <li>Windows Binaries &amp; Installers: <code>.exe</code>, <code>.msi</code>, <code>.com</code>, <code>.scr</code>, <code>.pif</code></li>
+          <li>Script Executables: <code>.bat</code>, <code>.cmd</code>, <code>.vbs</code>, <code>.vbe</code>, <code>.wsf</code>, <code>.wsh</code>, <code>.ps1</code></li>
+        </ul>
+        <p>
+          Files matching these signatures are rejected instantly by our upload middleware with clear notifications.
+        </p>
+
+        <h3>4. Pre-Signed Time-Limited Download URLs</h3>
+        <p>
+          LabDrop does not expose public, unauthenticated static links to user files. All download requests are mediated through short-lived, pre-signed AWS S3 URLs. These URLs automatically expire, rendering them useless if shared or intercepted after the session ends.
+        </p>
+
+        <h3>5. Zero Payload Inspection</h3>
+        <p>
+          LabDrop does not parse, read, scrape, or monetize the contents of user uploads. The platform acts as a secure, temporary transit bridge. Our optional AI features (Viva Prep &amp; Exam Summaries) only process files when explicitly triggered by the user via the "Generate Exam &amp; Viva Prep" action.
+        </p>
+
+        <h2>Responsible Disclosure &amp; Security Contact</h2>
+        <p>
+          If you believe you have discovered a vulnerability, security bug, or edge-case in LabDrop's infrastructure, we encourage responsible disclosure. Please reach out directly to:
+        </p>
+        <ul>
+          <li><strong>Lead Developer:</strong> Yuvaan Kaarthikeyaa Adulapuram</li>
+          <li><strong>Email:</strong> <a href="mailto:yuvaankaarthikeyaa.1206@gmail.com">yuvaankaarthikeyaa.1206@gmail.com</a></li>
+          <li><strong>Repository:</strong> <a href="https://github.com/karthik008-cod/LabDrop" target="_blank" rel="noopener noreferrer">github.com/karthik008-cod/LabDrop</a></li>
+        </ul>
+      </div>
+    </main>
+  </div>
+
+  <!-- Global Footer -->
+  <footer class="footer" style="margin-top: auto; padding-top: var(--space-2xl); padding-bottom: var(--space-md); text-align: left; color: #4b5563; font-size: 0.85rem;">
+    <div style="display: flex; justify-content: flex-start; gap: 14px; flex-wrap: wrap;">
+      <a href="/" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Home</a>
+      <a href="/how-to-use.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">How to Use</a>
+      <a href="/about.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">About</a>
+      <a href="/security.html" class="nav-link" style="color: var(--color-primary-dark); text-decoration: none; font-weight: 700;">Security</a>
+      <a href="/privacy.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Privacy Policy</a>
+      <a href="/terms.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Terms of Service</a>
+      <a href="/contact.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Contact</a>
+      <a href="mailto:yuvaankaarthikeyaa.1206@gmail.com" class="nav-link footer-email-link" style="color: #374151; text-decoration: none; font-weight: 600;">Email Support</a>
+      <a href="https://github.com/karthik008-cod/LabDrop" target="_blank" rel="noopener noreferrer" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">GitHub</a>
+    </div>
+    <div class="footer-copy" style="margin-top: 8px; color: #4b5563;">
+      &copy; 2026 Yuvaan Kaarthikeyaa Adulapuram &bull; <a href="https://labdrop.online" style="color: #4b5563; text-decoration: underline;">labdrop.online</a> &bull; All Rights Reserved.
+    </div>
+  </footer>
+
+  <script src="/js/dialogs.js" defer></script>
+</body>
+</html>
+

@@ -1629,7 +1629,7 @@
   // ---- PWA, Desktop File Handling & Web Share Target Logic ----
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js?v=8.1').then(reg => {
+      navigator.serviceWorker.register('/sw.js?v=8.2').then(reg => {
         if (reg && reg.update) {
           reg.update();
         }
@@ -1754,14 +1754,21 @@
                 showAlert(`Received shared link from WhatsApp / Share!`, 'success');
                 hasAdded = true;
               }
-            } else if (data.text && data.text.trim()) {
-              const blob = new Blob([data.text], { type: 'text/plain;charset=utf-8' });
-              const textFile = new File([blob], 'shared-note.txt', { type: 'text/plain;charset=utf-8' });
-              showSection(selectSection);
-              closeMobileSidebar();
-              addFiles([textFile]);
-              showAlert(`Received shared text from WhatsApp! Ready to transfer.`, 'success');
-              hasAdded = true;
+            } else if (data.text && data.text.trim() && incomingFiles.length === 0) {
+              const isDroppedMedia = data.title && /^(document|photo|video|audio|file)\s+from\s+/i.test(data.title.trim());
+              const looksLikeFilename = data.text.trim().length < 260 && !data.text.includes('\n') && /\.(pdf|docx?|pptx?|xlsx?|zip|rar|7z|png|jpe?g|mp4|mp3)$/i.test(data.text.trim());
+              if (isDroppedMedia || looksLikeFilename) {
+                showAlert(`⚠️ Android did not grant permission to read "${data.text.trim()}" via WhatsApp share. Please tap "+ Select Files" to pick it directly.`, 'warning');
+                hasAdded = true;
+              } else {
+                const blob = new Blob([data.text], { type: 'text/plain;charset=utf-8' });
+                const textFile = new File([blob], 'shared-note.txt', { type: 'text/plain;charset=utf-8' });
+                showSection(selectSection);
+                closeMobileSidebar();
+                addFiles([textFile]);
+                showAlert(`Received shared text! Ready to transfer.`, 'success');
+                hasAdded = true;
+              }
             }
 
             if (hasAdded) {
@@ -1849,14 +1856,16 @@
               }
             });
 
-            // Check meta store for any shared link or text
+            // Check meta store for any shared link, text, or dropped file notices
             let sharedLink = null;
             let sharedText = null;
+            let shareMeta = null;
             if (storeNames.includes('meta')) {
               const metaStore = transaction.objectStore('meta');
               const getMetaReq = metaStore.get('share_meta');
               getMetaReq.onsuccess = () => {
                 if (getMetaReq.result) {
+                  shareMeta = getMetaReq.result;
                   if (getMetaReq.result.url) sharedLink = getMetaReq.result.url;
                   if (getMetaReq.result.text) sharedText = getMetaReq.result.text;
                 }
@@ -1864,7 +1873,7 @@
             }
 
             // Only clear IndexedDB once we actually have items to consume
-            if (normalizedFiles.length > 0 || sharedLink || sharedText) {
+            if (normalizedFiles.length > 0 || sharedLink || sharedText || (shareMeta && shareMeta.shareError)) {
               store.clear();
               if (storeNames.includes('meta')) {
                 const metaStore = transaction.objectStore('meta');
@@ -1884,7 +1893,11 @@
                 hasAddedAnything = true;
               }
 
-              if (sharedLink) {
+              if (shareMeta && shareMeta.shareError === 'file_stream_missing') {
+                const missingName = shareMeta.missingFileName || 'Document';
+                showAlert(`⚠️ Android did not pass the file data for "${missingName}". Please tap "+ Select Files" to pick it directly from storage.`, 'warning');
+                hasAddedAnything = true;
+              } else if (sharedLink) {
                 const activeFolder = getActiveFolder();
                 const targetLinks = activeFolder ? activeFolder.links : selectedLinks;
                 if (targetLinks.length < 20) {
