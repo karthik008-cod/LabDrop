@@ -703,21 +703,94 @@
           </div>
         </div>
 
+      <!-- Collapsible Academic Specifications & Architecture Documentation -->
+      <section class="home-docs-section">
+        <details class="docs-dropdown">
+          <summary>
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-primary-dark);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+              About LabDrop: Academic File Transfer Protocol &amp; Security Specifications
+            </span>
+            <span class="dropdown-chevron" style="display: inline-flex; align-items: center; color: #6b7280;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </span>
+          </summary>
+          <div class="docs-dropdown__content">
+            <div style="margin-bottom: 18px;">
+              <h3 style="font-size: 1.05rem; font-weight: 700; color: #1F2937; margin-bottom: 8px;">Engineered for Secure Collegiate Computer Lab Workflows</h3>
+              <p style="margin: 0; color: #4B5563;">
+                LabDrop is an open educational file-relay system designed specifically for students, researchers, and instructors working in university computer laboratories. In institutional computer labs, transferring files between shared workstations and personal mobile devices is typically restricted by blocked USB flash drive ports, locked network firewalls, and critical security risks associated with leaving personal email or WhatsApp sessions logged in on public computers. LabDrop resolves these vulnerabilities through an ephemeral, zero-credential transfer model.
+              </p>
+            </div>
+            <div class="docs-dropdown__grid">
+              <div class="docs-dropdown__item">
+                <h4>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #06D6A0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  1. Zero-Credential Academic Airgap
+                </h4>
+                <p>
+                  Never log into personal Google Drive, Outlook, or messaging accounts on a shared college PC again. Students drop assignments or code files on the lab PC, and LabDrop generates a short 4-digit code and dynamic QR code. Scanning with a mobile camera allows instant download without saving cookies, tokens, or credentials on the public machine.
+                </p>
+              </div>
+              <div class="docs-dropdown__item">
+                <h4>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #F59E0B;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  2. 30-Minute Cryptographic Auto-Purge
+                </h4>
+                <p>
+                  Transfers are completely ephemeral by design. All uploaded files, folders, and links automatically self-destruct after 30 minutes from both memory and temporary cloud object storage. No permanent copies linger on the lab workstation or remote infrastructure, guaranteeing true ephemeral hygiene.
+                </p>
+              </div>
+              <div class="docs-dropdown__item">
+                <h4>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #6366F1;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                  3. Code &amp; Lab Assignment Preservation
+                </h4>
+                <p>
+                  Unlike chat apps that compress images, break line wraps, or alter file extensions, LabDrop preserves exact byte-for-byte binary and text integrity for source code (C, C++, Java, Python, HTML), Jupyter Notebooks, electronic schematic diagrams, CSV datasets, and PDF lab manuals up to 250 MB per file (1 GB per transfer).
+                </p>
+              </div>
+              <div class="docs-dropdown__item">
+                <h4>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #EC4899;"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                  4. Multi-Source Staging &amp; Live Sync
+                </h4>
+                <p>
+                  Add files from multiple applications—drag code from an IDE, append a PDF report, and add copied terminal logs into a single unified transfer batch. Any connected mobile receiver screen automatically syncs in real time without requiring a manual page refresh or re-scanning.
+                </p>
+              </div>
+            </div>
+            <div style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--color-border); font-size: 0.8rem; color: #6B7280; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <span>Architecture: Cloudflare R2 / AWS S3 Direct Streaming &bull; TLS 1.3 Transport Encryption</span>
+              <a href="/how-to-use.html" style="color: var(--color-primary-dark); text-decoration: underline; font-weight: 600;">View Full Step-by-Step Tutorial &amp; FAQ &rarr;</a>
+            </div>
+          </div>
+        </details>
+      </section>
+
       </main>
     </div>
 
 
     <!-- Footer -->
     <footer class="footer" style="margin-top: auto; padding-top: var(--space-xl); padding-bottom: var(--space-md); text-align: left; color: #4b5563; font-size: 0.85rem;">
-      <div style="display: flex; justify-content: flex-start; gap: 14px; flex-wrap: wrap;">
+      <div style="display: flex; justify-content: flex-start; align-items: center; gap: 8px; flex-wrap: wrap; color: #9ca3af; font-size: 0.85rem;">
         <a href="/" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Home</a>
+        <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
         <a href="/how-to-use.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">How to Use &amp; FAQ</a>
+        <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
         <a href="/about.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">About</a>
+        <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
         <a href="/security.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Security</a>
+        <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
         <a href="/privacy.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Privacy Policy</a>
+        <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
         <a href="/terms.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Terms</a>
+        <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
         <a href="/contact.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Contact</a>
+        <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
         <a href="mailto:yuvaankaarthikeyaa.1206@gmail.com" class="nav-link footer-email-link" style="color: #374151; text-decoration: none; font-weight: 600;">Email</a>
+        <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
         <a href="https://github.com/karthik008-cod/LabDrop" target="_blank" rel="noopener noreferrer" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">GitHub</a>
       </div>
       <div class="footer-copy" style="margin-top: 6px; color: #4b5563;">&copy; 2026 Yuvaan Kaarthikeyaa Adulapuram &bull; <a href="https://labdrop.online" style="color: #4b5563; text-decoration: underline;">labdrop.online</a> &bull; All Rights Reserved.</div>

@@ -5258,3 +5258,89 @@ select.form-input option,
 
 
 
+
+/* ============================================================
+   Collapsible Academic Specifications Dropdown
+   ============================================================ */
+.home-docs-section {
+  width: 100%;
+  max-width: 860px;
+  margin: var(--space-xl) auto 0 auto;
+  text-align: left;
+}
+
+details.docs-dropdown {
+  background: var(--color-surface, #FFFDF8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 12px);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s ease;
+}
+
+details.docs-dropdown summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 13px 18px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  background: #FFFDF8;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+details.docs-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+details.docs-dropdown summary:hover {
+  background: #FAF5E8;
+  color: var(--color-primary-dark);
+}
+
+details.docs-dropdown[open] summary {
+  border-bottom: 1px solid var(--color-border);
+  background: #FAF5E8;
+}
+
+details.docs-dropdown .dropdown-chevron svg {
+  transition: transform 0.25s ease;
+}
+
+details.docs-dropdown[open] .dropdown-chevron svg {
+  transform: rotate(180deg);
+}
+
+.docs-dropdown__content {
+  padding: 24px;
+  background: #FFFDF8;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: #4B5563;
+}
+
+.docs-dropdown__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.docs-dropdown__item h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1F2937;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.docs-dropdown__item p {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #4B5563;
+}
