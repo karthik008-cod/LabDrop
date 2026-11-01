@@ -109,8 +109,27 @@
   const previewOfficeDesc = $('#previewOfficeDesc');
   const previewOfficeOnlineBtn = $('#previewOfficeOnlineBtn');
   const previewOfficeDownloadBtn = $('#previewOfficeDownloadBtn');
+
+  // PPT and Docx Preview DOM
+  const previewPptContainer = $('#previewPptContainer');
+  const pptPrevBtn = $('#pptPrevBtn');
+  const pptNextBtn = $('#pptNextBtn');
+  const pptCounter = $('#pptCounter');
+  const pptSlideViewBtn = $('#pptSlideViewBtn');
+  const pptOutlineViewBtn = $('#pptOutlineViewBtn');
+  const pptSlideCard = $('#pptSlideCard');
+  const pptSlideHeader = $('#pptSlideHeader');
+  const pptSlideBody = $('#pptSlideBody');
+  const pptSlideNum = $('#pptSlideNum');
+  const pptOutlineView = $('#pptOutlineView');
+
+  const previewDocxContainer = $('#previewDocxContainer');
+  const docxPage = $('#docxPage');
+
   let currentPreviewCodeText = '';
   let activeBlobUrl = null;
+  let currentPptSlides = [];
+  let currentPptSlideIndex = 0;
 
   // ---- Auth & Mode DOM ----
   const authLoggedOut = $('#authLoggedOut');
@@ -328,7 +347,95 @@
       URL.revokeObjectURL(activeBlobUrl);
       activeBlobUrl = null;
     }
+    currentPptSlides = [];
+    currentPptSlideIndex = 0;
   }
+
+  function renderCurrentPptSlide() {
+    if (!currentPptSlides || currentPptSlides.length === 0) return;
+    const slide = currentPptSlides[currentPptSlideIndex];
+    if (!slide) return;
+
+    if (pptSlideHeader) pptSlideHeader.textContent = slide.title || `Slide ${currentPptSlideIndex + 1}`;
+    if (pptSlideNum) pptSlideNum.textContent = slide.slideNum || (currentPptSlideIndex + 1);
+    if (pptCounter) pptCounter.textContent = `Slide ${currentPptSlideIndex + 1} of ${currentPptSlides.length}`;
+
+    if (pptSlideBody) {
+      const bodyLines = slide.content.filter(p => p !== slide.title);
+      if (bodyLines.length > 0) {
+        pptSlideBody.innerHTML = bodyLines.map(line => `<p>${escapeHtml(line)}</p>`).join('');
+      } else {
+        pptSlideBody.innerHTML = '<p style="color: #94a3b8; font-style: italic;">(Title Slide / Visual content)</p>';
+      }
+    }
+
+    if (pptPrevBtn) pptPrevBtn.disabled = currentPptSlideIndex === 0;
+    if (pptNextBtn) pptNextBtn.disabled = currentPptSlideIndex === currentPptSlides.length - 1;
+  }
+
+  function renderPptOutline() {
+    if (!pptOutlineView || !currentPptSlides) return;
+    pptOutlineView.innerHTML = currentPptSlides.map((s, idx) => {
+      const bodyLines = s.content.filter(p => p !== s.title);
+      return `
+        <div class="ppt-outline-item">
+          <div class="ppt-outline-item-title">Slide ${idx + 1}: ${escapeHtml(s.title || 'Untitled Slide')}</div>
+          <div style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.6;">
+            ${bodyLines.map(line => `<div style="margin-bottom: 4px;">• ${escapeHtml(line)}</div>`).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  if (pptPrevBtn) {
+    pptPrevBtn.addEventListener('click', () => {
+      if (currentPptSlideIndex > 0) {
+        currentPptSlideIndex--;
+        renderCurrentPptSlide();
+      }
+    });
+  }
+
+  if (pptNextBtn) {
+    pptNextBtn.addEventListener('click', () => {
+      if (currentPptSlideIndex < currentPptSlides.length - 1) {
+        currentPptSlideIndex++;
+        renderCurrentPptSlide();
+      }
+    });
+  }
+
+  if (pptSlideViewBtn && pptOutlineViewBtn) {
+    pptSlideViewBtn.addEventListener('click', () => {
+      pptSlideViewBtn.classList.add('active');
+      pptOutlineViewBtn.classList.remove('active');
+      if (pptSlideCard) pptSlideCard.style.display = 'flex';
+      if (pptOutlineView) pptOutlineView.style.display = 'none';
+    });
+    pptOutlineViewBtn.addEventListener('click', () => {
+      pptOutlineViewBtn.classList.add('active');
+      pptSlideViewBtn.classList.remove('active');
+      if (pptSlideCard) pptSlideCard.style.display = 'none';
+      if (pptOutlineView) {
+        renderPptOutline();
+        pptOutlineView.style.display = 'flex';
+      }
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (!filePreviewModal || !filePreviewModal.classList.contains('active')) return;
+    if (previewPptContainer && previewPptContainer.style.display !== 'none') {
+      if (e.key === 'ArrowLeft' && currentPptSlideIndex > 0) {
+        currentPptSlideIndex--;
+        renderCurrentPptSlide();
+      } else if (e.key === 'ArrowRight' && currentPptSlideIndex < currentPptSlides.length - 1) {
+        currentPptSlideIndex++;
+        renderCurrentPptSlide();
+      }
+    }
+  });
 
   async function openDesktopFilePreview(fileOrMeta, isLocalFile = false) {
     if (!fileOrMeta) return;
@@ -372,6 +479,8 @@
     if (previewCodeContainer) previewCodeContainer.style.display = 'none';
     if (previewImageContainer) previewImageContainer.style.display = 'none';
     if (previewPdfContainer) previewPdfContainer.style.display = 'none';
+    if (previewPptContainer) previewPptContainer.style.display = 'none';
+    if (previewDocxContainer) previewDocxContainer.style.display = 'none';
     if (previewOfficeContainer) previewOfficeContainer.style.display = 'none';
     if (previewFallbackContainer) previewFallbackContainer.style.display = 'none';
     if (previewCopyBtn) previewCopyBtn.style.display = 'none';
@@ -391,21 +500,123 @@
       if (previewLoader) previewLoader.style.display = 'none';
       if (previewPdfContainer) previewPdfContainer.style.display = 'flex';
     } else if (isOffice) {
-      if (previewOfficeName) previewOfficeName.textContent = filename;
       const ext = filename.split('.').pop().toLowerCase();
+
+      // Check if PPTX
+      if (ext === 'pptx' && window.JSZip) {
+        try {
+          if (previewLoaderText) previewLoaderText.textContent = 'Extracting and rendering PowerPoint slides...';
+          let arrayBuf = null;
+          if (isLocalFile && typeof fileOrMeta.arrayBuffer === 'function') {
+            arrayBuf = await fileOrMeta.arrayBuffer();
+          } else if (currentTransfer) {
+            const res = await fetch(inlineUrl);
+            if (!res.ok) throw new Error('Failed to fetch presentation');
+            arrayBuf = await res.arrayBuffer();
+          }
+
+          if (arrayBuf) {
+            const zip = await window.JSZip.loadAsync(arrayBuf);
+            const slideFiles = [];
+            zip.forEach((relPath, zipEntry) => {
+              const match = relPath.match(/^ppt\/slides\/slide(\d+)\.xml$/i);
+              if (match) {
+                slideFiles.push({ num: parseInt(match[1], 10), zipEntry });
+              }
+            });
+
+            slideFiles.sort((a, b) => a.num - b.num);
+
+            if (slideFiles.length > 0) {
+              const parsedSlides = [];
+              for (const s of slideFiles) {
+                const xmlText = await s.zipEntry.async('text');
+                const titleMatch = xmlText.match(/<p:sp>[sS]*?name="Title[sS]*?<a:t[^>]*>([sS]*?)<\/a:t>/i);
+                let title = titleMatch ? titleMatch[1].trim() : '';
+
+                const paragraphs = [];
+                const pRegex = /<a:p\b[^>]*>([\s\S]*?)<\/a:p>/gi;
+                let pMatch;
+                while ((pMatch = pRegex.exec(xmlText)) !== null) {
+                  const tRegex = /<a:t\b[^>]*>([\s\S]*?)<\/a:t>/gi;
+                  let tMatch;
+                  let line = '';
+                  while ((tMatch = tRegex.exec(pMatch[1])) !== null) {
+                    line += tMatch[1];
+                  }
+                  if (line.trim()) paragraphs.push(line.trim());
+                }
+
+                if (!title && paragraphs.length > 0) title = paragraphs[0];
+
+                parsedSlides.push({
+                  slideNum: s.num,
+                  title: title || `Slide ${s.num}`,
+                  content: paragraphs
+                });
+              }
+
+              currentPptSlides = parsedSlides;
+              currentPptSlideIndex = 0;
+              if (pptSlideViewBtn) pptSlideViewBtn.classList.add('active');
+              if (pptOutlineViewBtn) pptOutlineViewBtn.classList.remove('active');
+              if (pptSlideCard) pptSlideCard.style.display = 'flex';
+              if (pptOutlineView) pptOutlineView.style.display = 'none';
+
+              renderCurrentPptSlide();
+
+              if (previewLoader) previewLoader.style.display = 'none';
+              if (previewPptContainer) previewPptContainer.style.display = 'flex';
+              return;
+            }
+          }
+        } catch (pptxErr) {
+          console.warn('[PPTX Parser] In-browser slide parse error:', pptxErr);
+        }
+      }
+
+      // Check if DOCX
+      if (ext === 'docx' && window.mammoth) {
+        try {
+          if (previewLoaderText) previewLoaderText.textContent = 'Formatting Word document...';
+          let arrayBuf = null;
+          if (isLocalFile && typeof fileOrMeta.arrayBuffer === 'function') {
+            arrayBuf = await fileOrMeta.arrayBuffer();
+          } else if (currentTransfer) {
+            const res = await fetch(inlineUrl);
+            if (!res.ok) throw new Error('Failed to fetch document');
+            arrayBuf = await res.arrayBuffer();
+          }
+
+          if (arrayBuf) {
+            const mammothRes = await window.mammoth.convertToHtml({ arrayBuffer: arrayBuf });
+            if (mammothRes && mammothRes.value && docxPage) {
+              docxPage.innerHTML = mammothRes.value;
+              if (previewLoader) previewLoader.style.display = 'none';
+              if (previewDocxContainer) previewDocxContainer.style.display = 'flex';
+              return;
+            }
+          }
+        } catch (docxErr) {
+          console.warn('[DOCX Parser] In-browser render error:', docxErr);
+        }
+      }
+
+      // Fallback Card (for binary .ppt, .doc, or if parsing unsupported)
+      if (previewOfficeName) previewOfficeName.textContent = filename;
       if (previewOfficeIcon) {
         if (['doc', 'docx', 'odt'].includes(ext)) {
           previewOfficeIcon.style.background = 'rgba(37, 99, 235, 0.15)';
           previewOfficeIcon.style.color = '#3b82f6';
-          if (previewOfficeDesc) previewOfficeDesc.textContent = 'Microsoft Word document. View online with Google Docs Viewer or download to open directly.';
+          if (previewOfficeDesc) previewOfficeDesc.textContent = isLocalFile ? 'Microsoft Word document ready to transfer. You can open and view it in Microsoft Word on your machine.' : 'Microsoft Word document. You can open and view it online or download directly.';
         } else if (['ppt', 'pptx', 'odp'].includes(ext)) {
           previewOfficeIcon.style.background = 'rgba(234, 88, 12, 0.15)';
           previewOfficeIcon.style.color = '#f97316';
-          if (previewOfficeDesc) previewOfficeDesc.textContent = 'PowerPoint presentation. View slides online or download to open in PowerPoint.';
+          if (previewOfficeDesc) previewOfficeDesc.textContent = isLocalFile ? 'PowerPoint presentation ready to transfer. Open with PowerPoint or Google Slides on your machine.' : 'PowerPoint presentation. You can view slides online or download directly.';
         } else {
           previewOfficeIcon.style.background = 'rgba(16, 185, 129, 0.15)';
           previewOfficeIcon.style.color = '#10b981';
-          if (previewOfficeDesc) previewOfficeDesc.textContent = 'Spreadsheet workbook. View online or download to open in Excel.';
+          if (previewOfficeDesc) previewOfficeDesc.textContent = isLocalFile ? 'Spreadsheet ready to transfer. Open in Excel on your machine.' : 'Spreadsheet workbook. You can view online or download directly.';
         }
       }
 

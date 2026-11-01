@@ -21,7 +21,7 @@
   <link rel="apple-touch-icon" href="/labdroplogo.png" />
   <link rel="manifest" href="/manifest.json" />
 
-  <link rel="stylesheet" href="/css/style.css?v=7.0" />
+  <link rel="stylesheet" href="/css/style.css?v=7.1" />
   <script src="/js/site-config.js"></script>
 </head>
 <body>
@@ -375,6 +375,35 @@
           <iframe class="preview-pdf-frame" id="previewPdfFrame" src="" title="PDF Document Preview"></iframe>
         </div>
         <!-- Office Document container -->
+                <!-- PPT Slide Viewer Container -->
+        <div class="preview-ppt-container" id="previewPptContainer" style="display: none;">
+          <div class="ppt-controls-bar">
+            <div class="ppt-nav-btns">
+              <button type="button" class="btn btn--outline btn--sm" id="pptPrevBtn" title="Previous Slide (Left Arrow)">◀ Prev</button>
+              <span class="ppt-counter" id="pptCounter">Slide 1 of 1</span>
+              <button type="button" class="btn btn--outline btn--sm" id="pptNextBtn" title="Next Slide (Right Arrow)">Next ▶</button>
+            </div>
+            <div class="ppt-view-toggle">
+              <button type="button" class="ppt-toggle-btn active" id="pptSlideViewBtn">Slide View</button>
+              <button type="button" class="ppt-toggle-btn" id="pptOutlineViewBtn">All Slides</button>
+            </div>
+          </div>
+          <div class="ppt-stage" id="pptStage">
+            <div class="ppt-slide-card" id="pptSlideCard">
+              <div class="ppt-slide-header" id="pptSlideHeader">Slide Title</div>
+              <div class="ppt-slide-body" id="pptSlideBody"></div>
+              <div class="ppt-slide-footer">
+                <span id="pptSlideNum">1</span>
+              </div>
+            </div>
+            <div class="ppt-outline-view" id="pptOutlineView" style="display: none;"></div>
+          </div>
+        </div>
+
+        <!-- Docx Document Viewer Container -->
+        <div class="preview-docx-container" id="previewDocxContainer" style="display: none;">
+          <div class="docx-page" id="docxPage"></div>
+        </div>
         <div class="preview-office-container" id="previewOfficeContainer" style="display: none;">
           <div class="preview-office-card">
             <div class="preview-office-icon" id="previewOfficeIcon">
@@ -885,6 +914,8 @@
     </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script src="/js/jszip.min.js"></script>
+  <script src="/js/mammoth.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
   <script src="/js/dialogs.js"></script>
   <script src="/js/bg.js?v=2.0"></script>
@@ -927,6 +958,6 @@
       }
     };
   </script>
-  <script src="/js/mobile.js?v=7.4"></script>
+  <script src="/js/mobile.js?v=7.5"></script>
 </body>
 </html>
