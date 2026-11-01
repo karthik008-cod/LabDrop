@@ -65,6 +65,12 @@
   const statSize = $('#statSize');
   const qrFileList = $('#qrFileList');
   const qrLinkList = $('#qrLinkList');
+  const qrAddMoreBtn = $('#qrAddMoreBtn');
+  const qrAddFileInput = $('#qrAddFileInput');
+  const qrAppendProgress = $('#qrAppendProgress');
+  const qrAppendProgressText = $('#qrAppendProgressText');
+  const qrAppendProgressPercent = $('#qrAppendProgressPercent');
+  const qrAppendProgressBar = $('#qrAppendProgressBar');
 
   const receiveForm = $('#receiveForm');
   const receiveCodeInput = $('#receiveCodeInput');
@@ -1555,6 +1561,178 @@
         text: `Download "${name}" from LabDrop. Code: ${currentTransfer.shortCode}`,
         url: currentTransfer.url
       }).catch(() => {});
+    });
+  }
+
+  // ---- Append More Files to Active Transfer ----
+  if (qrAddMoreBtn && qrAddFileInput) {
+    qrAddMoreBtn.addEventListener('click', () => {
+      qrAddFileInput.click();
+    });
+
+    qrAddFileInput.addEventListener('change', async (e) => {
+      const filesToAdd = Array.from(e.target.files || []);
+      if (!filesToAdd.length || !currentTransfer) return;
+
+      // Validate total file count
+      const currentCount = (currentTransfer.files || []).length;
+      if (currentCount + filesToAdd.length > 30) {
+        showAlert(`Cannot add ${filesToAdd.length} files. Maximum is 30 files per transfer (${currentCount} already included).`, 'error');
+        qrAddFileInput.value = '';
+        return;
+      }
+
+      // Show append progress UI
+      if (qrAppendProgress) qrAppendProgress.classList.remove('section--hidden');
+      if (qrAppendProgressBar) qrAppendProgressBar.style.width = '0%';
+      if (qrAppendProgressPercent) qrAppendProgressPercent.textContent = '0%';
+      if (qrAppendProgressText) qrAppendProgressText.textContent = `Uploading ${filesToAdd.length} additional file(s)...`;
+      if (qrAddMoreBtn) qrAddMoreBtn.disabled = true;
+
+      try {
+        const rawFiles = filesToAdd.map(f => ({
+          name: f.name,
+          size: f.size,
+          type: f.type || 'application/octet-stream'
+        }));
+
+        let appendCompleteResult = null;
+
+        try {
+          // Direct S3 Upload flow
+          const initRes = await fetch(`/api/transfer/${currentTransfer.transferId}/append/initiate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+            },
+            body: JSON.stringify({
+              files: rawFiles,
+              pin: currentTransferPin
+            })
+          });
+
+          if (!initRes.ok) {
+            const errData = await initRes.json().catch(() => ({}));
+            throw new Error(errData.error || `Failed to initiate append (${initRes.status}).`);
+          }
+
+          const initData = await initRes.json();
+          const loadedPerFile = new Array(filesToAdd.length).fill(0);
+          const totalBytes = filesToAdd.reduce((sum, f) => sum + (f.size || 0), 0) || 1;
+
+          const uploadPromises = filesToAdd.map((file, idx) => {
+            const presigned = initData.files[idx];
+            if (!presigned || !presigned.uploadUrl) {
+              return Promise.reject(new Error(`Missing upload URL for "${file.name}".`));
+            }
+
+            return new Promise((resolve, reject) => {
+              const putXhr = new XMLHttpRequest();
+              putXhr.open('PUT', presigned.uploadUrl);
+              putXhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+
+              putXhr.upload.addEventListener('progress', (ev) => {
+                if (ev.lengthComputable) {
+                  loadedPerFile[idx] = ev.loaded;
+                  const totalLoaded = loadedPerFile.reduce((sum, v) => sum + v, 0);
+                  const pct = Math.min(Math.round((totalLoaded / totalBytes) * 100), 100);
+                  if (qrAppendProgressBar) qrAppendProgressBar.style.width = `${pct}%`;
+                  if (qrAppendProgressPercent) qrAppendProgressPercent.textContent = `${pct}%`;
+                }
+              });
+
+              putXhr.onload = () => {
+                if (putXhr.status >= 200 && putXhr.status < 300) {
+                  loadedPerFile[idx] = file.size;
+                  resolve();
+                } else {
+                  reject(new Error(`Direct S3 upload failed for "${file.name}" (HTTP ${putXhr.status}).`));
+                }
+              };
+
+              putXhr.onerror = () => reject(new Error(`Direct S3 network error for "${file.name}".`));
+              putXhr.send(file);
+            });
+          });
+
+          await Promise.all(uploadPromises);
+
+          if (qrAppendProgressText) qrAppendProgressText.textContent = 'Updating transfer...';
+
+          const compRes = await fetch(`/api/transfer/${currentTransfer.transferId}/append/complete`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+            },
+            body: JSON.stringify({
+              pin: currentTransferPin
+            })
+          });
+
+          if (!compRes.ok) {
+            const compErr = await compRes.json().catch(() => ({}));
+            throw new Error(compErr.error || `Finalizing append failed (${compRes.status}).`);
+          }
+
+          appendCompleteResult = await compRes.json();
+        } catch (directErr) {
+          console.warn('[Append S3 Direct] Falling back to server-relayed append:', directErr.message);
+
+          // Relay fallback
+          const formData = new FormData();
+          filesToAdd.forEach(f => formData.append('files', f));
+
+          appendCompleteResult = await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.upload.addEventListener('progress', (ev) => {
+              if (ev.lengthComputable) {
+                const pct = Math.min(Math.round((ev.loaded / ev.total) * 100), 100);
+                if (qrAppendProgressBar) qrAppendProgressBar.style.width = `${pct}%`;
+                if (qrAppendProgressPercent) qrAppendProgressPercent.textContent = `${pct}%`;
+              }
+            });
+
+            xhr.onload = () => {
+              try {
+                const resData = JSON.parse(xhr.responseText);
+                if (xhr.status >= 200 && xhr.status < 300) {
+                  resolve(resData);
+                } else {
+                  reject(new Error(resData.error || `Server returned status ${xhr.status}.`));
+                }
+              } catch (_) {
+                reject(new Error(`Server returned unexpected response (${xhr.status}).`));
+              }
+            };
+
+            xhr.onerror = () => reject(new Error('Network error during file append.'));
+            xhr.open('POST', `/api/transfer/${currentTransfer.transferId}/append`);
+            if (authToken) xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+            if (currentTransferPin) xhr.setRequestHeader('x-transfer-pin', currentTransferPin);
+            xhr.send(formData);
+          });
+        }
+
+        // Successfully appended!
+        currentTransfer.files = appendCompleteResult.files || [];
+        currentTransfer.fileCount = appendCompleteResult.fileCount || currentTransfer.files.length;
+        currentTransfer.totalSize = appendCompleteResult.totalSize || 0;
+        if (appendCompleteResult.expiresAt) {
+          currentTransfer.expiresAt = appendCompleteResult.expiresAt;
+        }
+
+        showTransferView(currentTransfer);
+        showAlert(`Added ${filesToAdd.length} file(s) to transfer!`, 'success');
+      } catch (err) {
+        console.error('[Append Error]', err);
+        showAlert(err.message || 'Failed to add files to transfer.', 'error');
+      } finally {
+        if (qrAppendProgress) qrAppendProgress.classList.add('section--hidden');
+        if (qrAddMoreBtn) qrAddMoreBtn.disabled = false;
+        qrAddFileInput.value = '';
+      }
     });
   }
 

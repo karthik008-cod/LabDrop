@@ -2483,6 +2483,47 @@
     });
   }
 
+  // ---- Auto-sync for Appended Files ----
+  let isRefreshing = false;
+  async function silentRefreshTransfer() {
+    if (document.hidden || isRefreshing) return;
+    const transferId = getTransferId();
+    if (!transferId || !activeTransferData) return;
+    try {
+      isRefreshing = true;
+      const headers = {};
+      if (currentPin) headers['x-transfer-pin'] = currentPin;
+
+      const res = await fetch(`/api/transfer/${transferId}`, { headers });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (!data) return;
+
+      const prevCount = (activeTransferData.files || []).length;
+      const newCount = (data.files || []).length;
+      const prevSize = activeTransferData.totalSize || 0;
+      const newSize = data.totalSize || 0;
+
+      if (prevCount !== newCount || prevSize !== newSize) {
+        activeTransferData = data;
+        renderTransfer();
+      }
+    } catch (_) {
+      // Ignore background network refresh hiccups
+    } finally {
+      isRefreshing = false;
+    }
+  }
+
+  setInterval(silentRefreshTransfer, 10000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) silentRefreshTransfer();
+  });
+  window.addEventListener('focus', () => {
+    silentRefreshTransfer();
+  });
+
   // ---- Initialize ----
   loadTransfer();
 })();

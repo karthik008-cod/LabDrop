@@ -1859,6 +1859,291 @@ app.post('/api/transfer/:id/extend', async (req, res) => {
   res.json({ success: true, expiresAt: transfer.expiresAt });
 });
 
+// --- Append Files to Active Transfer: Initiate (S3 Direct) ---
+app.post('/api/transfer/:id/append/initiate', optionalAuth, async (req, res) => {
+  try {
+    const transfer = await storage.transfers.get(req.params.id);
+    if (!transfer) {
+      return res.status(404).json({ error: 'Transfer not found.' });
+    }
+
+    if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
+      return res.status(410).json({ error: 'Transfer has already expired.' });
+    }
+
+    if (req.body && req.body.pin && !req.headers['x-transfer-pin']) {
+      req.headers['x-transfer-pin'] = String(req.body.pin);
+    }
+    if (!verifyPin(req, res, transfer)) return;
+
+    const rawFiles = Array.isArray(req.body.files) ? req.body.files : [];
+    if (rawFiles.length === 0) {
+      return res.status(400).json({ error: 'No files provided to append.' });
+    }
+
+    const currentFilesCount = (transfer.files || []).length;
+    if (currentFilesCount + rawFiles.length > CONFIG.MAX_FILES_PER_TRANSFER) {
+      return res.status(400).json({
+        error: `Cannot append ${rawFiles.length} file(s). Maximum is ${CONFIG.MAX_FILES_PER_TRANSFER} files per transfer (${currentFilesCount} already in transfer).`
+      });
+    }
+
+    let appendTotalSize = 0;
+    for (const f of rawFiles) {
+      if (!f || typeof f.name !== 'string') {
+        return res.status(400).json({ error: 'Invalid file payload.' });
+      }
+      const ext = path.extname(f.name).toLowerCase();
+      if (BLOCKED_EXTENSIONS.has(ext)) {
+        return res.status(400).json({ error: `File type "${ext}" is not allowed for security reasons.` });
+      }
+      const size = Number(f.size) || 0;
+      if (size > CONFIG.MAX_FILE_SIZE) {
+        return res.status(413).json({
+          error: `File "${f.name}" is too large. Maximum size is ${Math.round(CONFIG.MAX_FILE_SIZE / (1024 * 1024))}MB per file.`
+        });
+      }
+      appendTotalSize += size;
+    }
+
+    const currentTotalSize = Number(transfer.totalSize) || 0;
+    if (currentTotalSize + appendTotalSize > CONFIG.MAX_TOTAL_SIZE) {
+      return res.status(413).json({
+        error: `Total transfer size exceeds the ${Math.round(CONFIG.MAX_TOTAL_SIZE / (1024 * 1024))}MB limit.`
+      });
+    }
+
+    const pendingFiles = [];
+    const presignedFiles = [];
+
+    for (const f of rawFiles) {
+      const fileId = uuidv4();
+      const sanitized = sanitizeFilename(f.name);
+      const storageName = `${fileId}__${sanitized}`;
+      const s3Key = `${transfer.id}/${storageName}`;
+      const contentType = f.type || 'application/octet-stream';
+
+      const putCommand = new PutObjectCommand({
+        Bucket: S3_BUCKET_NAME,
+        Key: s3Key,
+        ContentType: contentType,
+      });
+
+      const uploadUrl = await getSignedUrl(s3Client, putCommand, { expiresIn: 900 });
+
+      pendingFiles.push({
+        id: fileId,
+        originalName: sanitized,
+        storageName,
+        size: Number(f.size) || 0,
+        mimetype: contentType,
+        category: getFileCategory(sanitized)
+      });
+
+      presignedFiles.push({
+        id: fileId,
+        name: sanitized,
+        storageName,
+        uploadUrl,
+        type: contentType,
+        size: Number(f.size) || 0
+      });
+    }
+
+    transfer.pendingAppends = transfer.pendingAppends || [];
+    transfer.pendingAppends.push(...pendingFiles);
+    await storage.transfers.set(transfer.id, transfer);
+
+    res.json({
+      success: true,
+      transferId: transfer.id,
+      files: presignedFiles
+    });
+  } catch (err) {
+    console.error('[Append Initiate] Error:', err);
+    res.status(500).json({ error: 'Failed to initiate file append.' });
+  }
+});
+
+// --- Append Files to Active Transfer: Complete (S3 Direct) ---
+app.post('/api/transfer/:id/append/complete', optionalAuth, async (req, res) => {
+  try {
+    const transfer = await storage.transfers.get(req.params.id);
+    if (!transfer) {
+      return res.status(404).json({ error: 'Transfer not found.' });
+    }
+
+    if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
+      return res.status(410).json({ error: 'Transfer has already expired.' });
+    }
+
+    if (req.body && req.body.pin && !req.headers['x-transfer-pin']) {
+      req.headers['x-transfer-pin'] = String(req.body.pin);
+    }
+    if (!verifyPin(req, res, transfer)) return;
+
+    const pendingList = Array.isArray(transfer.pendingAppends) ? transfer.pendingAppends : [];
+    if (pendingList.length === 0) {
+      return res.status(400).json({ error: 'No pending files to append.' });
+    }
+
+    const verifiedAppendedFiles = [];
+    for (const f of pendingList) {
+      try {
+        const head = await s3Client.send(new HeadObjectCommand({
+          Bucket: S3_BUCKET_NAME,
+          Key: `${transfer.id}/${f.storageName}`
+        }));
+        if (head.ContentLength) {
+          f.size = head.ContentLength;
+        }
+        verifiedAppendedFiles.push(f);
+      } catch (err) {
+        console.warn(`[Append Complete] Head check note for ${f.storageName}:`, err.message);
+        verifiedAppendedFiles.push(f);
+      }
+    }
+
+    transfer.files = transfer.files || [];
+    transfer.files.push(...verifiedAppendedFiles);
+    transfer.pendingAppends = [];
+    transfer.fileCount = transfer.files.length;
+    transfer.totalSize = transfer.files.reduce((sum, f) => sum + (f.size || 0), 0);
+
+    await storage.transfers.set(transfer.id, transfer);
+
+    analytics.totalFilesUploaded += verifiedAppendedFiles.length;
+    scheduleAnalyticsSave();
+    storage.dailyMetrics.recordTransfer(getTodayDateStr(), { filesCount: verifiedAppendedFiles.length, storageBytes: verifiedAppendedFiles.reduce((s, f) => s + (f.size || 0), 0), currentTotals: getCurrentTotals() });
+
+    res.json({
+      success: true,
+      transferId: transfer.id,
+      shortCode: transfer.shortCode,
+      expiresAt: transfer.expiresAt,
+      fileCount: transfer.files.length,
+      totalSize: transfer.totalSize,
+      appendedCount: verifiedAppendedFiles.length,
+      files: transfer.files.map(f => ({
+        id: f.id,
+        name: f.originalName,
+        size: f.size,
+        category: f.category
+      }))
+    });
+  } catch (err) {
+    console.error('[Append Complete] Error:', err);
+    res.status(500).json({ error: 'Failed to complete file append.' });
+  }
+});
+
+// --- Append Files: Server Relay Fallback ---
+app.post('/api/transfer/:id/append', optionalAuth, (req, res) => {
+  const uploadHandler = upload.array('files', CONFIG.MAX_FILES_PER_TRANSFER);
+  uploadHandler(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    try {
+      const transfer = await storage.transfers.get(req.params.id);
+      if (!transfer) {
+        return res.status(404).json({ error: 'Transfer not found.' });
+      }
+      if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
+        return res.status(410).json({ error: 'Transfer has already expired.' });
+      }
+
+      if (req.body && req.body.pin && !req.headers['x-transfer-pin']) {
+        req.headers['x-transfer-pin'] = String(req.body.pin);
+      }
+      if (!verifyPin(req, res, transfer)) {
+        // Clean up uploaded files if PIN check fails
+        (req.files || []).forEach(f => { try { fs.unlinkSync(f.path); } catch (_) {} });
+        return;
+      }
+
+      const files = req.files || [];
+      if (files.length === 0) {
+        return res.status(400).json({ error: 'No files uploaded.' });
+      }
+
+      const currentCount = (transfer.files || []).length;
+      if (currentCount + files.length > CONFIG.MAX_FILES_PER_TRANSFER) {
+        files.forEach(f => { try { fs.unlinkSync(f.path); } catch (_) {} });
+        return res.status(400).json({ error: `Cannot exceed ${CONFIG.MAX_FILES_PER_TRANSFER} files per transfer.` });
+      }
+
+      // Check blocked extensions
+      for (const file of files) {
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (BLOCKED_EXTENSIONS.has(ext)) {
+          files.forEach(f => { try { fs.unlinkSync(f.path); } catch (_) {} });
+          return res.status(400).json({ error: `File type "${ext}" is not allowed for security reasons.` });
+        }
+      }
+
+      const addedFiles = [];
+      for (const file of files) {
+        const fileId = uuidv4();
+        const sanitized = sanitizeFilename(file.originalname);
+        const storageName = `${fileId}__${sanitized}`;
+        const s3Key = `${transfer.id}/${storageName}`;
+        const fileStream = fs.createReadStream(file.path);
+
+        const putCommand = new PutObjectCommand({
+          Bucket: S3_BUCKET_NAME,
+          Key: s3Key,
+          Body: fileStream,
+          ContentType: file.mimetype,
+        });
+
+        await s3Client.send(putCommand);
+
+        try { fs.unlinkSync(file.path); } catch (_) {}
+
+        addedFiles.push({
+          id: fileId,
+          originalName: sanitized,
+          storageName,
+          size: file.size,
+          mimetype: file.mimetype,
+          category: getFileCategory(sanitized)
+        });
+      }
+
+      transfer.files = transfer.files || [];
+      transfer.files.push(...addedFiles);
+      transfer.fileCount = transfer.files.length;
+      transfer.totalSize = transfer.files.reduce((sum, f) => sum + (f.size || 0), 0);
+
+      await storage.transfers.set(transfer.id, transfer);
+      analytics.totalFilesUploaded += addedFiles.length;
+      scheduleAnalyticsSave();
+      storage.dailyMetrics.recordTransfer(getTodayDateStr(), { filesCount: addedFiles.length, storageBytes: addedFiles.reduce((s, f) => s + (f.size || 0), 0), currentTotals: getCurrentTotals() });
+
+      res.json({
+        success: true,
+        transferId: transfer.id,
+        shortCode: transfer.shortCode,
+        expiresAt: transfer.expiresAt,
+        fileCount: transfer.files.length,
+        totalSize: transfer.totalSize,
+        appendedCount: addedFiles.length,
+        files: transfer.files.map(f => ({
+          id: f.id,
+          name: f.originalName,
+          size: f.size,
+          category: f.category
+        }))
+      });
+    } catch (relayErr) {
+      console.error('[Append Relay] Error:', relayErr);
+      (req.files || []).forEach(f => { try { fs.unlinkSync(f.path); } catch (_) {} });
+      res.status(500).json({ error: 'Failed to append files.' });
+    }
+  });
+});
+
 // Helper: fetch file text and binary payload (for PDF and image diagrams) from S3
 async function fetchFilePayloadFromS3(transferId, storageName, maxBytes = 15 * 1024 * 1024, originalName = '') {
   const s3Key = `${transferId}/${storageName}`;

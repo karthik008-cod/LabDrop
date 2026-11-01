@@ -673,7 +673,25 @@
             </div>
             
             <div style="margin-top: var(--space-xl); text-align: left; border-top: 1px solid var(--color-border); padding-top: var(--space-md);">
-              <div style="font-weight: 600; margin-bottom: var(--space-sm);">Included Items</div>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); gap: var(--space-sm); flex-wrap: wrap;">
+                <div style="font-weight: 600;">Included Items</div>
+                <div>
+                  <input type="file" id="qrAddFileInput" multiple style="display: none;" />
+                  <button type="button" class="btn btn--secondary btn--sm" id="qrAddMoreBtn" style="font-size: 0.8rem; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; cursor: pointer;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Add Files
+                  </button>
+                </div>
+              </div>
+              <div id="qrAppendProgress" class="section--hidden" style="margin-bottom: var(--space-sm); background: #f9fafb; padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 4px;">
+                  <span id="qrAppendProgressText">Uploading additional files...</span>
+                  <span id="qrAppendProgressPercent" style="font-weight: 600; color: var(--color-primary);">0%</span>
+                </div>
+                <div class="progress-track" style="height: 6px; background: #e5e7eb; border-radius: 999px; overflow: hidden;">
+                  <div id="qrAppendProgressBar" class="progress-bar" style="width: 0%; height: 100%; background: var(--color-primary); transition: width 0.2s ease;"></div>
+                </div>
+              </div>
               <div class="file-list-container" id="qrFileList"></div>
               <div class="file-list-container" id="qrLinkList" style="margin-top: var(--space-sm); display: none;"></div>
             </div>
@@ -1422,7 +1440,7 @@
   <!-- Core App Scripts (Non-blocking & Deferred) -->
   <script src="/js/dialogs.js" defer></script>
   <script src="/js/bg.js?v=2.0" defer></script>
-  <script src="/js/main.js?v=8.3" defer></script>
+  <script src="/js/main.js?v=8.4" defer></script>
   
 </body>
 </html>
