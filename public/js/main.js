@@ -110,26 +110,14 @@
   const previewOfficeOnlineBtn = $('#previewOfficeOnlineBtn');
   const previewOfficeDownloadBtn = $('#previewOfficeDownloadBtn');
 
-  // PPT and Docx Preview DOM
-  const previewPptContainer = $('#previewPptContainer');
-  const pptPrevBtn = $('#pptPrevBtn');
-  const pptNextBtn = $('#pptNextBtn');
-  const pptCounter = $('#pptCounter');
-  const pptSlideViewBtn = $('#pptSlideViewBtn');
-  const pptOutlineViewBtn = $('#pptOutlineViewBtn');
-  const pptSlideCard = $('#pptSlideCard');
-  const pptSlideHeader = $('#pptSlideHeader');
-  const pptSlideBody = $('#pptSlideBody');
-  const pptSlideNum = $('#pptSlideNum');
-  const pptOutlineView = $('#pptOutlineView');
+  // Docx Preview DOM
 
   const previewDocxContainer = $('#previewDocxContainer');
   const docxPage = $('#docxPage');
 
   let currentPreviewCodeText = '';
   let activeBlobUrl = null;
-  let currentPptSlides = [];
-  let currentPptSlideIndex = 0;
+
 
   // ---- Auth & Mode DOM ----
   const authLoggedOut = $('#authLoggedOut');
@@ -292,7 +280,13 @@
     'ini', 'conf', 'asm', 's', 'toml', 'env'
   ];
   const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
-  const OFFICE_EXTENSIONS = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'odt', 'odp', 'ods'];
+  const OFFICE_EXTENSIONS = ['doc', 'docx', 'odt'];
+
+  function isPptFile(filename) {
+    if (!filename || !filename.includes('.')) return false;
+    const ext = filename.split('.').pop().toLowerCase();
+    return ['ppt', 'pptx', 'odp', 'pps', 'ppsx', 'pot', 'potx'].includes(ext);
+  }
 
   function isCodeFile(filename) {
     if (!filename || !filename.includes('.')) return false;
@@ -347,99 +341,13 @@
       URL.revokeObjectURL(activeBlobUrl);
       activeBlobUrl = null;
     }
-    currentPptSlides = [];
-    currentPptSlideIndex = 0;
+
   }
-
-  function renderCurrentPptSlide() {
-    if (!currentPptSlides || currentPptSlides.length === 0) return;
-    const slide = currentPptSlides[currentPptSlideIndex];
-    if (!slide) return;
-
-    if (pptSlideHeader) pptSlideHeader.textContent = slide.title || `Slide ${currentPptSlideIndex + 1}`;
-    if (pptSlideNum) pptSlideNum.textContent = slide.slideNum || (currentPptSlideIndex + 1);
-    if (pptCounter) pptCounter.textContent = `Slide ${currentPptSlideIndex + 1} of ${currentPptSlides.length}`;
-
-    if (pptSlideBody) {
-      const bodyLines = slide.content.filter(p => p !== slide.title);
-      if (bodyLines.length > 0) {
-        pptSlideBody.innerHTML = bodyLines.map(line => `<p>${escapeHtml(line)}</p>`).join('');
-      } else {
-        pptSlideBody.innerHTML = '<p style="color: #94a3b8; font-style: italic;">(Title Slide / Visual content)</p>';
-      }
-    }
-
-    if (pptPrevBtn) pptPrevBtn.disabled = currentPptSlideIndex === 0;
-    if (pptNextBtn) pptNextBtn.disabled = currentPptSlideIndex === currentPptSlides.length - 1;
-  }
-
-  function renderPptOutline() {
-    if (!pptOutlineView || !currentPptSlides) return;
-    pptOutlineView.innerHTML = currentPptSlides.map((s, idx) => {
-      const bodyLines = s.content.filter(p => p !== s.title);
-      return `
-        <div class="ppt-outline-item">
-          <div class="ppt-outline-item-title">Slide ${idx + 1}: ${escapeHtml(s.title || 'Untitled Slide')}</div>
-          <div style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.6;">
-            ${bodyLines.map(line => `<div style="margin-bottom: 4px;">• ${escapeHtml(line)}</div>`).join('')}
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  if (pptPrevBtn) {
-    pptPrevBtn.addEventListener('click', () => {
-      if (currentPptSlideIndex > 0) {
-        currentPptSlideIndex--;
-        renderCurrentPptSlide();
-      }
-    });
-  }
-
-  if (pptNextBtn) {
-    pptNextBtn.addEventListener('click', () => {
-      if (currentPptSlideIndex < currentPptSlides.length - 1) {
-        currentPptSlideIndex++;
-        renderCurrentPptSlide();
-      }
-    });
-  }
-
-  if (pptSlideViewBtn && pptOutlineViewBtn) {
-    pptSlideViewBtn.addEventListener('click', () => {
-      pptSlideViewBtn.classList.add('active');
-      pptOutlineViewBtn.classList.remove('active');
-      if (pptSlideCard) pptSlideCard.style.display = 'flex';
-      if (pptOutlineView) pptOutlineView.style.display = 'none';
-    });
-    pptOutlineViewBtn.addEventListener('click', () => {
-      pptOutlineViewBtn.classList.add('active');
-      pptSlideViewBtn.classList.remove('active');
-      if (pptSlideCard) pptSlideCard.style.display = 'none';
-      if (pptOutlineView) {
-        renderPptOutline();
-        pptOutlineView.style.display = 'flex';
-      }
-    });
-  }
-
-  document.addEventListener('keydown', (e) => {
-    if (!filePreviewModal || !filePreviewModal.classList.contains('active')) return;
-    if (previewPptContainer && previewPptContainer.style.display !== 'none') {
-      if (e.key === 'ArrowLeft' && currentPptSlideIndex > 0) {
-        currentPptSlideIndex--;
-        renderCurrentPptSlide();
-      } else if (e.key === 'ArrowRight' && currentPptSlideIndex < currentPptSlides.length - 1) {
-        currentPptSlideIndex++;
-        renderCurrentPptSlide();
-      }
-    }
-  });
 
   async function openDesktopFilePreview(fileOrMeta, isLocalFile = false) {
     if (!fileOrMeta) return;
     const filename = fileOrMeta.name || fileOrMeta.customName || '';
+    if (isPptFile(filename)) return; // PPT files are downloaded and opened in native apps
     const cat = getFileCategory(filename);
     const isCode = isCodeFile(filename) || cat === 'code' || cat === 'data';
     const isImg = isImageFile(filename) || cat === 'image';
@@ -479,7 +387,6 @@
     if (previewCodeContainer) previewCodeContainer.style.display = 'none';
     if (previewImageContainer) previewImageContainer.style.display = 'none';
     if (previewPdfContainer) previewPdfContainer.style.display = 'none';
-    if (previewPptContainer) previewPptContainer.style.display = 'none';
     if (previewDocxContainer) previewDocxContainer.style.display = 'none';
     if (previewOfficeContainer) previewOfficeContainer.style.display = 'none';
     if (previewFallbackContainer) previewFallbackContainer.style.display = 'none';
@@ -501,79 +408,6 @@
       if (previewPdfContainer) previewPdfContainer.style.display = 'flex';
     } else if (isOffice) {
       const ext = filename.split('.').pop().toLowerCase();
-
-      // Check if PPTX
-      if (ext === 'pptx' && window.JSZip) {
-        try {
-          if (previewLoaderText) previewLoaderText.textContent = 'Extracting and rendering PowerPoint slides...';
-          let arrayBuf = null;
-          if (isLocalFile && typeof fileOrMeta.arrayBuffer === 'function') {
-            arrayBuf = await fileOrMeta.arrayBuffer();
-          } else if (currentTransfer) {
-            const res = await fetch(inlineUrl);
-            if (!res.ok) throw new Error('Failed to fetch presentation');
-            arrayBuf = await res.arrayBuffer();
-          }
-
-          if (arrayBuf) {
-            const zip = await window.JSZip.loadAsync(arrayBuf);
-            const slideFiles = [];
-            zip.forEach((relPath, zipEntry) => {
-              const match = relPath.match(/^ppt\/slides\/slide(\d+)\.xml$/i);
-              if (match) {
-                slideFiles.push({ num: parseInt(match[1], 10), zipEntry });
-              }
-            });
-
-            slideFiles.sort((a, b) => a.num - b.num);
-
-            if (slideFiles.length > 0) {
-              const parsedSlides = [];
-              for (const s of slideFiles) {
-                const xmlText = await s.zipEntry.async('text');
-                const titleMatch = xmlText.match(/<p:sp>[sS]*?name="Title[sS]*?<a:t[^>]*>([sS]*?)<\/a:t>/i);
-                let title = titleMatch ? titleMatch[1].trim() : '';
-
-                const paragraphs = [];
-                const pRegex = /<a:p\b[^>]*>([\s\S]*?)<\/a:p>/gi;
-                let pMatch;
-                while ((pMatch = pRegex.exec(xmlText)) !== null) {
-                  const tRegex = /<a:t\b[^>]*>([\s\S]*?)<\/a:t>/gi;
-                  let tMatch;
-                  let line = '';
-                  while ((tMatch = tRegex.exec(pMatch[1])) !== null) {
-                    line += tMatch[1];
-                  }
-                  if (line.trim()) paragraphs.push(line.trim());
-                }
-
-                if (!title && paragraphs.length > 0) title = paragraphs[0];
-
-                parsedSlides.push({
-                  slideNum: s.num,
-                  title: title || `Slide ${s.num}`,
-                  content: paragraphs
-                });
-              }
-
-              currentPptSlides = parsedSlides;
-              currentPptSlideIndex = 0;
-              if (pptSlideViewBtn) pptSlideViewBtn.classList.add('active');
-              if (pptOutlineViewBtn) pptOutlineViewBtn.classList.remove('active');
-              if (pptSlideCard) pptSlideCard.style.display = 'flex';
-              if (pptOutlineView) pptOutlineView.style.display = 'none';
-
-              renderCurrentPptSlide();
-
-              if (previewLoader) previewLoader.style.display = 'none';
-              if (previewPptContainer) previewPptContainer.style.display = 'flex';
-              return;
-            }
-          }
-        } catch (pptxErr) {
-          console.warn('[PPTX Parser] In-browser slide parse error:', pptxErr);
-        }
-      }
 
       // Check if DOCX
       if (ext === 'docx' && window.mammoth) {
@@ -941,7 +775,7 @@
       const cat = getFileCategory(file.name);
       const icon = FILE_ICONS[cat] || FILE_ICONS.file;
       const isEligibleRecord = cat === 'code' || cat === 'pdf' || cat === 'document' || cat === 'image';
-      const isPreviewable = isCodeFile(file.name) || isImageFile(file.name) || isPdfFile(file.name) || isOfficeFile(file.name) || cat === 'code' || cat === 'image' || cat === 'pdf';
+      const isPreviewable = !isPptFile(file.name) && (isCodeFile(file.name) || isImageFile(file.name) || isPdfFile(file.name) || isOfficeFile(file.name) || cat === 'code' || cat === 'image' || cat === 'pdf');
       const recordBtnHtml = isEligibleRecord ? `<button type="button" class="file-item__record" data-index="${index}" title="Generate Lab Record with AI" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: rgba(255, 209, 102, 0.2); border: 1px solid rgba(217, 119, 6, 0.4); border-radius: var(--radius-sm); color: #B45309; font-weight: 700; cursor: pointer;">AI Record</button>` : '';
       const previewBtnHtml = isPreviewable ? `<button type="button" class="file-item__preview" data-index="${index}" title="Preview ${escapeHtml(file.name)}" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.35); border-radius: var(--radius-sm); color: #0284c7; font-weight: 600; cursor: pointer;">Preview</button>` : '';
 
@@ -1796,7 +1630,7 @@
     function renderFileItem(f) {
       const cat = f.category || 'file';
       const icon = FILE_ICONS[cat] || FILE_ICONS.file;
-      const isPreviewable = isCodeFile(f.name) || isImageFile(f.name) || isPdfFile(f.name) || isOfficeFile(f.name) || cat === 'code' || cat === 'image' || cat === 'pdf';
+      const isPreviewable = !isPptFile(f.name) && (isCodeFile(f.name) || isImageFile(f.name) || isPdfFile(f.name) || isOfficeFile(f.name) || cat === 'code' || cat === 'image' || cat === 'pdf');
       const li = document.createElement('li');
       li.className = 'file-item';
       li.innerHTML = `
