@@ -351,8 +351,9 @@ const s3StorageConfig = multerS3({
   key: function (req, file, cb) {
     const fileId = uuidv4();
     const sanitized = sanitizeFilename(file.originalname);
-    // Prefix with transferId
-    cb(null, `${req.transferId}/${fileId}__${sanitized}`);
+    // Prefix with transferId (or transfer id from route params)
+    const tid = req.transferId || (req.params && (req.params.id || req.params.transferId)) || 'unknown';
+    cb(null, `${tid}/${fileId}__${sanitized}`);
   }
 });
 
@@ -376,6 +377,11 @@ const upload = multer({
 app.use((req, res, next) => {
   if (req.path === '/api/upload') {
     req.transferId = uuidv4();
+  } else {
+    const appendMatch = req.path.match(/^\/api\/transfer\/([^/]+)\/append/);
+    if (appendMatch) {
+      req.transferId = appendMatch[1];
+    }
   }
   next();
 });
@@ -2038,111 +2044,174 @@ app.post('/api/transfer/:id/append/complete', optionalAuth, async (req, res) => 
 });
 
 // --- Append Files: Server Relay Fallback ---
-app.post('/api/transfer/:id/append', optionalAuth, (req, res) => {
-  const uploadHandler = upload.array('files', CONFIG.MAX_FILES_PER_TRANSFER);
-  uploadHandler(req, res, async (err) => {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-    try {
-      const transfer = await storage.transfers.get(req.params.id);
-      if (!transfer) {
-        return res.status(404).json({ error: 'Transfer not found.' });
+app.post('/api/transfer/:id/append',
+  optionalAuth,
+  (req, res, next) => {
+    req.transferId = req.params.id;
+    next();
+  },
+  (req, res) => {
+    const uploadHandler = upload.array('files', CONFIG.MAX_FILES_PER_TRANSFER);
+    uploadHandler(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ error: err.message });
       }
-      if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
-        return res.status(410).json({ error: 'Transfer has already expired.' });
-      }
-
-      if (req.body && req.body.pin && !req.headers['x-transfer-pin']) {
-        req.headers['x-transfer-pin'] = String(req.body.pin);
-      }
-      if (!verifyPin(req, res, transfer)) {
-        // Clean up uploaded files if PIN check fails
-        (req.files || []).forEach(f => { try { fs.unlinkSync(f.path); } catch (_) {} });
-        return;
-      }
-
-      const files = req.files || [];
-      if (files.length === 0) {
-        return res.status(400).json({ error: 'No files uploaded.' });
-      }
-
-      const currentCount = (transfer.files || []).length;
-      if (currentCount + files.length > CONFIG.MAX_FILES_PER_TRANSFER) {
-        files.forEach(f => { try { fs.unlinkSync(f.path); } catch (_) {} });
-        return res.status(400).json({ error: `Cannot exceed ${CONFIG.MAX_FILES_PER_TRANSFER} files per transfer.` });
-      }
-
-      // Check blocked extensions
-      for (const file of files) {
-        const ext = path.extname(file.originalname).toLowerCase();
-        if (BLOCKED_EXTENSIONS.has(ext)) {
-          files.forEach(f => { try { fs.unlinkSync(f.path); } catch (_) {} });
-          return res.status(400).json({ error: `File type "${ext}" is not allowed for security reasons.` });
+      try {
+        const transfer = await storage.transfers.get(req.params.id);
+        if (!transfer) {
+          return res.status(404).json({ error: 'Transfer not found.' });
         }
-      }
+        if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
+          return res.status(410).json({ error: 'Transfer has already expired.' });
+        }
 
-      const addedFiles = [];
-      for (const file of files) {
-        const fileId = uuidv4();
-        const sanitized = sanitizeFilename(file.originalname);
-        const storageName = `${fileId}__${sanitized}`;
-        const s3Key = `${transfer.id}/${storageName}`;
-        const fileStream = fs.createReadStream(file.path);
+        if (req.body && req.body.pin && !req.headers['x-transfer-pin']) {
+          req.headers['x-transfer-pin'] = String(req.body.pin);
+        }
+        if (!verifyPin(req, res, transfer)) {
+          // Clean up uploaded files if PIN check fails
+          for (const f of (req.files || [])) {
+            if (f.key) {
+              try { await s3Client.send(new DeleteObjectsCommand({ Bucket: S3_BUCKET_NAME, Delete: { Objects: [{ Key: f.key }] } })); } catch (_) {}
+            } else if (f.path) {
+              try { fs.unlinkSync(f.path); } catch (_) {}
+            }
+          }
+          return;
+        }
 
-        const putCommand = new PutObjectCommand({
-          Bucket: S3_BUCKET_NAME,
-          Key: s3Key,
-          Body: fileStream,
-          ContentType: file.mimetype,
+        const files = req.files || [];
+        if (files.length === 0) {
+          return res.status(400).json({ error: 'No files uploaded.' });
+        }
+
+        const currentCount = (transfer.files || []).length;
+        if (currentCount + files.length > CONFIG.MAX_FILES_PER_TRANSFER) {
+          for (const f of files) {
+            if (f.key) {
+              try { await s3Client.send(new DeleteObjectsCommand({ Bucket: S3_BUCKET_NAME, Delete: { Objects: [{ Key: f.key }] } })); } catch (_) {}
+            } else if (f.path) {
+              try { fs.unlinkSync(f.path); } catch (_) {}
+            }
+          }
+          return res.status(400).json({ error: `Cannot exceed ${CONFIG.MAX_FILES_PER_TRANSFER} files per transfer.` });
+        }
+
+        const addedFiles = await Promise.all(files.map(async (file) => {
+          if (file.key) {
+            // Handled by multer-s3 (already uploaded to S3)
+            const keyParts = file.key.split('/');
+            const filename = keyParts[keyParts.length - 1]; // fileId__sanitized
+            const parts = filename.split('__');
+            const fileId = parts[0];
+            const sanitized = parts.slice(1).join('__');
+
+            let size = file.size;
+            if (size === undefined || size === 0) {
+              try {
+                const headData = await s3Client.send(new HeadObjectCommand({
+                  Bucket: S3_BUCKET_NAME,
+                  Key: file.key
+                }));
+                size = headData.ContentLength || 0;
+              } catch (headErr) {
+                console.error(`Failed to fetch file size for ${file.key}:`, headErr);
+                size = 0;
+              }
+            }
+
+            return {
+              id: fileId,
+              originalName: sanitized,
+              storageName: filename,
+              size: size,
+              mimetype: file.mimetype,
+              category: getFileCategory(sanitized)
+            };
+          } else if (file.path) {
+            // Handled by disk storage fallback
+            const fileId = uuidv4();
+            const sanitized = sanitizeFilename(file.originalname);
+            const storageName = `${fileId}__${sanitized}`;
+            const s3Key = `${transfer.id}/${storageName}`;
+            const fileStream = fs.createReadStream(file.path);
+
+            await s3Client.send(new PutObjectCommand({
+              Bucket: S3_BUCKET_NAME,
+              Key: s3Key,
+              Body: fileStream,
+              ContentType: file.mimetype,
+            }));
+
+            try { fs.unlinkSync(file.path); } catch (_) {}
+
+            return {
+              id: fileId,
+              originalName: sanitized,
+              storageName: storageName,
+              size: file.size,
+              mimetype: file.mimetype,
+              category: getFileCategory(sanitized)
+            };
+          } else {
+            // Handled by memory buffer fallback
+            const fileId = uuidv4();
+            const sanitized = sanitizeFilename(file.originalname);
+            const storageName = `${fileId}__${sanitized}`;
+            const s3Key = `${transfer.id}/${storageName}`;
+
+            await s3Client.send(new PutObjectCommand({
+              Bucket: S3_BUCKET_NAME,
+              Key: s3Key,
+              Body: file.buffer,
+              ContentType: file.mimetype,
+            }));
+
+            return {
+              id: fileId,
+              originalName: sanitized,
+              storageName: storageName,
+              size: file.size || (file.buffer ? file.buffer.length : 0),
+              mimetype: file.mimetype,
+              category: getFileCategory(sanitized)
+            };
+          }
+        }));
+
+        transfer.files = transfer.files || [];
+        transfer.files.push(...addedFiles);
+        transfer.fileCount = transfer.files.length;
+        transfer.totalSize = transfer.files.reduce((sum, f) => sum + (f.size || 0), 0);
+
+        await storage.transfers.set(transfer.id, transfer);
+        analytics.totalFilesUploaded += addedFiles.length;
+        scheduleAnalyticsSave();
+        storage.dailyMetrics.recordTransfer(getTodayDateStr(), { filesCount: addedFiles.length, storageBytes: addedFiles.reduce((s, f) => s + (f.size || 0), 0), currentTotals: getCurrentTotals() });
+
+        res.json({
+          success: true,
+          transferId: transfer.id,
+          shortCode: transfer.shortCode,
+          expiresAt: transfer.expiresAt,
+          fileCount: transfer.files.length,
+          totalSize: transfer.totalSize,
+          appendedCount: addedFiles.length,
+          files: transfer.files.map(f => ({
+            id: f.id,
+            name: f.originalName || f.name,
+            originalName: f.originalName || f.name,
+            storageName: f.storageName,
+            size: f.size,
+            category: f.category
+          }))
         });
-
-        await s3Client.send(putCommand);
-
-        try { fs.unlinkSync(file.path); } catch (_) {}
-
-        addedFiles.push({
-          id: fileId,
-          originalName: sanitized,
-          storageName,
-          size: file.size,
-          mimetype: file.mimetype,
-          category: getFileCategory(sanitized)
-        });
+      } catch (relayErr) {
+        console.error('[Append Relay] Error:', relayErr);
+        res.status(500).json({ error: 'Failed to append files.' });
       }
-
-      transfer.files = transfer.files || [];
-      transfer.files.push(...addedFiles);
-      transfer.fileCount = transfer.files.length;
-      transfer.totalSize = transfer.files.reduce((sum, f) => sum + (f.size || 0), 0);
-
-      await storage.transfers.set(transfer.id, transfer);
-      analytics.totalFilesUploaded += addedFiles.length;
-      scheduleAnalyticsSave();
-      storage.dailyMetrics.recordTransfer(getTodayDateStr(), { filesCount: addedFiles.length, storageBytes: addedFiles.reduce((s, f) => s + (f.size || 0), 0), currentTotals: getCurrentTotals() });
-
-      res.json({
-        success: true,
-        transferId: transfer.id,
-        shortCode: transfer.shortCode,
-        expiresAt: transfer.expiresAt,
-        fileCount: transfer.files.length,
-        totalSize: transfer.totalSize,
-        appendedCount: addedFiles.length,
-        files: transfer.files.map(f => ({
-          id: f.id,
-          name: f.originalName,
-          size: f.size,
-          category: f.category
-        }))
-      });
-    } catch (relayErr) {
-      console.error('[Append Relay] Error:', relayErr);
-      (req.files || []).forEach(f => { try { fs.unlinkSync(f.path); } catch (_) {} });
-      res.status(500).json({ error: 'Failed to append files.' });
-    }
-  });
-});
+    });
+  }
+);
 
 // Helper: fetch file text and binary payload (for PDF and image diagrams) from S3
 async function fetchFilePayloadFromS3(transferId, storageName, maxBytes = 15 * 1024 * 1024, originalName = '') {

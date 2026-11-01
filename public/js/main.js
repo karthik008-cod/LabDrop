@@ -1472,7 +1472,7 @@
     if (!currentTransfer) return;
     extendTimerBtn.disabled = true;
     try {
-      const res = await fetch(`/api/transfer/${currentTransfer.transferId}/extend`, { method: 'POST' });
+      const res = await fetch(`/api/transfer/${currentTransfer.transferId || currentTransfer.id}/extend`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         startTimer(data.expiresAt);
@@ -1509,7 +1509,7 @@
     if (!currentTransfer) return;
 
     try {
-      await fetch(`/api/transfer/${currentTransfer.transferId}`, { method: 'DELETE' });
+      await fetch(`/api/transfer/${currentTransfer.transferId || currentTransfer.id}`, { method: 'DELETE' });
     } catch {
       // Ignore errors on cancel
     }
@@ -1573,6 +1573,8 @@
     qrAddFileInput.addEventListener('change', async (e) => {
       const filesToAdd = Array.from(e.target.files || []);
       if (!filesToAdd.length || !currentTransfer) return;
+      const activeTransferId = currentTransfer.transferId || currentTransfer.id;
+      if (!activeTransferId) return;
 
       // Validate total file count
       const currentCount = (currentTransfer.files || []).length;
@@ -1600,7 +1602,7 @@
 
         try {
           // Direct S3 Upload flow
-          const initRes = await fetch(`/api/transfer/${currentTransfer.transferId}/append/initiate`, {
+          const initRes = await fetch(`/api/transfer/${activeTransferId}/append/initiate`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1660,7 +1662,7 @@
 
           if (qrAppendProgressText) qrAppendProgressText.textContent = 'Updating transfer...';
 
-          const compRes = await fetch(`/api/transfer/${currentTransfer.transferId}/append/complete`, {
+          const compRes = await fetch(`/api/transfer/${activeTransferId}/append/complete`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1708,7 +1710,7 @@
             };
 
             xhr.onerror = () => reject(new Error('Network error during file append.'));
-            xhr.open('POST', `/api/transfer/${currentTransfer.transferId}/append`);
+            xhr.open('POST', `/api/transfer/${activeTransferId}/append`);
             if (authToken) xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
             if (currentTransferPin) xhr.setRequestHeader('x-transfer-pin', currentTransferPin);
             xhr.send(formData);
