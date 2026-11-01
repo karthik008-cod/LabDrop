@@ -324,6 +324,60 @@
     </div>
   </div>
 
+    <!-- File Preview Modal (In-Browser Code & Image Viewer) -->
+  <div class="modal-overlay preview-modal-overlay" id="filePreviewModal">
+    <div class="modal modal--preview" id="filePreviewWindow">
+      <div class="modal__header preview-modal-header">
+        <div class="preview-modal-title-wrap">
+          <span class="preview-modal-icon" id="previewModalIcon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          </span>
+          <div class="preview-modal-title-info">
+            <span class="preview-modal-filename" id="previewModalFileName">File</span>
+            <div class="preview-modal-meta">
+              <span class="preview-badge" id="previewBadge">CODE</span>
+              <span class="preview-size" id="previewFileSize">--</span>
+              <span class="preview-lines" id="previewLineCount" style="display: none;"></span>
+            </div>
+          </div>
+        </div>
+        <div class="preview-modal-actions">
+          <button type="button" class="preview-action-btn preview-action-btn--copy" id="previewCopyBtn" title="Copy Code to Clipboard" style="display: none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+            <span id="previewCopyLabel">Copy Code</span>
+          </button>
+          <a class="preview-action-btn btn--primary" id="previewDownloadBtn" href="#" download title="Download File">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Download</span>
+          </a>
+          <button type="button" class="preview-modal-close" id="filePreviewClose" aria-label="Close Preview">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </div>
+      <div class="modal__body preview-modal-body" id="filePreviewBody">
+        <!-- Spinner while loading -->
+        <div class="preview-loader" id="previewLoader">
+          <div class="preview-spinner"></div>
+          <p id="previewLoaderText">Loading file preview...</p>
+        </div>
+        <!-- Code / Text container -->
+        <div class="preview-code-container" id="previewCodeContainer" style="display: none;">
+          <div class="code-line-numbers" id="codeLineNumbers"></div>
+          <pre class="code-content"><code id="codeText"></code></pre>
+        </div>
+        <!-- Image container -->
+        <div class="preview-image-container" id="previewImageContainer" style="display: none;">
+          <img id="previewImage" src="" alt="File Preview" />
+        </div>
+        <!-- Generic / Error fallback container -->
+        <div class="preview-fallback-container" id="previewFallbackContainer" style="display: none;">
+          <p id="previewFallbackMsg">Preview not available for this file type.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- AI Assistant Modal (Slidable & Resizable) -->
   <div class="modal-overlay ai-modal-overlay" id="aiModal">
       <div class="modal modal--lg modal--ai" id="aiModalWindow" style="display: flex; flex-direction: column; overflow: hidden; position: relative; padding: 0;">
@@ -849,6 +903,6 @@
       }
     };
   </script>
-  <script src="/js/mobile.js?v=7.2"></script>
+  <script src="/js/mobile.js?v=7.3"></script>
 </body>
 </html>

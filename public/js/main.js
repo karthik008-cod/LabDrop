@@ -82,6 +82,28 @@
   const cancelTransferBtn = $('#cancelTransferBtn');
   const newTransferBtn = $('#newTransferBtn');
 
+  // File Preview Modal Elements
+  const filePreviewModal = $('#filePreviewModal');
+  const filePreviewClose = $('#filePreviewClose');
+  const previewModalFileName = $('#previewModalFileName');
+  const previewBadge = $('#previewBadge');
+  const previewFileSize = $('#previewFileSize');
+  const previewLineCount = $('#previewLineCount');
+  const previewCopyBtn = $('#previewCopyBtn');
+  const previewCopyLabel = $('#previewCopyLabel');
+  const previewDownloadBtn = $('#previewDownloadBtn');
+  const previewLoader = $('#previewLoader');
+  const previewLoaderText = $('#previewLoaderText');
+  const previewCodeContainer = $('#previewCodeContainer');
+  const codeLineNumbers = $('#codeLineNumbers');
+  const codeText = $('#codeText');
+  const previewImageContainer = $('#previewImageContainer');
+  const previewImage = $('#previewImage');
+  const previewFallbackContainer = $('#previewFallbackContainer');
+  const previewFallbackMsg = $('#previewFallbackMsg');
+  let currentPreviewCodeText = '';
+  let activeBlobUrl = null;
+
   // ---- Auth & Mode DOM ----
   const authLoggedOut = $('#authLoggedOut');
   const authLoggedIn = $('#authLoggedIn');
@@ -233,6 +255,151 @@
       if (exts.includes(ext)) return cat;
     }
     return 'file';
+  }
+
+  const CODE_EXTENSIONS = [
+    'c', 'cpp', 'cc', 'cxx', 'h', 'hpp', 'java', 'py', 'js', 'mjs', 'cjs',
+    'ts', 'tsx', 'jsx', 'html', 'htm', 'css', 'scss', 'json', 'xml', 'sql',
+    'sh', 'bash', 'zsh', 'bat', 'cmd', 'ps1', 'txt', 'md', 'log', 'csv',
+    'r', 'kt', 'kts', 'rs', 'go', 'php', 'cs', 'swift', 'yaml', 'yml',
+    'ini', 'conf', 'asm', 's', 'toml', 'env'
+  ];
+  const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
+
+  function isCodeFile(filename) {
+    if (!filename || !filename.includes('.')) return false;
+    const ext = filename.split('.').pop().toLowerCase();
+    return CODE_EXTENSIONS.includes(ext);
+  }
+
+  function isImageFile(filename) {
+    if (!filename || !filename.includes('.')) return false;
+    const ext = filename.split('.').pop().toLowerCase();
+    return IMAGE_EXTENSIONS.includes(ext);
+  }
+
+  function getLanguageBadge(filename) {
+    if (!filename || !filename.includes('.')) return 'FILE';
+    const ext = filename.split('.').pop().toLowerCase();
+    const map = {
+      c: 'C', cpp: 'C++', cc: 'C++', cxx: 'C++', h: 'HEADER', hpp: 'C++ HEADER',
+      java: 'JAVA', py: 'PYTHON', js: 'JAVASCRIPT', mjs: 'JAVASCRIPT', cjs: 'JAVASCRIPT',
+      ts: 'TYPESCRIPT', tsx: 'REACT TS', jsx: 'REACT JSX', html: 'HTML', htm: 'HTML',
+      css: 'CSS', scss: 'SCSS', json: 'JSON', xml: 'XML', sql: 'SQL',
+      sh: 'SHELL', bash: 'BASH', zsh: 'ZSH', bat: 'BATCH', cmd: 'CMD', ps1: 'POWERSHELL',
+      txt: 'TEXT', md: 'MARKDOWN', log: 'LOG', csv: 'CSV', r: 'R', kt: 'KOTLIN',
+      kts: 'KOTLIN', rs: 'RUST', go: 'GO', php: 'PHP', cs: 'C#', swift: 'SWIFT',
+      yaml: 'YAML', yml: 'YAML', ini: 'CONFIG', conf: 'CONFIG', asm: 'ASSEMBLY',
+      s: 'ASSEMBLY', toml: 'TOML', png: 'PNG', jpg: 'JPEG', jpeg: 'JPEG', webp: 'WEBP',
+      gif: 'GIF', svg: 'SVG'
+    };
+    return map[ext] || (isCodeFile(filename) ? 'CODE' : (isImageFile(filename) ? 'IMAGE' : 'FILE'));
+  }
+
+  function closeDesktopFilePreview() {
+    if (filePreviewModal) filePreviewModal.classList.remove('active');
+    document.body.style.overflow = '';
+    if (previewImage) previewImage.src = '';
+    if (activeBlobUrl) {
+      URL.revokeObjectURL(activeBlobUrl);
+      activeBlobUrl = null;
+    }
+  }
+
+  async function openDesktopFilePreview(fileOrMeta, isLocalFile = false) {
+    if (!fileOrMeta) return;
+    const filename = fileOrMeta.name || fileOrMeta.customName || '';
+    const cat = getFileCategory(filename);
+    const isCode = isCodeFile(filename) || cat === 'code' || cat === 'data';
+    const isImg = isImageFile(filename) || cat === 'image';
+
+    if (!isCode && !isImg) return;
+
+    if (previewModalFileName) previewModalFileName.textContent = filename;
+    if (previewBadge) previewBadge.textContent = getLanguageBadge(filename);
+    if (previewFileSize) previewFileSize.textContent = formatBytes(fileOrMeta.size || 0);
+
+    if (previewDownloadBtn) {
+      if (isLocalFile || !currentTransfer) {
+        previewDownloadBtn.style.display = 'none';
+      } else {
+        const transferId = currentTransfer.transferId || currentTransfer.id;
+        const pinQs = currentTransferPin ? `?pin=${currentTransferPin}` : '';
+        previewDownloadBtn.href = `/download/${transferId}/${fileOrMeta.id}${pinQs}`;
+        previewDownloadBtn.setAttribute('download', filename);
+        previewDownloadBtn.style.display = 'inline-flex';
+      }
+    }
+
+    if (previewLoader) {
+      previewLoader.style.display = 'flex';
+      if (previewLoaderText) previewLoaderText.textContent = isImg ? 'Loading high-res image preview...' : 'Loading code preview...';
+    }
+    if (previewCodeContainer) previewCodeContainer.style.display = 'none';
+    if (previewImageContainer) previewImageContainer.style.display = 'none';
+    if (previewFallbackContainer) previewFallbackContainer.style.display = 'none';
+    if (previewCopyBtn) previewCopyBtn.style.display = 'none';
+    if (previewLineCount) previewLineCount.style.display = 'none';
+    currentPreviewCodeText = '';
+
+    if (filePreviewModal) filePreviewModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    if (isImg && previewImage) {
+      previewImage.classList.remove('zoomed');
+      previewImage.onload = () => {
+        if (previewLoader) previewLoader.style.display = 'none';
+        if (previewImageContainer) previewImageContainer.style.display = 'flex';
+      };
+      previewImage.onerror = () => {
+        if (previewLoader) previewLoader.style.display = 'none';
+        if (previewFallbackMsg) previewFallbackMsg.textContent = 'Could not load image preview.';
+        if (previewFallbackContainer) previewFallbackContainer.style.display = 'flex';
+      };
+
+      if (isLocalFile && fileOrMeta instanceof Blob) {
+        activeBlobUrl = URL.createObjectURL(fileOrMeta);
+        previewImage.src = activeBlobUrl;
+      } else if (currentTransfer) {
+        const transferId = currentTransfer.transferId || currentTransfer.id;
+        const pinQs = currentTransferPin ? `&pin=${currentTransferPin}` : '';
+        previewImage.src = `/download/${transferId}/${fileOrMeta.id}?inline=1${pinQs}`;
+      }
+    } else if (isCode) {
+      try {
+        let text = '';
+        if (isLocalFile && typeof fileOrMeta.text === 'function') {
+          text = await fileOrMeta.text();
+        } else if (currentTransfer) {
+          const transferId = currentTransfer.transferId || currentTransfer.id;
+          const pinQs = currentTransferPin ? `&pin=${currentTransferPin}` : '';
+          const res = await fetch(`/download/${transferId}/${fileOrMeta.id}?inline=1${pinQs}`);
+          if (!res.ok) throw new Error('Failed to fetch code');
+          text = await res.text();
+        }
+
+        currentPreviewCodeText = text;
+        const lines = text.split('\n');
+        if (previewLineCount) {
+          previewLineCount.textContent = `${lines.length} lines`;
+          previewLineCount.style.display = 'inline';
+        }
+
+        if (codeLineNumbers) {
+          codeLineNumbers.innerHTML = lines.map((_, idx) => `<span>${idx + 1}</span>`).join('');
+        }
+        if (codeText) codeText.textContent = text;
+
+        if (previewLoader) previewLoader.style.display = 'none';
+        if (previewCodeContainer) previewCodeContainer.style.display = 'flex';
+        if (previewCopyBtn) previewCopyBtn.style.display = 'inline-flex';
+      } catch (err) {
+        console.error('Desktop preview error:', err);
+        if (previewLoader) previewLoader.style.display = 'none';
+        if (previewFallbackMsg) previewFallbackMsg.textContent = 'Could not load text preview.';
+        if (previewFallbackContainer) previewFallbackContainer.style.display = 'flex';
+      }
+    }
   }
 
   // ---- Utility: show alert ----
@@ -481,23 +648,40 @@
       const cat = getFileCategory(file.name);
       const icon = FILE_ICONS[cat] || FILE_ICONS.file;
       const isEligibleRecord = cat === 'code' || cat === 'pdf' || cat === 'document' || cat === 'image';
+      const isPreviewable = isCodeFile(file.name) || isImageFile(file.name) || cat === 'code' || cat === 'image';
       const recordBtnHtml = isEligibleRecord ? `<button type="button" class="file-item__record" data-index="${index}" title="Generate Lab Record with AI" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: rgba(255, 209, 102, 0.2); border: 1px solid rgba(217, 119, 6, 0.4); border-radius: var(--radius-sm); color: #B45309; font-weight: 700; cursor: pointer;">AI Record</button>` : '';
+      const previewBtnHtml = isPreviewable ? `<button type="button" class="file-item__preview" data-index="${index}" title="Preview ${escapeHtml(file.name)}" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.35); border-radius: var(--radius-sm); color: #0284c7; font-weight: 600; cursor: pointer;">Preview</button>` : '';
 
       const li = document.createElement('li');
       li.className = 'file-item';
       li.innerHTML = `
-        <div class="file-item__icon file-item__icon--${cat}">${icon}</div>
-        <div class="file-item__details">
+        <div class="file-item__icon file-item__icon--${cat}" ${isPreviewable ? `style="cursor: pointer;" title="Preview ${escapeHtml(file.name)}"` : ''}>${icon}</div>
+        <div class="file-item__details ${isPreviewable ? 'file-item__details--clickable' : ''}" ${isPreviewable ? `title="Click to preview ${escapeHtml(file.name)}"` : ''} data-index="${index}">
           <div class="file-item__name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
-          <div class="file-item__size">${formatBytes(file.size)}</div>
+          <div class="file-item__size">${formatBytes(file.size)}${isPreviewable ? ' · <span style="color: #0284c7; font-weight: 600;">Preview</span>' : ''}</div>
         </div>
         <div class="file-item__actions">
+          ${previewBtnHtml}
           ${recordBtnHtml}
           <button type="button" class="file-item__move" data-index="${index}" data-type="file" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
           <button class="file-item__remove" data-index="${index}" title="Remove file" aria-label="Remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
         </div>
       `;
       fileList.appendChild(li);
+    });
+
+    // Bind file preview buttons and clickable details
+    fileList.querySelectorAll('.file-item__preview').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.index, 10);
+        if (currentFiles[idx]) openDesktopFilePreview(currentFiles[idx], true);
+      });
+    });
+    fileList.querySelectorAll('.file-item__details--clickable').forEach((el) => {
+      el.addEventListener('click', () => {
+        const idx = parseInt(el.dataset.index, 10);
+        if (currentFiles[idx]) openDesktopFilePreview(currentFiles[idx], true);
+      });
     });
 
     // Bind file record buttons
@@ -1319,14 +1503,21 @@
     function renderFileItem(f) {
       const cat = f.category || 'file';
       const icon = FILE_ICONS[cat] || FILE_ICONS.file;
+      const isPreviewable = isCodeFile(f.name) || isImageFile(f.name) || cat === 'code' || cat === 'image';
       const li = document.createElement('li');
       li.className = 'file-item';
       li.innerHTML = `
-        <div class="file-item__icon file-item__icon--${cat}">${icon}</div>
-        <div class="file-item__details">
+        <div class="file-item__icon file-item__icon--${cat}" ${isPreviewable ? `style="cursor: pointer;" title="Preview ${escapeHtml(f.name)}"` : ''}>${icon}</div>
+        <div class="file-item__details ${isPreviewable ? 'file-item__details--clickable' : ''}" ${isPreviewable ? `title="Click to preview ${escapeHtml(f.name)}"` : ''} data-file-id="${f.id}">
           <div class="file-item__name">${escapeHtml(f.name)}</div>
-          <div class="file-item__size">${formatBytes(f.size)}</div>
+          <div class="file-item__size">${formatBytes(f.size)}${isPreviewable ? ' · <span style="color: #0284c7; font-weight: 600;">Preview</span>' : ''}</div>
         </div>
+        ${isPreviewable ? `
+        <div class="file-item__actions">
+          <button type="button" class="btn btn--outline btn--icon qr-preview-btn" data-file-id="${f.id}" title="Preview ${escapeHtml(f.name)}" style="font-size: 0.85rem; padding: 4px 8px; color: #0284c7; border-color: rgba(14, 165, 233, 0.35); background: rgba(14, 165, 233, 0.08); display: inline-flex; align-items: center; justify-content: center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
+        </div>` : ''}
       `;
       return li;
     }
@@ -1561,6 +1752,83 @@
         text: `Download "${name}" from LabDrop. Code: ${currentTransfer.shortCode}`,
         url: currentTransfer.url
       }).catch(() => {});
+    });
+  }
+
+  // ---- Desktop File Preview Modal Bindings ----
+  if (qrFileList) {
+    qrFileList.addEventListener('click', (e) => {
+      const prevBtn = e.target.closest('.qr-preview-btn');
+      const detailsEl = e.target.closest('.file-item__details--clickable');
+      const iconEl = e.target.closest('.file-item__icon');
+
+      let fileId = null;
+      if (prevBtn) fileId = prevBtn.getAttribute('data-file-id');
+      else if (detailsEl) fileId = detailsEl.getAttribute('data-file-id');
+      else if (iconEl && iconEl.style.cursor === 'pointer') {
+        const item = iconEl.closest('.file-item');
+        const d = item ? item.querySelector('.file-item__details--clickable') : null;
+        if (d) fileId = d.getAttribute('data-file-id');
+      }
+
+      if (fileId && currentTransfer) {
+        const file = (currentTransfer.files || []).find(f => f.id === fileId);
+        if (file) openDesktopFilePreview(file, false);
+      }
+    });
+  }
+
+  if (filePreviewClose) {
+    filePreviewClose.addEventListener('click', closeDesktopFilePreview);
+  }
+  if (filePreviewModal) {
+    filePreviewModal.addEventListener('click', (e) => {
+      if (e.target === filePreviewModal) closeDesktopFilePreview();
+    });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && filePreviewModal && filePreviewModal.classList.contains('active')) {
+      closeDesktopFilePreview();
+    }
+  });
+
+  if (previewCopyBtn) {
+    previewCopyBtn.addEventListener('click', () => {
+      if (!currentPreviewCodeText) return;
+      const doSuccess = () => {
+        previewCopyBtn.classList.add('copied');
+        if (previewCopyLabel) previewCopyLabel.textContent = 'Copied!';
+        setTimeout(() => {
+          previewCopyBtn.classList.remove('copied');
+          if (previewCopyLabel) previewCopyLabel.textContent = 'Copy Code';
+        }, 2000);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(currentPreviewCodeText).then(doSuccess).catch(() => {
+          const ta = document.createElement('textarea');
+          ta.value = currentPreviewCodeText;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+          doSuccess();
+        });
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = currentPreviewCodeText;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+        doSuccess();
+      }
+    });
+  }
+
+  if (previewImage) {
+    previewImage.addEventListener('click', () => {
+      previewImage.classList.toggle('zoomed');
     });
   }
 

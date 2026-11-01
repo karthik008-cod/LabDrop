@@ -43,6 +43,110 @@
   const shareZipNameInput = $('#shareZipNameInput');
   const confirmShareZipBtn = $('#confirmShareZipBtn');
 
+  // File Preview Modal Elements
+  const filePreviewModal = $('#filePreviewModal');
+  const filePreviewClose = $('#filePreviewClose');
+  const previewModalFileName = $('#previewModalFileName');
+  const previewBadge = $('#previewBadge');
+  const previewFileSize = $('#previewFileSize');
+  const previewLineCount = $('#previewLineCount');
+  const previewCopyBtn = $('#previewCopyBtn');
+  const previewCopyLabel = $('#previewCopyLabel');
+  const previewDownloadBtn = $('#previewDownloadBtn');
+  const previewLoader = $('#previewLoader');
+  const previewLoaderText = $('#previewLoaderText');
+  const previewCodeContainer = $('#previewCodeContainer');
+  const codeLineNumbers = $('#codeLineNumbers');
+  const codeText = $('#codeText');
+  const previewImageContainer = $('#previewImageContainer');
+  const previewImage = $('#previewImage');
+  const previewFallbackContainer = $('#previewFallbackContainer');
+  const previewFallbackMsg = $('#previewFallbackMsg');
+  let currentPreviewCodeText = '';
+
+  const CODE_EXTENSIONS = [
+    'c', 'cpp', 'cc', 'cxx', 'h', 'hpp', 'java', 'py', 'js', 'mjs', 'cjs',
+    'ts', 'tsx', 'jsx', 'html', 'htm', 'css', 'scss', 'json', 'xml', 'sql',
+    'sh', 'bash', 'zsh', 'bat', 'cmd', 'ps1', 'txt', 'md', 'log', 'csv',
+    'r', 'kt', 'kts', 'rs', 'go', 'php', 'cs', 'swift', 'yaml', 'yml',
+    'ini', 'conf', 'asm', 's', 'toml', 'env'
+  ];
+  const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
+
+  function getFileExt(filename) {
+    if (!filename || !filename.includes('.')) return '';
+    return filename.split('.').pop().toLowerCase();
+  }
+
+  function isCodeFile(filename) {
+    const ext = getFileExt(filename);
+    return CODE_EXTENSIONS.includes(ext);
+  }
+
+  function isImageFile(filename) {
+    const ext = getFileExt(filename);
+    return IMAGE_EXTENSIONS.includes(ext);
+  }
+
+  function getLanguageBadge(filename) {
+    const ext = getFileExt(filename);
+    const map = {
+      c: 'C',
+      cpp: 'C++',
+      cc: 'C++',
+      cxx: 'C++',
+      h: 'HEADER',
+      hpp: 'C++ HEADER',
+      java: 'JAVA',
+      py: 'PYTHON',
+      js: 'JAVASCRIPT',
+      mjs: 'JAVASCRIPT',
+      cjs: 'JAVASCRIPT',
+      ts: 'TYPESCRIPT',
+      tsx: 'REACT TS',
+      jsx: 'REACT JSX',
+      html: 'HTML',
+      htm: 'HTML',
+      css: 'CSS',
+      scss: 'SCSS',
+      json: 'JSON',
+      xml: 'XML',
+      sql: 'SQL',
+      sh: 'SHELL',
+      bash: 'BASH',
+      zsh: 'ZSH',
+      bat: 'BATCH',
+      cmd: 'CMD',
+      ps1: 'POWERSHELL',
+      txt: 'TEXT',
+      md: 'MARKDOWN',
+      log: 'LOG',
+      csv: 'CSV',
+      r: 'R',
+      kt: 'KOTLIN',
+      kts: 'KOTLIN',
+      rs: 'RUST',
+      go: 'GO',
+      php: 'PHP',
+      cs: 'C#',
+      swift: 'SWIFT',
+      yaml: 'YAML',
+      yml: 'YAML',
+      ini: 'CONFIG',
+      conf: 'CONFIG',
+      asm: 'ASSEMBLY',
+      s: 'ASSEMBLY',
+      toml: 'TOML',
+      png: 'PNG',
+      jpg: 'JPEG',
+      jpeg: 'JPEG',
+      webp: 'WEBP',
+      gif: 'GIF',
+      svg: 'SVG'
+    };
+    return map[ext] || (isCodeFile(filename) ? 'CODE' : (isImageFile(filename) ? 'IMAGE' : 'FILE'));
+  }
+
   let currentPin = '';
   let customZipName = '';
   let activeTransferData = null;
@@ -267,23 +371,30 @@
       const customName = file.customName || file.name;
       const downloadQs = fileQs + (file.customName ? (fileQs ? '&' : '?') + 'name=' + encodeURIComponent(file.customName) : '');
       const downloadUrl = `/download/${data.id}/${file.id}${downloadQs}`;
+      const isPreviewable = isCodeFile(customName) || isImageFile(customName) || cat === 'code' || cat === 'image';
+      const previewBtnHtml = isPreviewable ? `
+        <button type="button" class="btn btn--outline btn--icon preview-file-btn" data-file-id="${file.id}" title="Preview ${escapeHtml(customName)}" aria-label="Preview" style="font-size: 0.85rem; padding: 6px 10px; display: inline-flex; align-items: center; justify-content: center; color: #0284c7; border-color: rgba(14, 165, 233, 0.35); background: rgba(14, 165, 233, 0.08);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        </button>
+      ` : '';
 
       const li = document.createElement('li');
       li.className = 'file-item';
       li.innerHTML = `
-        <div class="file-item__icon file-item__icon--${cat}">${icon}</div>
-        <div class="file-item__details">
+        <div class="file-item__icon file-item__icon--${cat}" ${isPreviewable ? `style="cursor: pointer;" title="Preview ${escapeHtml(customName)}"` : ''}>${icon}</div>
+        <div class="file-item__details ${isPreviewable ? 'file-item__details--clickable' : ''}" ${isPreviewable ? `title="Tap to preview ${escapeHtml(customName)}"` : ''} data-file-id="${file.id}">
           <div class="file-item__name" title="${escapeHtml(customName)}">${escapeHtml(customName)}</div>
-          <div class="file-item__size">${formatBytes(file.size)}</div>
+          <div class="file-item__size">${formatBytes(file.size)}${isPreviewable ? ' · <span style="color: #0284c7; font-weight: 600;">Tap to preview</span>' : ''}</div>
         </div>
         <div class="file-item__actions" style="display:flex; gap: 4px; align-items: center;">
           <input type="checkbox" class="file-checkbox" data-file-id="${file.id}" style="margin-right: 8px; transform: scale(1.2);" />
+          ${previewBtnHtml}
           <button class="btn btn--outline btn--icon ai-file-btn" data-file-id="${file.id}" title="AI Viva &amp; Exam Prep (Beta) for ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px; color: #B45309; border-color: rgba(245, 158, 11, 0.35); background: rgba(255, 209, 102, 0.15);">
             AI
           </button>
           <button class="btn btn--outline btn--icon rename-file-btn" data-file-id="${file.id}" title="Rename ${escapeHtml(customName)}" aria-label="Rename" style="font-size: 0.85rem; padding: 6px 10px; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
           <a class="btn btn--secondary btn--icon download-file-btn" href="${downloadUrl}" data-filename="${escapeHtml(customName)}" title="Browse / Download ${escapeHtml(customName)}" aria-label="Download" style="font-size: 0.85rem; padding: 6px 12px; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></a>
-          <button class="btn btn--secondary btn--icon share-file-btn" data-filename="${escapeHtml(customName)}" data-href="${downloadUrl}" title="Share ${escapeHtml(customName)}" aria-label="Share" style="font-size: 0.85rem; padding: 6px 12px; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg></button>
+          <button class="btn btn--secondary btn--icon share-file-btn" data-filename="${escapeHtml(customName)}" data-href="${downloadUrl}" title="Share ${escapeHtml(customName)}" aria-label="Share" style="font-size: 0.85rem; padding: 6px 12px; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><circle cx="18" cy="5" r="3"></circle><circle cx="18" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg></button>
         </div>
       `;
       return li;
@@ -453,8 +564,181 @@
     }
   });
 
+  // ---- In-Browser File Preview Modal Logic ----
+  async function openFilePreview(file) {
+    if (!file || !activeTransferData) return;
+    const customName = file.customName || file.name;
+    const cat = file.category || 'file';
+    const isCode = isCodeFile(customName) || cat === 'code' || cat === 'data';
+    const isImg = isImageFile(customName) || cat === 'image';
+
+    if (!isCode && !isImg) return;
+
+    const fileQs = currentPin ? `?pin=${currentPin}` : '';
+    const downloadQs = fileQs + (file.customName ? (fileQs ? '&' : '?') + 'name=' + encodeURIComponent(file.customName) : '');
+    const inlineQs = (fileQs ? fileQs + '&inline=1' : '?inline=1') + (file.customName ? '&name=' + encodeURIComponent(file.customName) : '');
+    const downloadUrl = `/download/${activeTransferData.id}/${file.id}${downloadQs}`;
+    const inlineUrl = `/download/${activeTransferData.id}/${file.id}${inlineQs}`;
+
+    // Populate header
+    if (previewModalFileName) previewModalFileName.textContent = customName;
+    if (previewBadge) previewBadge.textContent = getLanguageBadge(customName);
+    if (previewFileSize) previewFileSize.textContent = formatBytes(file.size);
+    if (previewDownloadBtn) {
+      previewDownloadBtn.href = downloadUrl;
+      previewDownloadBtn.setAttribute('download', customName);
+    }
+
+    // Reset views
+    if (previewLoader) {
+      previewLoader.style.display = 'flex';
+      if (previewLoaderText) previewLoaderText.textContent = isImg ? 'Loading high-res image preview...' : 'Loading code preview...';
+    }
+    if (previewCodeContainer) previewCodeContainer.style.display = 'none';
+    if (previewImageContainer) previewImageContainer.style.display = 'none';
+    if (previewFallbackContainer) previewFallbackContainer.style.display = 'none';
+    if (previewCopyBtn) previewCopyBtn.style.display = 'none';
+    if (previewLineCount) previewLineCount.style.display = 'none';
+    currentPreviewCodeText = '';
+
+    // Show modal
+    if (filePreviewModal) filePreviewModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    if (isImg && previewImage) {
+      previewImage.classList.remove('zoomed');
+      previewImage.onload = () => {
+        if (previewLoader) previewLoader.style.display = 'none';
+        if (previewImageContainer) previewImageContainer.style.display = 'flex';
+      };
+      previewImage.onerror = () => {
+        if (previewLoader) previewLoader.style.display = 'none';
+        if (previewFallbackMsg) previewFallbackMsg.textContent = 'Could not load image preview. Please use the Download button.';
+        if (previewFallbackContainer) previewFallbackContainer.style.display = 'flex';
+      };
+      previewImage.src = inlineUrl;
+    } else if (isCode) {
+      try {
+        const res = await fetch(inlineUrl);
+        if (!res.ok) throw new Error('Preview fetch failed');
+        const text = await res.text();
+        currentPreviewCodeText = text;
+
+        const lines = text.split('\n');
+        if (previewLineCount) {
+          previewLineCount.textContent = `${lines.length} lines`;
+          previewLineCount.style.display = 'inline';
+        }
+
+        if (codeLineNumbers) {
+          const numSpans = lines.map((_, idx) => `<span>${idx + 1}</span>`).join('');
+          codeLineNumbers.innerHTML = numSpans;
+        }
+        if (codeText) codeText.textContent = text; // Safe against XSS
+
+        if (previewLoader) previewLoader.style.display = 'none';
+        if (previewCodeContainer) previewCodeContainer.style.display = 'flex';
+        if (previewCopyBtn) previewCopyBtn.style.display = 'inline-flex';
+      } catch (err) {
+        console.error('Code preview error:', err);
+        if (previewLoader) previewLoader.style.display = 'none';
+        if (previewFallbackMsg) previewFallbackMsg.textContent = 'Could not load text preview. Please use the Download button.';
+        if (previewFallbackContainer) previewFallbackContainer.style.display = 'flex';
+      }
+    }
+  }
+
+  function closeFilePreview() {
+    if (filePreviewModal) filePreviewModal.classList.remove('active');
+    document.body.style.overflow = '';
+    if (previewImage) previewImage.src = '';
+  }
+
+  if (filePreviewClose) {
+    filePreviewClose.addEventListener('click', closeFilePreview);
+  }
+  if (filePreviewModal) {
+    filePreviewModal.addEventListener('click', (e) => {
+      if (e.target === filePreviewModal) closeFilePreview();
+    });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && filePreviewModal && filePreviewModal.classList.contains('active')) {
+      closeFilePreview();
+    }
+  });
+
+  if (previewCopyBtn) {
+    previewCopyBtn.addEventListener('click', () => {
+      if (!currentPreviewCodeText) return;
+      const doSuccess = () => {
+        previewCopyBtn.classList.add('copied');
+        if (previewCopyLabel) previewCopyLabel.textContent = 'Copied!';
+        setTimeout(() => {
+          previewCopyBtn.classList.remove('copied');
+          if (previewCopyLabel) previewCopyLabel.textContent = 'Copy Code';
+        }, 2000);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(currentPreviewCodeText).then(doSuccess).catch(() => {
+          const ta = document.createElement('textarea');
+          ta.value = currentPreviewCodeText;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+          doSuccess();
+        });
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = currentPreviewCodeText;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+        doSuccess();
+      }
+    });
+  }
+
+  if (previewImage) {
+    previewImage.addEventListener('click', () => {
+      previewImage.classList.toggle('zoomed');
+    });
+  }
+
   // ---- Individual File Rename & Save As ----
   mFileList.addEventListener('click', async (e) => {
+    // Preview File Button
+    const prevBtn = e.target.closest('.preview-file-btn');
+    if (prevBtn && activeTransferData) {
+      const fileId = prevBtn.getAttribute('data-file-id');
+      const file = (activeTransferData.files || []).find(f => f.id === fileId);
+      if (file) openFilePreview(file);
+      return;
+    }
+
+    // Tap on File Details / Clickable area
+    const detailsEl = e.target.closest('.file-item__details--clickable');
+    if (detailsEl && activeTransferData) {
+      const fileId = detailsEl.getAttribute('data-file-id');
+      const file = (activeTransferData.files || []).find(f => f.id === fileId);
+      if (file) openFilePreview(file);
+      return;
+    }
+
+    // Tap on File Icon if clickable
+    const iconEl = e.target.closest('.file-item__icon');
+    if (iconEl && iconEl.style.cursor === 'pointer' && activeTransferData) {
+      const fileItem = iconEl.closest('.file-item');
+      const chk = fileItem ? fileItem.querySelector('.file-checkbox') : null;
+      const fileId = chk ? chk.getAttribute('data-file-id') : null;
+      const file = (activeTransferData.files || []).find(f => f.id === fileId);
+      if (file) openFilePreview(file);
+      return;
+    }
+
     // AI Assistant for Individual File
     const aiBtn = e.target.closest('.ai-file-btn');
     if (aiBtn) {

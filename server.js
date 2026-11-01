@@ -1740,20 +1740,57 @@ app.get('/download/:transferId/:fileId', async (req, res) => {
   try {
     const response = await s3Client.send(command);
     
-    res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
+    const isInline = req.query.inline === '1' || req.query.preview === '1';
     let downloadFilename = req.query.name ? String(req.query.name) : file.originalName;
-    res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+    const ext = path.extname(downloadFilename || file.originalName || '').toLowerCase();
+
+    const codeTextExtensions = [
+      '.c', '.cpp', '.cc', '.cxx', '.h', '.hpp', '.java', '.py', '.js', '.mjs', '.cjs',
+      '.ts', '.tsx', '.jsx', '.html', '.htm', '.css', '.scss', '.json', '.xml', '.sql',
+      '.sh', '.bash', '.zsh', '.bat', '.cmd', '.ps1', '.txt', '.md', '.log', '.csv',
+      '.r', '.kt', '.kts', '.rs', '.go', '.php', '.cs', '.swift', '.yaml', '.yml',
+      '.ini', '.conf', '.asm', '.s', '.toml', '.env'
+    ];
+    const imageMimeTypes = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.svg': 'image/svg+xml',
+      '.bmp': 'image/bmp',
+      '.ico': 'image/x-icon'
+    };
+
+    if (isInline) {
+      if (codeTextExtensions.includes(ext)) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      } else if (imageMimeTypes[ext]) {
+        res.setHeader('Content-Type', imageMimeTypes[ext]);
+      } else if (ext === '.pdf') {
+        res.setHeader('Content-Type', 'application/pdf');
+      } else {
+        res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
+      }
+      res.setHeader('Content-Disposition', `inline; filename="${downloadFilename}"`);
+    } else {
+      res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+    }
+
     if (file.size) {
       res.setHeader('Content-Length', file.size);
     }
     
     response.Body.pipe(res);
     
-    transfer.downloadCount++;
-    await storage.transfers.set(transfer.id, transfer);
-    analytics.totalDownloads++;
-    scheduleAnalyticsSave();
-    storage.dailyMetrics.recordDownload(getTodayDateStr(), { currentTotals: getCurrentTotals() });
+    if (!isInline) {
+      transfer.downloadCount++;
+      await storage.transfers.set(transfer.id, transfer);
+      analytics.totalDownloads++;
+      scheduleAnalyticsSave();
+      storage.dailyMetrics.recordDownload(getTodayDateStr(), { currentTotals: getCurrentTotals() });
+    }
   } catch (err) {
     console.error('S3 Download Error:', err);
     return res.status(500).json({ error: 'Download failed.' });
