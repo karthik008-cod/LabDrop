@@ -1660,6 +1660,8 @@
 
           await Promise.all(uploadPromises);
 
+          if (qrAppendProgressBar) qrAppendProgressBar.style.width = '100%';
+          if (qrAppendProgressPercent) qrAppendProgressPercent.textContent = '100%';
           if (qrAppendProgressText) qrAppendProgressText.textContent = 'Updating transfer...';
 
           const compRes = await fetch(`/api/transfer/${activeTransferId}/append/complete`, {
@@ -1697,6 +1699,9 @@
             });
 
             xhr.onload = () => {
+              if (qrAppendProgressBar) qrAppendProgressBar.style.width = '100%';
+              if (qrAppendProgressPercent) qrAppendProgressPercent.textContent = '100%';
+              if (qrAppendProgressText) qrAppendProgressText.textContent = 'Updating transfer...';
               try {
                 const resData = JSON.parse(xhr.responseText);
                 if (xhr.status >= 200 && xhr.status < 300) {
