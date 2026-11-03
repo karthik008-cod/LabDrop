@@ -1581,6 +1581,20 @@
     qrImage.src = data.qrCode;
     transferCode.textContent = data.shortCode;
     transferUrl.textContent = data.url;
+
+    const directLinkWrap = document.getElementById('transferDirectLinkWrap');
+    const directLinkEl = document.getElementById('transferDirectLink');
+    if (directLinkWrap && directLinkEl) {
+      const link = data.directUrl || (window.location.origin + '/?code=' + data.shortCode);
+      directLinkWrap.style.display = 'flex';
+      directLinkEl.href = link;
+      try {
+        const u = new URL(link);
+        directLinkEl.textContent = u.host + '/?code=' + data.shortCode;
+      } catch (e) {
+        directLinkEl.textContent = 'labdrop.online/?code=' + data.shortCode;
+      }
+    }
     statFiles.textContent = data.fileCount + (data.linkCount > 0 ? ` (+${data.linkCount} links)` : '');
     statSize.textContent = formatBytes(data.totalSize);
 
@@ -1844,7 +1858,8 @@
   // ---- Copy URL ----
   copyUrlBtn.addEventListener('click', () => {
     if (!currentTransfer) return;
-    navigator.clipboard.writeText(currentTransfer.url).then(() => {
+    const linkToCopy = currentTransfer.directUrl || currentTransfer.url || (window.location.origin + '/?code=' + currentTransfer.shortCode);
+    navigator.clipboard.writeText(linkToCopy).then(() => {
       copyUrlBtn.textContent = 'Copied!';
       setTimeout(() => (copyUrlBtn.textContent = 'Copy Link'), 2000);
     }).catch(() => {
@@ -1863,7 +1878,8 @@
   shareWhatsAppBtn.addEventListener('click', () => {
     if (!currentTransfer) return;
     const name = currentTransfer.transferName || 'Lab Files';
-    const msg = `*${name}* — Download from LabDrop:\n${currentTransfer.url}\n\nCode: *${currentTransfer.shortCode}*`;
+    const link = currentTransfer.directUrl || currentTransfer.url || (window.location.origin + '/?code=' + currentTransfer.shortCode);
+    const msg = `*${name}* — Download from LabDrop:\n${link}\n\nTransfer Code: *${currentTransfer.shortCode}*`;
     const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(waUrl, '_blank');
   });
@@ -2174,6 +2190,15 @@
       }
     }
 
+    // Handle code= or /c/ pasted
+    if (raw.includes('code=')) {
+      const match = raw.match(/code=([a-zA-Z0-9]+)/i);
+      if (match && match[1]) raw = match[1];
+    } else if (raw.includes('/c/')) {
+      const match = raw.match(/\/c\/([a-zA-Z0-9]+)/i);
+      if (match && match[1]) raw = match[1];
+    }
+
     // Handle UUID directly
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
       window.location.href = `/t/${raw}`;
@@ -2210,6 +2235,51 @@
 
   // ---- Initialize ----
   showSection(selectSection);
+
+  // Auto-detect URL Direct Code (?code=1111 or ?c=1111 or ?error=...)
+  (function handleDirectCodeUrl() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const directCode = (urlParams.get('code') || urlParams.get('c') || '').trim();
+      const errParam = urlParams.get('error');
+
+      if (directCode) {
+        if (receiveCodeInput) receiveCodeInput.value = directCode.toUpperCase();
+        if (receiveError) receiveError.style.display = 'none';
+
+        fetch(`/api/transfer/code/${encodeURIComponent(directCode.toUpperCase())}`)
+          .then(res => res.json().then(data => ({ ok: res.ok, status: res.status, data })))
+          .then(({ ok, data }) => {
+            if (ok && data.id) {
+              window.location.href = `/t/${data.id}`;
+            } else if (receiveError) {
+              receiveError.textContent = data.error || `Transfer code "${directCode}" not found or has expired.`;
+              receiveError.style.display = 'block';
+              const receiveCard = document.querySelector('.quick-receive-card') || document.querySelector('.receive-card');
+              if (receiveCard) receiveCard.scrollIntoView({ behavior: 'smooth' });
+            }
+          })
+          .catch(() => {
+            if (receiveError) {
+              receiveError.textContent = 'Network error while looking up transfer code.';
+              receiveError.style.display = 'block';
+            }
+          });
+      } else if (errParam && receiveError) {
+        const errCode = (urlParams.get('code') || '').trim();
+        if (errParam === 'expired') {
+          receiveError.textContent = errCode ? `Transfer code "${errCode}" has expired.` : 'This transfer has expired.';
+        } else if (errParam === 'not_found') {
+          receiveError.textContent = errCode ? `Transfer code "${errCode}" not found.` : 'Transfer not found.';
+        } else if (errParam === 'invalid_code') {
+          receiveError.textContent = 'Invalid transfer code provided.';
+        }
+        receiveError.style.display = 'block';
+      }
+    } catch (e) {
+      console.warn('Direct code handling exception:', e);
+    }
+  })();
 
   // ---- PWA, Desktop File Handling & Web Share Target Logic ----
   if ('serviceWorker' in navigator) {

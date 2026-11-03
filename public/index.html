@@ -623,10 +623,14 @@
               <img id="qrImage" src="" alt="QR Code" />
             </div>
 
-            <!-- Transfer Code -->
+            <!-- Transfer Code & Direct Link -->
             <div>
               <div style="font-size: var(--font-size-sm); color: var(--color-text-muted);">Transfer Code</div>
               <div class="qr-code-text" id="transferCode"></div>
+              <div id="transferDirectLinkWrap" style="margin-top: 6px; font-size: 0.82rem; color: var(--color-text-secondary); display: none; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;">
+                <span style="color: var(--color-text-muted);">Direct Link:</span>
+                <a href="#" id="transferDirectLink" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary-dark); font-weight: 700; text-decoration: underline; font-family: monospace; font-size: 0.92rem;"></a>
+              </div>
             </div>
 
             <!-- PIN Display -->

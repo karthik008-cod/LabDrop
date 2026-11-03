@@ -1218,6 +1218,7 @@ app.post('/api/upload/initiate', optionalAuth, async (req, res) => {
         baseUrl = process.env.PUBLIC_URL || 'https://labdrop.online';
       }
       const transferUrl = `${baseUrl}/t/${transferId}`;
+      const directUrl = `${baseUrl}/?code=${shortCode}`;
 
       const qrDataUrl = await QRCode.toDataURL(transferUrl, {
         width: 400,
@@ -1231,7 +1232,10 @@ app.post('/api/upload/initiate', optionalAuth, async (req, res) => {
         transferId,
         shortCode,
         transferName: transfer.transferName,
-        url: transferUrl,
+        url: directUrl,
+        rawTransferUrl: transferUrl,
+        directUrl,
+        shortUrl: `${baseUrl}/code=${shortCode}`,
         qrCode: qrDataUrl,
         files: [],
         links,
@@ -1308,6 +1312,7 @@ app.post('/api/upload/complete', optionalAuth, async (req, res) => {
       baseUrl = process.env.PUBLIC_URL || 'https://labdrop.online';
     }
     const transferUrl = `${baseUrl}/t/${transfer.id}`;
+    const directUrl = `${baseUrl}/?code=${transfer.shortCode}`;
 
     const qrDataUrl = await QRCode.toDataURL(transferUrl, {
       width: 400,
@@ -1320,7 +1325,10 @@ app.post('/api/upload/complete', optionalAuth, async (req, res) => {
       transferId: transfer.id,
       shortCode: transfer.shortCode,
       transferName: transfer.transferName,
-      url: transferUrl,
+      url: directUrl,
+      rawTransferUrl: transferUrl,
+      directUrl,
+      shortUrl: `${baseUrl}/code=${transfer.shortCode}`,
       qrCode: qrDataUrl,
       files: transfer.files.map((f) => ({
         id: f.id,
@@ -1518,6 +1526,7 @@ app.post('/api/upload', optionalAuth, (req, res) => {
       baseUrl = process.env.PUBLIC_URL || 'https://labdrop.online';
     }
     const transferUrl = `${baseUrl}/t/${transferId}`;
+    const directUrl = `${baseUrl}/?code=${shortCode}`;
 
     try {
       const qrDataUrl = await QRCode.toDataURL(transferUrl, {
@@ -2757,6 +2766,28 @@ app.post('/api/ai/analyze', async (req, res) => {
 });
 
 // --- Serve transfer page (mobile) ---
+// --- Direct transfer access via short code (e.g. /code=1111, /c/1111) ---
+app.get(['/code=:code', '/c/:code'], async (req, res) => {
+  const code = (req.params.code || '').trim().toUpperCase();
+  if (!code) {
+    return res.redirect('/?error=invalid_code');
+  }
+
+  for (const transfer of await storage.transfers.getAll()) {
+    if (transfer.shortCode === code) {
+      if (transfer.status === 'PENDING') {
+        return res.redirect(`/?code=${encodeURIComponent(code)}&status=pending`);
+      }
+      if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
+        return res.redirect(`/?error=expired&code=${encodeURIComponent(code)}`);
+      }
+      return res.redirect(`/t/${transfer.id}`);
+    }
+  }
+
+  return res.redirect(`/?error=not_found&code=${encodeURIComponent(code)}`);
+});
+
 app.get('/t/:id', (req, res) => {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   res.sendFile(path.join(__dirname, 'public', 'transfer.html'));
