@@ -240,6 +240,7 @@ img, svg {
   display: flex;
   align-items: center;
   gap: var(--space-md);
+  flex-shrink: 0;
 }
 
 .brand__header-logo {
@@ -249,6 +250,7 @@ img, svg {
   max-width: 170px;
   object-fit: contain;
   display: block;
+  flex-shrink: 0;
   transition: transform var(--transition-fast);
 }
 
@@ -262,6 +264,7 @@ img, svg {
     width: 95px;
     aspect-ratio: 95 / 38;
     max-width: 140px;
+    flex-shrink: 0;
   }
 }
 

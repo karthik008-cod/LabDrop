@@ -286,36 +286,126 @@
     }
 
     @media (max-width: 640px) {
+      /* Mobile Header Fixes - Prevent Logo Squeeze & Ensure 100% Brand Visibility */
+      .header__container {
+        padding: 0 14px !important;
+        gap: 10px !important;
+        flex-wrap: nowrap !important;
+      }
+      .header__brand {
+        flex-shrink: 0 !important;
+      }
+      .brand__header-logo {
+        height: 36px !important;
+        width: 90px !important;
+        max-width: 90px !important;
+        flex-shrink: 0 !important;
+        object-fit: contain !important;
+      }
+      /* Hide redundant What's New button in header on mobile when already on What's New page */
+      #mainNav .nav-whats-new-btn {
+        display: none !important;
+      }
+      #mainNav {
+        flex-shrink: 0 !important;
+      }
+      #mainNav > div {
+        gap: 12px !important;
+        flex-wrap: nowrap !important;
+      }
+      #mainNav .nav-link {
+        font-size: 0.86rem !important;
+        font-weight: 600 !important;
+        color: #4B5563 !important;
+        padding: 4px 2px !important;
+        white-space: nowrap !important;
+      }
+
+      /* Compact & Elegant Mobile Layout */
       .changelog-wrapper {
-        padding: var(--space-md) var(--space-sm);
+        padding: 14px 12px !important;
       }
       .changelog-header-card {
-        padding: var(--space-lg) var(--space-md);
+        padding: 16px 14px !important;
+        margin-bottom: 18px !important;
+        border-radius: 10px !important;
+      }
+      .changelog-title-group {
+        gap: 10px !important;
+      }
+      .changelog-title-icon {
+        width: 28px !important;
+        height: 28px !important;
+        border-radius: 6px !important;
+      }
+      .changelog-title-icon svg {
+        width: 16px !important;
+        height: 16px !important;
       }
       .changelog-header-card h1 {
-        font-size: 1.6rem;
+        font-size: 1.35rem !important;
+        letter-spacing: -0.3px !important;
+      }
+      .changelog-header-card p {
+        font-size: 0.86rem !important;
+        line-height: 1.5 !important;
+        margin-top: 6px !important;
+      }
+
+      /* Streamlined Mobile Timeline */
+      .timeline-container {
+        margin-top: 10px !important;
+        padding-bottom: var(--space-lg) !important;
       }
       .timeline-container::before {
-        left: 15px;
+        left: 11px !important;
+        width: 2.5px !important;
       }
       .timeline-item {
-        padding-left: 44px;
-        margin-bottom: 22px;
+        padding-left: 34px !important;
+        margin-bottom: 16px !important;
       }
       .timeline-node {
-        left: 3px;
-        width: 25px;
-        height: 25px;
+        left: 0px !important;
+        top: 14px !important;
+        width: 23px !important;
+        height: 23px !important;
+        box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.12) !important;
+      }
+      .timeline-item--latest .timeline-node {
+        box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.18) !important;
+      }
+      .timeline-node-inner {
+        width: 8px !important;
+        height: 8px !important;
       }
       .timeline-card {
-        padding: 16px 18px;
+        padding: 14px 14px !important;
+        border-radius: 10px !important;
+      }
+      .timeline-date {
+        font-size: 0.75rem !important;
+        letter-spacing: 0.5px !important;
+        margin-bottom: 4px !important;
       }
       .timeline-card h2 {
-        font-size: 1.15rem;
-        margin-bottom: 10px;
+        font-size: 1.05rem !important;
+        line-height: 1.35 !important;
+        margin-bottom: 8px !important;
+      }
+      .timeline-features {
+        gap: 8px !important;
       }
       .timeline-feature-item {
-        font-size: 0.88rem;
+        font-size: 0.85rem !important;
+        line-height: 1.5 !important;
+        padding-left: 14px !important;
+      }
+      .timeline-feature-item::before {
+        left: 1px !important;
+        top: 8px !important;
+        width: 5px !important;
+        height: 5px !important;
       }
     }
   </style>
