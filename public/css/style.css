@@ -318,47 +318,79 @@ img, svg {
   font-weight: bold;
 }
 
-/* Eye-Catching What's New Pill Button */
+/* High-Visibility What's New Pill Button */
 .nav-whats-new-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  gap: 7px;
+  background: linear-gradient(115deg, #FEF3C7 0%, #FFFBEB 30%, #FDE68A 65%, #FEF3C7 100%);
+  background-size: 220% 100%;
   border: 1.5px solid #F59E0B;
   color: #92400E !important;
   font-weight: 700;
-  font-size: 0.82rem;
-  padding: 5px 13px;
+  font-size: 0.83rem;
+  padding: 5px 12px 5px 10px;
   border-radius: 999px;
   text-decoration: none !important;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.22);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.22);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
   white-space: nowrap;
   letter-spacing: 0.2px;
+  animation: whats-new-shimmer 4s infinite linear, whats-new-pulse-glow 2.4s infinite ease-in-out;
+  position: relative;
 }
 
 .nav-whats-new-btn:hover {
   background: linear-gradient(135deg, #FDE68A 0%, #F59E0B 100%);
   color: #78350F !important;
   border-color: #D97706;
-  transform: translateY(-1.5px);
-  box-shadow: 0 4px 16px rgba(217, 119, 6, 0.35);
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 6px 20px rgba(217, 119, 6, 0.4), 0 0 0 4px rgba(245, 158, 11, 0.25);
+  animation: none;
 }
 
 .nav-whats-new-btn:active {
-  transform: translateY(0) scale(0.97);
+  transform: translateY(0) scale(0.98);
 }
 
 .nav-sparkle-icon {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   fill: #D97706;
   display: inline-block;
   vertical-align: middle;
   flex-shrink: 0;
-  animation: sparkle-twinkle 2.2s ease-in-out infinite;
+  animation: sparkle-twinkle 2s ease-in-out infinite;
   transform-origin: center;
+}
+
+.nav-whats-new-badge {
+  background: #D97706;
+  color: #FFFFFF !important;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1.5px 6px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.4);
+  line-height: 1.2;
+  display: inline-block;
+}
+
+@keyframes whats-new-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@keyframes whats-new-pulse-glow {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.2), 0 0 0 0 rgba(245, 158, 11, 0.45);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(217, 119, 6, 0.35), 0 0 0 5px rgba(245, 158, 11, 0.18);
+  }
 }
 
 @keyframes sparkle-twinkle {
@@ -368,9 +400,9 @@ img, svg {
     filter: drop-shadow(0 0 1px rgba(245, 158, 11, 0.5));
   }
   50% {
-    transform: scale(1.3) rotate(20deg);
+    transform: scale(1.35) rotate(22deg);
     opacity: 1;
-    filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.9));
+    filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.95));
   }
 }
 
