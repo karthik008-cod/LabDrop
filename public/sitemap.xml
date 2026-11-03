@@ -6,6 +6,12 @@
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
+    <url>
+    <loc>https://labdrop.online/whats-new.html</loc>
+    <lastmod>2026-11-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
   <url>
     <loc>https://labdrop.online/how-to-use.html</loc>
     <lastmod>2026-11-01</lastmod>

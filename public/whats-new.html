@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>What's New — LabDrop Updates, Release Timeline &amp; Changelog | labdrop.online</title>
+  
+  <!-- Primary SEO Meta Tags -->
+  <meta name="title" content="What's New — LabDrop Updates, Release Timeline & Changelog | labdrop.online" />
+  <meta name="description" content="Discover the latest updates, new features, and performance enhancements on LabDrop (labdrop.online). Explore our verified release timeline and engineering milestones." />
+  <meta name="keywords" content="labdrop updates, labdrop changelog, labdrop whats new, labdrop release notes, share lab files to phone, college lab file transfer, labdrop features" />
+  <meta name="author" content="Yuvaan Kaarthikeyaa Adulapuram" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <meta name="google-site-verification" content="googlefa992a267b6be54f" />
+  <meta name="google-site-verification" content="fa992a267b6be54f" />
+  <link rel="canonical" href="https://labdrop.online/whats-new.html" />
+
+  <!-- Google AdSense -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6259663778050569" crossorigin="anonymous"></script>
+
+  <!-- Google Chrome & Mobile Web App Meta -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="LabDrop What's New" />
+  <meta name="application-name" content="LabDrop" />
+
+  <!-- Resource Preconnect Hints -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" />
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="LabDrop" />
+  <meta property="og:url" content="https://labdrop.online/whats-new.html" />
+  <meta property="og:title" content="What's New in LabDrop — Release Timeline &amp; Changelog" />
+  <meta property="og:description" content="Explore the verified release timeline of LabDrop, tracking in-browser code viewers, live transfer append, mobile share sheet support, and performance upgrades." />
+  <meta property="og:image" content="https://labdrop.online/labdroplogo.png" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://labdrop.online/whats-new.html" />
+  <meta name="twitter:title" content="What's New in LabDrop — Release Timeline &amp; Changelog" />
+  <meta name="twitter:description" content="Explore the verified release timeline of LabDrop, tracking in-browser code viewers, live transfer append, mobile share sheet support, and performance upgrades." />
+  <meta name="twitter:image" content="https://labdrop.online/labdroplogo.png" />
+
+  <!-- Favicons and Manifest -->
+  <link rel="icon" type="image/png" href="/labdroplogo.png" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/labdroplogo.png" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/css/style.css?v=6.9" />
+  <script src="/js/site-config.js" defer></script>
+
+  <!-- Structured Data (JSON-LD) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://labdrop.online/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "What's New",
+            "item": "https://labdrop.online/whats-new.html"
+          }
+        ]
+      },
+      {
+        "@type": "CollectionPage",
+        "name": "LabDrop Release Timeline & Changelog",
+        "url": "https://labdrop.online/whats-new.html",
+        "description": "Chronological release timeline and milestone history for the LabDrop file transfer platform."
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    .changelog-wrapper {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: var(--space-xl) var(--space-md);
+    }
+
+    .changelog-header-card {
+      background: var(--color-surface, #FFFDF8);
+      border: 1.5px solid var(--color-border);
+      border-top: 4px solid var(--color-primary-dark, #F59E0B);
+      border-radius: var(--radius-lg, 12px);
+      padding: var(--space-xl) var(--space-xl);
+      box-shadow: 0 4px 20px rgba(217, 119, 6, 0.05);
+      margin-bottom: var(--space-2xl);
+    }
+
+    .changelog-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .changelog-title-icon {
+      width: 36px;
+      height: 36px;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(217, 119, 6, 0.3);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #b45309;
+      flex-shrink: 0;
+    }
+
+    .changelog-header-card h1 {
+      font-size: 2rem;
+      color: var(--color-text, #2C2C2C);
+      margin: 0;
+      font-family: 'Space Grotesk', var(--font-family, sans-serif);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .changelog-header-card p {
+      font-size: 0.98rem;
+      color: var(--color-text-secondary, #6B6B6B);
+      margin: 8px 0 0 0;
+      line-height: 1.6;
+    }
+
+    /* Timeline Container */
+    .timeline-container {
+      position: relative;
+      margin-top: var(--space-lg);
+      padding-bottom: var(--space-xl);
+    }
+
+    /* Central vertical stem */
+    .timeline-container::before {
+      content: "";
+      position: absolute;
+      top: 14px;
+      bottom: 14px;
+      left: 19px;
+      width: 3px;
+      background: linear-gradient(to bottom, #d97706 0%, #f59e0b 60%, rgba(217, 119, 6, 0.15) 100%);
+      border-radius: 2px;
+    }
+
+    /* Individual Timeline Entry */
+    .timeline-item {
+      position: relative;
+      padding-left: 56px;
+      margin-bottom: 34px;
+    }
+
+    .timeline-item:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Timeline Marker Node */
+    .timeline-node {
+      position: absolute;
+      left: 7px;
+      top: 16px;
+      width: 27px;
+      height: 27px;
+      border-radius: 50%;
+      background: #FFFDF8;
+      border: 3px solid #d97706;
+      box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+
+    .timeline-node-inner {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #d97706;
+    }
+
+    /* Pulsing effect for the newest milestone */
+    .timeline-item--latest .timeline-node {
+      border-color: #ea580c;
+      box-shadow: 0 0 0 5px rgba(234, 88, 12, 0.2);
+    }
+
+    .timeline-item--latest .timeline-node-inner {
+      background: #ea580c;
+      animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.35); opacity: 0.8; }
+    }
+
+    /* Timeline Card */
+    .timeline-card {
+      background: var(--color-surface, #FFFDF8);
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-lg, 12px);
+      padding: 22px 24px;
+      box-shadow: 0 4px 16px rgba(217, 119, 6, 0.04);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .timeline-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(217, 119, 6, 0.09);
+      border-color: rgba(217, 119, 6, 0.35);
+    }
+
+    .timeline-item--latest .timeline-card {
+      border-top: 3px solid #ea580c;
+    }
+
+    /* Card Metadata Bar */
+    .timeline-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .timeline-meta-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .timeline-date {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #92400e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .timeline-version-pill {
+      font-family: monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      background: #FEF3C7;
+      color: #92400E;
+      border: 1px solid #FDE68A;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .timeline-latest-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: #ea580c;
+      color: #ffffff;
+      padding: 2px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    /* Card Title */
+    .timeline-card h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--color-text, #1F2937);
+      margin: 0 0 10px 0;
+      font-family: 'Space Grotesk', var(--font-family, sans-serif);
+      line-height: 1.35;
+    }
+
+    /* Category Badges */
+    .timeline-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .timeline-tag {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: #F3F4F6;
+      color: #4B5563;
+      border: 1px solid #E5E7EB;
+    }
+
+    .timeline-tag--feature {
+      background: rgba(14, 165, 233, 0.08);
+      color: #0369a1;
+      border-color: rgba(14, 165, 233, 0.25);
+    }
+
+    .timeline-tag--mobile {
+      background: rgba(16, 185, 129, 0.08);
+      color: #047857;
+      border-color: rgba(16, 185, 129, 0.25);
+    }
+
+    .timeline-tag--speed {
+      background: rgba(245, 158, 11, 0.1);
+      color: #b45309;
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    .timeline-tag--security {
+      background: rgba(99, 102, 241, 0.08);
+      color: #4338ca;
+      border-color: rgba(99, 102, 241, 0.25);
+    }
+
+    /* Feature Details List */
+    .timeline-features {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .timeline-feature-item {
+      position: relative;
+      padding-left: 20px;
+      font-size: 0.92rem;
+      line-height: 1.55;
+      color: #374151;
+    }
+
+    .timeline-feature-item::before {
+      content: "";
+      position: absolute;
+      left: 2px;
+      top: 8px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #d97706;
+    }
+
+    .timeline-feature-item strong {
+      color: #111827;
+      font-weight: 600;
+    }
+
+    @media (max-width: 640px) {
+      .changelog-wrapper {
+        padding: var(--space-md) var(--space-sm);
+      }
+      .changelog-header-card {
+        padding: var(--space-lg) var(--space-md);
+      }
+      .changelog-header-card h1 {
+        font-size: 1.6rem;
+      }
+      .timeline-container::before {
+        left: 15px;
+      }
+      .timeline-item {
+        padding-left: 44px;
+        margin-bottom: 24px;
+      }
+      .timeline-node {
+        left: 3px;
+        width: 25px;
+        height: 25px;
+      }
+      .timeline-card {
+        padding: 16px 18px;
+      }
+      .timeline-card h2 {
+        font-size: 1.15rem;
+      }
+      .timeline-feature-item {
+        font-size: 0.88rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-pattern"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header__container">
+      <a href="/" class="header__brand" aria-label="LabDrop Home" style="text-decoration: none; color: inherit;">
+        <picture>
+          <source srcset="/LabDropTextLogoNoBG.webp" type="image/webp" />
+          <img class="brand__header-logo" src="/LabDropTextLogoNoBG.png" alt="LabDrop Logo" width="115" height="46" loading="eager" fetchpriority="high" decoding="async" />
+        </picture>
+      </a>
+      
+      <nav class="header__nav" id="mainNav">
+        <div style="display: flex; gap: var(--space-md); align-items: center; flex-wrap: wrap;">
+          <a href="/" class="nav-link" style="text-decoration: none;">Home</a>
+          <a href="/whats-new.html" class="nav-link" style="color: var(--color-primary-dark); text-decoration: none; font-weight: 700;">What's New</a>
+          <a href="/how-to-use.html" class="nav-link" style="text-decoration: none;">How to Use</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="page-wrapper">
+    <main class="changelog-wrapper">
+      
+      <!-- Top Title Card -->
+      <div class="changelog-header-card">
+        <div class="changelog-title-group">
+          <div class="changelog-title-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+          </div>
+          <h1>What's New in LabDrop</h1>
+        </div>
+        <p>
+          A continuous timeline of platform updates, new tools, and performance enhancements designed to keep college lab file transfers fast, private, and effortless.
+        </p>
+      </div>
+
+      <!-- Timeline Feed -->
+      <div class="timeline-container">
+
+        <!-- Milestone: November 3, 2026 -->
+        <article class="timeline-item timeline-item--latest">
+          <div class="timeline-node" aria-hidden="true">
+            <div class="timeline-node-inner"></div>
+          </div>
+          <div class="timeline-card">
+            <div class="timeline-meta">
+              <div class="timeline-meta-left">
+                <span class="timeline-date">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  November 3, 2026
+                </span>
+                <span class="timeline-version-pill">v2.6</span>
+              </div>
+              <span class="timeline-latest-pill">Current Release</span>
+            </div>
+            <h2>Interactive Product Timeline &amp; Release History</h2>
+            <div class="timeline-tags">
+              <span class="timeline-tag timeline-tag--feature">Changelog</span>
+              <span class="timeline-tag timeline-tag--speed">Transparency</span>
+              <span class="timeline-tag timeline-tag--mobile">Navigation</span>
+            </div>
+            <ul class="timeline-features">
+              <li class="timeline-feature-item">
+                <strong>Public Engineering Timeline:</strong> Added a dedicated What's New portal tracking all major platform milestones, usability upgrades, and fixes directly from repository history.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Direct Navigation Access:</strong> Accessible from desktop headers, mobile drawers, and global footers across all pages for immediate discovery.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Verified Documentation:</strong> Structured Schema.org BreadcrumbList and CollectionPage data to enhance search authority and transparent release tracking.
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- Milestone: November 2, 2026 -->
+        <article class="timeline-item">
+          <div class="timeline-node" aria-hidden="true">
+            <div class="timeline-node-inner"></div>
+          </div>
+          <div class="timeline-card">
+            <div class="timeline-meta">
+              <div class="timeline-meta-left">
+                <span class="timeline-date">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  November 2, 2026
+                </span>
+                <span class="timeline-version-pill">v2.5</span>
+              </div>
+            </div>
+            <h2>In-Browser Code, PDF &amp; Lightbox Media Viewers</h2>
+            <div class="timeline-tags">
+              <span class="timeline-tag timeline-tag--feature">Code Viewer</span>
+              <span class="timeline-tag timeline-tag--feature">PDF Reader</span>
+              <span class="timeline-tag timeline-tag--mobile">Image Lightbox</span>
+              <span class="timeline-tag timeline-tag--speed">File Handling</span>
+            </div>
+            <ul class="timeline-features">
+              <li class="timeline-feature-item">
+                <strong>In-Browser Code Viewer:</strong> Direct web preview for C, C++, Java, Python, JavaScript, TypeScript, HTML, CSS, SQL, Shell, and configuration files with monospace typography, line numbering, language badges, and one-tap Copy Code functionality.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Native PDF Document Reader:</strong> Read lab assignment PDFs, reports, and manuals directly in-browser on mobile and desktop without downloading third-party PDF viewers.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>High-Resolution Image Lightbox:</strong> Instant fullscreen zoom and preview for PNG, JPEG, GIF, WebP, and SVG files with backdrop dimming.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Direct Native Presentation Downloads:</strong> Clean, direct downloads for PowerPoint (PPT, PPTX) files, ensuring 100% visual fidelity in native Microsoft PowerPoint, Keynote, WPS Office, and Google Slides.
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- Milestone: November 1, 2026 -->
+        <article class="timeline-item">
+          <div class="timeline-node" aria-hidden="true">
+            <div class="timeline-node-inner"></div>
+          </div>
+          <div class="timeline-card">
+            <div class="timeline-meta">
+              <div class="timeline-meta-left">
+                <span class="timeline-date">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  November 1, 2026
+                </span>
+                <span class="timeline-version-pill">v2.4</span>
+              </div>
+            </div>
+            <h2>Live Transfer Append &amp; Multi-App Staging Drafts</h2>
+            <div class="timeline-tags">
+              <span class="timeline-tag timeline-tag--feature">Live Append</span>
+              <span class="timeline-tag timeline-tag--speed">WebSocket Sync</span>
+              <span class="timeline-tag timeline-tag--mobile">Multi-App Staging</span>
+            </div>
+            <ul class="timeline-features">
+              <li class="timeline-feature-item">
+                <strong>Append Files to Active Transfers:</strong> Senders can upload additional files to an ongoing transfer directly from the QR code screen without generating a new code or losing receiver connection.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Real-Time Receiver Synchronization:</strong> Receivers connected via WebSocket or polling immediately observe newly appended files appear dynamically with live progress indicators.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Multi-App File Staging Draft:</strong> Stage files across separate mobile apps (e.g. WhatsApp, Gallery, File Manager) onto your workbench without resetting draft selections.
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- Milestone: October 20, 2026 -->
+        <article class="timeline-item">
+          <div class="timeline-node" aria-hidden="true">
+            <div class="timeline-node-inner"></div>
+          </div>
+          <div class="timeline-card">
+            <div class="timeline-meta">
+              <div class="timeline-meta-left">
+                <span class="timeline-date">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  October 20, 2026
+                </span>
+                <span class="timeline-version-pill">v2.3</span>
+              </div>
+            </div>
+            <h2>Android Web Share Target &amp; Unified Account Dropdown</h2>
+            <div class="timeline-tags">
+              <span class="timeline-tag timeline-tag--mobile">Android Share</span>
+              <span class="timeline-tag timeline-tag--feature">User Profile</span>
+              <span class="timeline-tag timeline-tag--speed">Vector Icons</span>
+            </div>
+            <ul class="timeline-features">
+              <li class="timeline-feature-item">
+                <strong>Native Android Share Sheet:</strong> Streamlined Web Share Target pipeline eliminating connection errors when sharing files directly from WhatsApp, Gallery, or Chrome to LabDrop.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Consolidated User Menu:</strong> Clean profile menu consolidating 7-day saved transfers and session controls into an accessible navigation pill.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Laboratory Vector Icons:</strong> Replaced generic system emojis across desktop and mobile views with crisp, scalable SVG icons.
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- Milestone: October 15, 2026 -->
+        <article class="timeline-item">
+          <div class="timeline-node" aria-hidden="true">
+            <div class="timeline-node-inner"></div>
+          </div>
+          <div class="timeline-card">
+            <div class="timeline-meta">
+              <div class="timeline-meta-left">
+                <span class="timeline-date">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  October 15, 2026
+                </span>
+                <span class="timeline-version-pill">v2.2</span>
+              </div>
+            </div>
+            <h2>LabDrop AI Beta Companion &amp; Exam PIN Protection</h2>
+            <div class="timeline-tags">
+              <span class="timeline-tag timeline-tag--feature">LabDrop AI</span>
+              <span class="timeline-tag timeline-tag--security">PIN Protection</span>
+              <span class="timeline-tag timeline-tag--feature">Viva Prep</span>
+            </div>
+            <ul class="timeline-features">
+              <li class="timeline-feature-item">
+                <strong>LabDrop AI Companion:</strong> Interactive laboratory assistant offering viva exam question preparation, automated record formatting, and code explanation.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>PIN-Secured Transfers:</strong> Optional 4-digit numeric protection for sensitive practical exam files and assignment submissions.
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- Milestone: October 5, 2026 -->
+        <article class="timeline-item">
+          <div class="timeline-node" aria-hidden="true">
+            <div class="timeline-node-inner"></div>
+          </div>
+          <div class="timeline-card">
+            <div class="timeline-meta">
+              <div class="timeline-meta-left">
+                <span class="timeline-date">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  October 5, 2026
+                </span>
+                <span class="timeline-version-pill">v2.0</span>
+              </div>
+            </div>
+            <h2>250MB File Limits &amp; S3 Direct Upload Engine</h2>
+            <div class="timeline-tags">
+              <span class="timeline-tag timeline-tag--speed">Capacity 1GB</span>
+              <span class="timeline-tag timeline-tag--speed">S3 Presigned</span>
+              <span class="timeline-tag timeline-tag--feature">Homepage Receive</span>
+            </div>
+            <ul class="timeline-features">
+              <li class="timeline-feature-item">
+                <strong>Capacity Expansion:</strong> Increased single-file upload allowance to 250 MB, up to 30 files, and 1 GB total transfer capacity per session.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Direct Cloud Upload Pipeline:</strong> Presigned upload architecture engineered to handle high-concurrency transfers across campus networks.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Homepage Quick Receive:</strong> Dedicated transfer code entry and camera QR scanner mounted directly on the primary workspace.
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- Milestone: September 18 – October 4, 2026 -->
+        <article class="timeline-item">
+          <div class="timeline-node" aria-hidden="true">
+            <div class="timeline-node-inner"></div>
+          </div>
+          <div class="timeline-card">
+            <div class="timeline-meta">
+              <div class="timeline-meta-left">
+                <span class="timeline-date">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  September 18 – October 4, 2026
+                </span>
+                <span class="timeline-version-pill">v1.5</span>
+              </div>
+            </div>
+            <h2>Mobile ZIP Archiving, Square Scanner &amp; PWA</h2>
+            <div class="timeline-tags">
+              <span class="timeline-tag timeline-tag--mobile">Mobile ZIP</span>
+              <span class="timeline-tag timeline-tag--feature">QR Viewfinder</span>
+              <span class="timeline-tag timeline-tag--mobile">PWA Offline</span>
+            </div>
+            <ul class="timeline-features">
+              <li class="timeline-feature-item">
+                <strong>Cross-Platform ZIP Downloads:</strong> Reliable uncompressed stream delivery for 1-click Download All ZIP archives on iOS and Android.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Square QR Scanner:</strong> Centered mobile camera viewfinder with active laser scanning beam and target guide indicators.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Progressive Web App:</strong> Installable web application with amber laboratory styling, offline assets, and full-screen mobile support.
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- Milestone: August 29 – September 11, 2026 -->
+        <article class="timeline-item">
+          <div class="timeline-node" aria-hidden="true">
+            <div class="timeline-node-inner"></div>
+          </div>
+          <div class="timeline-card">
+            <div class="timeline-meta">
+              <div class="timeline-meta-left">
+                <span class="timeline-date">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  August 29 – September 11, 2026
+                </span>
+                <span class="timeline-version-pill">v1.0</span>
+              </div>
+            </div>
+            <h2>Foundational Architecture &amp; Ephemeral Privacy</h2>
+            <div class="timeline-tags">
+              <span class="timeline-tag timeline-tag--security">Zero Login</span>
+              <span class="timeline-tag timeline-tag--speed">30-Min Auto-Purge</span>
+              <span class="timeline-tag timeline-tag--feature">7-Day Cloud</span>
+            </div>
+            <ul class="timeline-features">
+              <li class="timeline-feature-item">
+                <strong>Zero-Login QR File Drop:</strong> High-speed computer-to-phone transfer mechanism removing the need to log into personal accounts on shared lab PCs.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Idempotent 30-Minute Auto-Purge:</strong> Server-side automated file destruction after 30 minutes, keeping shared university computer environments secure.
+              </li>
+              <li class="timeline-feature-item">
+                <strong>Save for Later Cloud Workspace:</strong> Seven-day optional cloud retention enabling registered students to store and retrieve assignments across devices.
+              </li>
+            </ul>
+          </div>
+        </article>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Global Footer -->
+  <footer class="footer" style="margin-top: auto; padding-top: var(--space-2xl); padding-bottom: var(--space-md); text-align: left; color: #4b5563; font-size: 0.85rem;">
+    <div style="display: flex; justify-content: flex-start; align-items: center; gap: 8px; flex-wrap: wrap; color: #9ca3af; font-size: 0.85rem;">
+      <a href="/" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Home</a>
+      <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
+      <a href="/whats-new.html" class="nav-link" style="color: var(--color-primary-dark); text-decoration: none; font-weight: 700;">What's New</a>
+      <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
+      <a href="/how-to-use.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">How to Use</a>
+      <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
+      <a href="/about.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">About</a>
+      <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
+      <a href="/security.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Security</a>
+      <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
+      <a href="/privacy.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Privacy Policy</a>
+      <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
+      <a href="/terms.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Terms</a>
+      <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
+      <a href="/contact.html" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">Contact</a>
+      <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
+      <a href="mailto:yuvaankaarthikeyaa.1206@gmail.com" class="nav-link footer-email-link" style="color: #374151; text-decoration: none; font-weight: 600;">Email Support</a>
+      <span aria-hidden="true" style="color: #9ca3af; user-select: none;">|</span>
+      <a href="https://github.com/karthik008-cod/LabDrop" target="_blank" rel="noopener noreferrer" class="nav-link" style="color: #374151; text-decoration: none; font-weight: 600;">GitHub</a>
+    </div>
+    <div class="footer-copy" style="margin-top: 8px; color: #4b5563;">
+      &copy; 2026 Yuvaan Kaarthikeyaa Adulapuram &bull; <a href="https://labdrop.online" style="color: #4b5563; text-decoration: underline;">labdrop.online</a> &bull; All Rights Reserved.
+    </div>
+  </footer>
+
+  <script src="/js/dialogs.js" defer></script>
+</body>
+</html>
