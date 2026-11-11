@@ -33,17 +33,56 @@
   const requirePinCheck = $('#requirePin');
   const customPinContainer = $('#customPinContainer');
   const customPinInput = $('#customPin');
+  const workbenchCustomCode = $('#workbenchCustomCode');
 
-  requirePinCheck.addEventListener('change', () => {
-    if (requirePinCheck.checked) {
-      customPinContainer.style.maxHeight = '60px';
-      customPinContainer.style.opacity = '1';
-    } else {
-      customPinContainer.style.maxHeight = '0';
-      customPinContainer.style.opacity = '0';
-      customPinInput.value = '';
-    }
-  });
+  // Custom Transfer Code & Options Modal elements
+  const customCodeModal = $('#customCodeModal');
+  const customCodeModalClose = $('#customCodeModalClose');
+  const customCodeModalItemsCount = $('#customCodeModalItemsCount');
+  const modalModeQuick = $('#modalModeQuick');
+  const modalModeSave = $('#modalModeSave');
+  const modalTransferName = $('#modalTransferName');
+  const modalCustomCodeInput = $('#modalCustomCodeInput');
+  const modalClearCustomCodeBtn = $('#modalClearCustomCodeBtn');
+  const modalCodeStatus = $('#modalCodeStatus');
+  const modalRequirePin = $('#modalRequirePin');
+  const modalCustomPinContainer = $('#modalCustomPinContainer');
+  const modalCustomPin = $('#modalCustomPin');
+  const modalPinError = $('#modalPinError');
+  const modalConfirmTransferBtn = $('#modalConfirmTransferBtn');
+  const modalConfirmTransferBtnText = $('#modalConfirmTransferBtnText');
+  const modalConfirmTransferBtnIcon = $('#modalConfirmTransferBtnIcon');
+  const modalCancelTransferBtn = $('#modalCancelTransferBtn');
+
+  if (requirePinCheck) {
+    requirePinCheck.addEventListener('change', () => {
+      const isChecked = requirePinCheck.checked;
+      if (customPinContainer) {
+        if (isChecked) {
+          customPinContainer.style.maxHeight = '60px';
+          customPinContainer.style.opacity = '1';
+        } else {
+          customPinContainer.style.maxHeight = '0';
+          customPinContainer.style.opacity = '0';
+          if (customPinInput) customPinInput.value = '';
+        }
+      }
+      if (modalRequirePin) {
+        modalRequirePin.checked = isChecked;
+        if (modalCustomPinContainer) {
+          modalCustomPinContainer.style.display = isChecked ? 'block' : 'none';
+        }
+        if (!isChecked && modalCustomPin) modalCustomPin.value = '';
+      }
+    });
+  }
+
+  if (customPinInput) {
+    customPinInput.addEventListener('input', () => {
+      customPinInput.value = customPinInput.value.replace(/\D/g, '').slice(0, 6);
+      if (modalCustomPin) modalCustomPin.value = customPinInput.value;
+    });
+  }
 
   const progressBarFill = $('#progressBarFill');
   const progressText = $('#progressText');
@@ -752,12 +791,16 @@
       return;
     }
     transferMode = mode;
-    modeQuick.classList.toggle('active', mode === 'quick');
-    modeSave.classList.toggle('active', mode === 'save');
+    if (modeQuick) modeQuick.classList.toggle('active', mode === 'quick');
+    if (modeSave) modeSave.classList.toggle('active', mode === 'save');
+    if (modalModeQuick) modalModeQuick.classList.toggle('active', mode === 'quick');
+    if (modalModeSave) modalModeSave.classList.toggle('active', mode === 'save');
   }
 
-  modeQuick.addEventListener('click', () => setTransferMode('quick'));
-  modeSave.addEventListener('click', () => setTransferMode('save'));
+  if (modeQuick) modeQuick.addEventListener('click', () => setTransferMode('quick'));
+  if (modeSave) modeSave.addEventListener('click', () => setTransferMode('save'));
+  if (modalModeQuick) modalModeQuick.addEventListener('click', () => setTransferMode('quick'));
+  if (modalModeSave) modalModeSave.addEventListener('click', () => setTransferMode('save'));
 
   // ---- Render selected file list ----
   function renderFileList() {
@@ -1322,6 +1365,390 @@
     }
   });
 
+  // ---- Custom Transfer Code Modal Logic ----
+  let checkCodeDebounceTimer = null;
+  let currentCodeCheckState = { code: '', available: false, checking: false };
+
+  function openCustomCodeModal() {
+    if (!customCodeModal) {
+      executeTransferUpload(workbenchCustomCode ? workbenchCustomCode.value.trim().toUpperCase() : null);
+      return;
+    }
+
+    const allFiles = getAllFiles();
+    const allLinks = getAllLinks();
+
+    if (customCodeModalItemsCount) {
+      const parts = [];
+      if (allFiles.length > 0) parts.push(`${allFiles.length} file${allFiles.length !== 1 ? 's' : ''}`);
+      if (allLinks.length > 0) parts.push(`${allLinks.length} note/link${allLinks.length !== 1 ? 's' : ''}`);
+      customCodeModalItemsCount.textContent = parts.join(' · ') || '1 item';
+    }
+
+    // Sync Transfer Mode buttons in modal
+    if (modalModeQuick) modalModeQuick.classList.toggle('active', transferMode === 'quick');
+    if (modalModeSave) modalModeSave.classList.toggle('active', transferMode === 'save');
+
+    // Sync Transfer Name from workbench
+    if (modalTransferName && transferNameInput) {
+      modalTransferName.value = transferNameInput.value.trim();
+    }
+
+    // Sync Custom Code from workbench
+    const codeToSet = workbenchCustomCode ? workbenchCustomCode.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+    if (modalCustomCodeInput) {
+      modalCustomCodeInput.value = codeToSet;
+    }
+
+    // Sync PIN from workbench
+    if (modalRequirePin && requirePinCheck) {
+      modalRequirePin.checked = requirePinCheck.checked;
+      if (modalCustomPinContainer) {
+        modalCustomPinContainer.style.display = requirePinCheck.checked ? 'block' : 'none';
+      }
+    }
+    if (modalCustomPin && customPinInput) {
+      modalCustomPin.value = customPinInput.value.trim();
+    }
+    if (modalPinError) modalPinError.style.display = 'none';
+
+    customCodeModal.classList.add('active');
+    updateModalCodeUI(codeToSet);
+
+    setTimeout(() => {
+      if (modalCustomCodeInput) {
+        modalCustomCodeInput.focus();
+        if (codeToSet) modalCustomCodeInput.select();
+      }
+    }, 60);
+  }
+
+  function closeCustomCodeModal() {
+    if (customCodeModal) customCodeModal.classList.remove('active');
+    if (checkCodeDebounceTimer) clearTimeout(checkCodeDebounceTimer);
+  }
+
+  function updateModalCodeUI(val) {
+    if (checkCodeDebounceTimer) clearTimeout(checkCodeDebounceTimer);
+
+    if (modalClearCustomCodeBtn) {
+      modalClearCustomCodeBtn.style.display = val.length > 0 ? 'flex' : 'none';
+    }
+
+    if (modalCustomCodeInput) {
+      modalCustomCodeInput.classList.remove('is-valid', 'is-invalid');
+    }
+
+    if (!val) {
+      currentCodeCheckState = { code: '', available: true, checking: false };
+      if (modalCodeStatus) {
+        modalCodeStatus.innerHTML = `
+          <div class="code-status-default">
+            <svg class="code-status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span class="code-status-text">Leave blank to auto-generate a code (press <strong>Enter</strong> to proceed).</span>
+          </div>
+        `;
+      }
+      if (modalConfirmTransferBtnIcon) {
+        modalConfirmTransferBtnIcon.innerHTML = `
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        `;
+      }
+      if (modalConfirmTransferBtnText) {
+        modalConfirmTransferBtnText.textContent = 'Auto-Generate Code & Transfer';
+      }
+      return;
+    }
+
+    if (val.length < 4) {
+      currentCodeCheckState = { code: val, available: false, checking: false };
+      if (modalCustomCodeInput) modalCustomCodeInput.classList.add('is-invalid');
+      if (modalCodeStatus) {
+        modalCodeStatus.innerHTML = `
+          <div class="code-status-checking">
+            <svg class="code-status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span class="code-status-text">Code must be at least 4 alphanumeric characters (${val.length}/4).</span>
+          </div>
+        `;
+      }
+      if (modalConfirmTransferBtnIcon) {
+        modalConfirmTransferBtnIcon.innerHTML = `
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        `;
+      }
+      if (modalConfirmTransferBtnText) {
+        modalConfirmTransferBtnText.textContent = `Needs ${4 - val.length} more char${4 - val.length > 1 ? 's' : ''}`;
+      }
+      return;
+    }
+
+    // Length >= 4
+    currentCodeCheckState = { code: val, available: false, checking: true };
+    if (modalCodeStatus) {
+      modalCodeStatus.innerHTML = `
+        <div class="code-status-checking">
+          <svg class="code-status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 6v6l4 2"></path>
+          </svg>
+          <span class="code-status-text">Checking availability for "<strong>${escapeHtml(val)}</strong>"…</span>
+        </div>
+      `;
+    }
+    if (modalConfirmTransferBtnText) {
+      modalConfirmTransferBtnText.textContent = `Checking "${val}"…`;
+    }
+
+    checkCodeDebounceTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/transfer/check-code/${encodeURIComponent(val)}`);
+        const data = await res.json();
+        
+        // Ensure user hasn't changed input during fetch
+        if (modalCustomCodeInput && modalCustomCodeInput.value.trim() !== val) return;
+
+        if (res.ok && data.available) {
+          currentCodeCheckState = { code: val, available: true, checking: false };
+          if (modalCustomCodeInput) {
+            modalCustomCodeInput.classList.add('is-valid');
+            modalCustomCodeInput.classList.remove('is-invalid');
+          }
+          if (modalCodeStatus) {
+            modalCodeStatus.innerHTML = `
+              <div class="code-status-available">
+                <svg class="code-status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span class="code-status-text">"<strong>${escapeHtml(val)}</strong>" is available!</span>
+              </div>
+            `;
+          }
+          if (modalConfirmTransferBtnIcon) {
+            modalConfirmTransferBtnIcon.innerHTML = `
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            `;
+          }
+          if (modalConfirmTransferBtnText) {
+            modalConfirmTransferBtnText.textContent = `Create with Code "${val}"`;
+          }
+        } else {
+          currentCodeCheckState = { code: val, available: false, checking: false };
+          if (modalCustomCodeInput) {
+            modalCustomCodeInput.classList.add('is-invalid');
+            modalCustomCodeInput.classList.remove('is-valid');
+          }
+          if (modalCodeStatus) {
+            modalCodeStatus.innerHTML = `
+              <div class="code-status-error">
+                <svg class="code-status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="15" y1="9" x2="9" y2="15"></line>
+                  <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+                <span class="code-status-text">${escapeHtml(data.error || 'This code is already taken.')}</span>
+              </div>
+            `;
+          }
+          if (modalConfirmTransferBtnIcon) {
+            modalConfirmTransferBtnIcon.innerHTML = `
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            `;
+          }
+          if (modalConfirmTransferBtnText) {
+            modalConfirmTransferBtnText.textContent = 'Code already in use';
+          }
+        }
+      } catch (err) {
+        if (modalCustomCodeInput && modalCustomCodeInput.value.trim() !== val) return;
+        currentCodeCheckState = { code: val, available: false, checking: false };
+        if (modalCodeStatus) {
+          modalCodeStatus.innerHTML = `
+            <div class="code-status-error">
+              <svg class="code-status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span class="code-status-text">Network error checking code. Try another code or auto-generate.</span>
+            </div>
+          `;
+        }
+      }
+    }, 280);
+  }
+
+  function handleModalConfirmTransfer() {
+    // 1. Validate PIN if enabled
+    if (modalRequirePin && modalRequirePin.checked) {
+      const pinVal = modalCustomPin ? modalCustomPin.value.trim() : '';
+      if (!pinVal || pinVal.length !== 6 || !/^\d{6}$/.test(pinVal)) {
+        if (modalPinError) modalPinError.style.display = 'block';
+        if (modalCustomPin) {
+          modalCustomPin.classList.add('shake');
+          modalCustomPin.focus();
+          setTimeout(() => modalCustomPin.classList.remove('shake'), 350);
+        }
+        return;
+      }
+      if (requirePinCheck) requirePinCheck.checked = true;
+      if (customPinInput) customPinInput.value = pinVal;
+    } else {
+      if (requirePinCheck) requirePinCheck.checked = false;
+      if (customPinInput) customPinInput.value = '';
+    }
+
+    // 2. Sync Transfer Name
+    if (modalTransferName && transferNameInput) {
+      transferNameInput.value = modalTransferName.value.trim();
+    }
+
+    // 3. Custom Code validation
+    const val = modalCustomCodeInput ? modalCustomCodeInput.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+
+    if (!val) {
+      // Auto-generate code
+      closeCustomCodeModal();
+      if (workbenchCustomCode) workbenchCustomCode.value = '';
+      executeTransferUpload(null);
+      return;
+    }
+
+    if (val.length < 4) {
+      if (modalCustomCodeInput) {
+        modalCustomCodeInput.classList.add('shake');
+        modalCustomCodeInput.focus();
+        setTimeout(() => modalCustomCodeInput.classList.remove('shake'), 350);
+      }
+      return;
+    }
+
+    if (currentCodeCheckState.checking) {
+      return; // wait for check to resolve
+    }
+
+    if (!currentCodeCheckState.available) {
+      if (modalCustomCodeInput) {
+        modalCustomCodeInput.classList.add('shake');
+        modalCustomCodeInput.focus();
+        setTimeout(() => modalCustomCodeInput.classList.remove('shake'), 350);
+      }
+      return;
+    }
+
+    // Valid and available custom code
+    closeCustomCodeModal();
+    if (workbenchCustomCode) workbenchCustomCode.value = val;
+    executeTransferUpload(val);
+  }
+
+  if (customCodeModalClose) {
+    customCodeModalClose.addEventListener('click', closeCustomCodeModal);
+  }
+  if (modalCancelTransferBtn) {
+    modalCancelTransferBtn.addEventListener('click', closeCustomCodeModal);
+  }
+  if (customCodeModal) {
+    customCodeModal.addEventListener('click', (e) => {
+      if (e.target === customCodeModal) closeCustomCodeModal();
+    });
+  }
+  if (modalClearCustomCodeBtn) {
+    modalClearCustomCodeBtn.addEventListener('click', () => {
+      if (modalCustomCodeInput) {
+        modalCustomCodeInput.value = '';
+        if (workbenchCustomCode) workbenchCustomCode.value = '';
+        updateModalCodeUI('');
+        modalCustomCodeInput.focus();
+      }
+    });
+  }
+  if (modalConfirmTransferBtn) {
+    modalConfirmTransferBtn.addEventListener('click', handleModalConfirmTransfer);
+  }
+  if (modalCustomCodeInput) {
+    modalCustomCodeInput.addEventListener('input', () => {
+      const cleaned = modalCustomCodeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      modalCustomCodeInput.value = cleaned;
+      if (workbenchCustomCode) workbenchCustomCode.value = cleaned;
+      updateModalCodeUI(cleaned);
+    });
+    modalCustomCodeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleModalConfirmTransfer();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeCustomCodeModal();
+      }
+    });
+  }
+  if (modalTransferName) {
+    modalTransferName.addEventListener('input', () => {
+      if (transferNameInput) transferNameInput.value = modalTransferName.value;
+    });
+    modalTransferName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleModalConfirmTransfer();
+      }
+    });
+  }
+  if (modalRequirePin) {
+    modalRequirePin.addEventListener('change', () => {
+      const isChecked = modalRequirePin.checked;
+      if (modalCustomPinContainer) {
+        modalCustomPinContainer.style.display = isChecked ? 'block' : 'none';
+      }
+      if (modalPinError) modalPinError.style.display = 'none';
+      if (requirePinCheck) {
+        requirePinCheck.checked = isChecked;
+        if (customPinContainer) {
+          customPinContainer.style.maxHeight = isChecked ? '60px' : '0';
+          customPinContainer.style.opacity = isChecked ? '1' : '0';
+        }
+      }
+      if (isChecked && modalCustomPin) {
+        modalCustomPin.focus();
+      } else if (!isChecked) {
+        if (modalCustomPin) modalCustomPin.value = '';
+        if (customPinInput) customPinInput.value = '';
+      }
+    });
+  }
+  if (modalCustomPin) {
+    modalCustomPin.addEventListener('input', () => {
+      modalCustomPin.value = modalCustomPin.value.replace(/\D/g, '').slice(0, 6);
+      if (customPinInput) customPinInput.value = modalCustomPin.value;
+      if (modalPinError) modalPinError.style.display = 'none';
+    });
+    modalCustomPin.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleModalConfirmTransfer();
+      }
+    });
+  }
+  if (workbenchCustomCode) {
+    workbenchCustomCode.addEventListener('input', () => {
+      const cleaned = workbenchCustomCode.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      workbenchCustomCode.value = cleaned;
+      if (modalCustomCodeInput) modalCustomCodeInput.value = cleaned;
+    });
+  }
+  if (transferNameInput) {
+    transferNameInput.addEventListener('input', () => {
+      if (modalTransferName) modalTransferName.value = transferNameInput.value;
+    });
+  }
+
   // ---- Create Transfer ----
   createTransferBtn.addEventListener('click', async () => {
     if (!hasAnyContent()) {
@@ -1353,24 +1780,19 @@
       return;
     }
 
-    if (requirePinCheck.checked) {
-      const customPinValue = customPinInput.value.trim();
-      if (customPinValue.length > 0) {
-        if (customPinValue.length !== 6 || !/^\d+$/.test(customPinValue)) {
-          customPinInput.classList.add('shake');
-          setTimeout(() => customPinInput.classList.remove('shake'), 300);
-          showAlert('Custom PIN must be exactly 6 digits.');
-          return;
-        }
-      }
-    }
+    // Always pop up the transfer options dialogue box
+    openCustomCodeModal();
+  });
+
+  // ---- Execute Transfer Upload (Direct S3 or Relayed Fallback) ----
+  async function executeTransferUpload(customCode) {
+    const allFiles = getAllFiles();
+    const allLinks = getAllLinks();
 
     if (paperJetGlider) paperJetGlider.style.left = '0%';
     if (progressBarFill) progressBarFill.style.width = '0%';
     showSection(uploadSection);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    const allLinks = getAllLinks();
 
     // Build folder structure map: { filename -> folderName }
     const folderStructure = {};
@@ -1402,20 +1824,22 @@
           type: f.type || 'application/octet-stream'
         }));
 
+        const resolvedName = (modalTransferName && modalTransferName.value.trim()) || (transferNameInput && transferNameInput.value.trim()) || undefined;
+        const resolvedRequirePin = modalRequirePin ? modalRequirePin.checked : (requirePinCheck ? requirePinCheck.checked : false);
+        const resolvedPinVal = (modalCustomPin && modalCustomPin.value.trim()) || (customPinInput && customPinInput.value.trim()) || '';
+
         const initPayload = {
           files: filesMeta,
           links: allLinks,
           folderStructure,
-          transferName: transferNameInput.value.trim() || undefined,
-          requirePin: requirePinCheck.checked,
+          transferName: resolvedName,
+          customCode: customCode || undefined,
+          requirePin: resolvedRequirePin,
           saveForLater: transferMode === 'save'
         };
 
-        if (requirePinCheck.checked) {
-          const customPinValue = customPinInput.value.trim();
-          if (customPinValue.length === 6 && /^\d+$/.test(customPinValue)) {
-            initPayload.customPin = customPinValue;
-          }
+        if (resolvedRequirePin && resolvedPinVal.length === 6 && /^\d+$/.test(resolvedPinVal)) {
+          initPayload.customPin = resolvedPinVal;
         }
 
         const initRes = await fetch('/api/upload/initiate', {
@@ -1515,15 +1939,19 @@
         if (Object.keys(folderStructure).length > 0) {
           formData.append('folderStructure', JSON.stringify(folderStructure));
         }
-        if (transferNameInput.value.trim()) {
-          formData.append('transferName', transferNameInput.value.trim());
+        const fallbackName = (modalTransferName && modalTransferName.value.trim()) || (transferNameInput && transferNameInput.value.trim()) || '';
+        const fallbackRequirePin = modalRequirePin ? modalRequirePin.checked : (requirePinCheck ? requirePinCheck.checked : false);
+        const fallbackPinVal = (modalCustomPin && modalCustomPin.value.trim()) || (customPinInput && customPinInput.value.trim()) || '';
+
+        if (fallbackName) {
+          formData.append('transferName', fallbackName);
         }
-        formData.append('requirePin', requirePinCheck.checked ? 'true' : 'false');
-        if (requirePinCheck.checked) {
-          const customPinValue = customPinInput.value.trim();
-          if (customPinValue.length === 6 && /^\d+$/.test(customPinValue)) {
-            formData.append('customPin', customPinValue);
-          }
+        if (customCode) {
+          formData.append('customCode', customCode);
+        }
+        formData.append('requirePin', fallbackRequirePin ? 'true' : 'false');
+        if (fallbackRequirePin && fallbackPinVal.length === 6 && /^\d+$/.test(fallbackPinVal)) {
+          formData.append('customPin', fallbackPinVal);
         }
         if (transferMode === 'save') {
           formData.append('saveForLater', 'true');
@@ -1571,7 +1999,7 @@
       showSection(selectSection);
       showAlert(err.message);
     }
-  });
+  }
 
   // ---- Show QR / Transfer View ----
   function showTransferView(data) {
@@ -2163,8 +2591,19 @@
     folders = [];
     activeFolderId = null;
     clearWorkbenchDraft();
-    transferNameInput.value = '';
-    requirePinCheck.checked = false;
+    if (transferNameInput) transferNameInput.value = '';
+    if (requirePinCheck) requirePinCheck.checked = false;
+    if (customPinInput) customPinInput.value = '';
+    if (customPinContainer) {
+      customPinContainer.style.maxHeight = '0';
+      customPinContainer.style.opacity = '0';
+    }
+    if (workbenchCustomCode) workbenchCustomCode.value = '';
+    if (modalTransferName) modalTransferName.value = '';
+    if (modalRequirePin) modalRequirePin.checked = false;
+    if (modalCustomPin) modalCustomPin.value = '';
+    if (modalCustomPinContainer) modalCustomPinContainer.style.display = 'none';
+    if (modalCustomCodeInput) modalCustomCodeInput.value = '';
     renderFileList();
     progressBarFill.style.width = '0%';
     if (paperJetGlider) paperJetGlider.style.left = '0%';
@@ -2175,6 +2614,12 @@
 
   // ---- Receive Form Logic ----
   const homeScanQrBtn = document.getElementById('homeScanQrBtn');
+
+  if (receiveCodeInput) {
+    receiveCodeInput.addEventListener('input', () => {
+      receiveCodeInput.value = receiveCodeInput.value.toUpperCase();
+    });
+  }
 
   receiveForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -2217,7 +2662,7 @@
     if (submitBtn) submitBtn.disabled = true;
     
     try {
-      const res = await fetch(`/api/transfer/code/${code}`);
+      const res = await fetch(`/api/transfer/code/${encodeURIComponent(code)}`);
       const data = await res.json();
       if (res.ok && data.id) {
         window.location.href = `/t/${data.id}`;

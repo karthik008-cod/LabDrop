@@ -24,7 +24,7 @@ const fileSchema = new mongoose.Schema({
 
 const transferSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
-  shortCode: { type: String, required: true },
+  shortCode: { type: String, required: true, index: true },
   transferName: String,
   pinHash: String,
   failedPinAttempts: { type: Number, default: 0 },
@@ -112,6 +112,16 @@ module.exports = {
     },
     find: async (query) => {
       return await Transfer.find(query).lean();
+    },
+    findByActiveCode: async (code) => {
+      if (!code) return null;
+      const upper = String(code).trim().toUpperCase();
+      const now = Date.now();
+      return await Transfer.findOne({
+        shortCode: upper,
+        status: { $ne: 'EXPIRED' },
+        expiresAt: { $gt: now }
+      }).lean();
     },
     saveAll: async () => { /* No-op for MongoDB */ },
     getNextSequence: async (timeBlockId) => {

@@ -113,7 +113,70 @@ function sanitizeFilename(filename) {
 }
 
 // ============================================================
-// Removed generateShortCode in favor of deterministic atomic short codes
+// Utility: Transfer Code Allocation (Custom & Atomic Collision-Free)
+// ============================================================
+
+async function allocateTransferCode(requestedCustomCode) {
+  // If user provided a custom code
+  if (requestedCustomCode !== undefined && requestedCustomCode !== null) {
+    const code = String(requestedCustomCode).trim().toUpperCase();
+    if (code.length > 0) {
+      if (code.length < 4) {
+        const err = new Error('Custom transfer code must be at least 4 characters long.');
+        err.statusCode = 400;
+        throw err;
+      }
+      if (code.length > 20) {
+        const err = new Error('Custom transfer code cannot exceed 20 characters.');
+        err.statusCode = 400;
+        throw err;
+      }
+      if (!/^[A-Z0-9]+$/.test(code)) {
+        const err = new Error('Custom transfer code must contain only uppercase letters and numbers (alphanumeric).');
+        err.statusCode = 400;
+        throw err;
+      }
+      const existing = await storage.transfers.findByActiveCode(code);
+      if (existing) {
+        const err = new Error(`Transfer code "${code}" is already in use by an active transfer. Please choose another code.`);
+        err.statusCode = 409;
+        throw err;
+      }
+      return code;
+    }
+  }
+
+  // Normal deterministic algorithm
+  const now = Date.now();
+  const d = new Date(now);
+  const daysSinceEpoch = Math.floor(now / (1000 * 60 * 60 * 24));
+  const dayCycle = (daysSinceEpoch % 9) + 1; // 1 to 9
+  
+  const startOfDay = new Date(d).setHours(0, 0, 0, 0);
+  const secondsOfDay = Math.floor((now - startOfDay) / 1000);
+  const timeBlock = Math.floor(secondsOfDay / 900);
+  
+  const timeBlockId = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}-block-${timeBlock}`;
+  const sequence = await storage.transfers.getNextSequence(timeBlockId);
+  let candidate = `${dayCycle}${timeBlock}${sequence}`;
+
+  // If candidate is already taken by an active transfer (e.g. custom code collision),
+  // increment it until an available code is found
+  while (await storage.transfers.findByActiveCode(candidate)) {
+    if (/^\d+$/.test(candidate)) {
+      candidate = String(BigInt(candidate) + 1n);
+    } else {
+      const match = candidate.match(/^(.*?)(\d+)$/);
+      if (match) {
+        candidate = match[1] + String(BigInt(match[2]) + 1n);
+      } else {
+        candidate = candidate + '1';
+      }
+    }
+  }
+
+  return candidate;
+}
 
 // ============================================================
 // Utility: Get file icon category
@@ -1097,17 +1160,13 @@ app.post('/api/upload/initiate', optionalAuth, async (req, res) => {
 
     const transferId = uuidv4();
     const now = Date.now();
-    const d = new Date(now);
-    const daysSinceEpoch = Math.floor(now / (1000 * 60 * 60 * 24));
-    const dayCycle = (daysSinceEpoch % 9) + 1; // 1 to 9
-    
-    const startOfDay = new Date(d).setHours(0,0,0,0);
-    const secondsOfDay = Math.floor((now - startOfDay) / 1000);
-    const timeBlock = Math.floor(secondsOfDay / 900);
-    
-    const timeBlockId = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}-block-${timeBlock}`;
-    const sequence = await storage.transfers.getNextSequence(timeBlockId);
-    const shortCode = `${dayCycle}${timeBlock}${sequence}`;
+
+    let shortCode;
+    try {
+      shortCode = await allocateTransferCode(req.body.customCode || req.body.transferCode);
+    } catch (codeErr) {
+      return res.status(codeErr.statusCode || 400).json({ error: codeErr.message });
+    }
 
     let expiresAt = now + CONFIG.TRANSFER_EXPIRY_MINUTES * 60 * 1000;
     let isSavedForLater = false;
@@ -1393,20 +1452,14 @@ app.post('/api/upload', optionalAuth, (req, res) => {
     }
 
     const transferId = req.transferId;
-    
     const now = Date.now();
-    const d = new Date(now);
-    const daysSinceEpoch = Math.floor(now / (1000 * 60 * 60 * 24));
-    const dayCycle = (daysSinceEpoch % 9) + 1; // 1 to 9
-    
-    const startOfDay = new Date(d).setHours(0,0,0,0);
-    const secondsOfDay = Math.floor((now - startOfDay) / 1000);
-    const timeBlock = Math.floor(secondsOfDay / 900);
-    
-    // timeBlockId uses full date so the sequence resets to 1 every day for that time block
-    const timeBlockId = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}-block-${timeBlock}`;
-    const sequence = await storage.transfers.getNextSequence(timeBlockId);
-    const shortCode = `${dayCycle}${timeBlock}${sequence}`;
+
+    let shortCode;
+    try {
+      shortCode = await allocateTransferCode(req.body.customCode || req.body.transferCode);
+    } catch (codeErr) {
+      return res.status(codeErr.statusCode || 400).json({ error: codeErr.message });
+    }
 
     let expiresAt = now + CONFIG.TRANSFER_EXPIRY_MINUTES * 60 * 1000;
     
@@ -1806,20 +1859,53 @@ app.get('/download/:transferId/:fileId', async (req, res) => {
   }
 });
 
+// --- Check custom short code availability in real-time ---
+app.get('/api/transfer/check-code/:code', async (req, res) => {
+  const code = (req.params.code || '').trim().toUpperCase();
+  if (!code || code.length < 4) {
+    return res.status(400).json({ available: false, error: 'Custom code must be at least 4 characters long.' });
+  }
+  if (code.length > 20) {
+    return res.status(400).json({ available: false, error: 'Custom code cannot exceed 20 characters.' });
+  }
+  if (!/^[A-Z0-9]+$/.test(code)) {
+    return res.status(400).json({ available: false, error: 'Custom code must contain only letters and numbers (alphanumeric).' });
+  }
+  try {
+    const existing = await storage.transfers.findByActiveCode(code);
+    if (existing) {
+      return res.json({ available: false, error: `Transfer code "${code}" is already in use.` });
+    }
+    return res.json({ available: true, code });
+  } catch (err) {
+    console.error('Error checking code availability:', err);
+    return res.status(500).json({ available: false, error: 'Unable to check code availability right now.' });
+  }
+});
+
 // --- Look up a transfer by short code ---
 app.get('/api/transfer/code/:code', async (req, res) => {
-  const shortCode = req.params.code.toUpperCase();
-  for (const transfer of await storage.transfers.getAll()) {
-    if (transfer.shortCode === shortCode) {
-      if (transfer.status === 'PENDING') {
-        return res.status(409).json({ error: 'Transfer upload in progress. Please wait.' });
-      }
-      if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
-        return res.status(410).json({ error: 'Transfer has expired.' });
-      }
-      return res.json({ id: transfer.id });
-    }
+  const shortCode = (req.params.code || '').trim().toUpperCase();
+  if (!shortCode) {
+    return res.status(400).json({ error: 'Transfer code is required.' });
   }
+
+  // 1. Check for active or pending transfer
+  const activeTransfer = await storage.transfers.findByActiveCode(shortCode);
+  if (activeTransfer) {
+    if (activeTransfer.status === 'PENDING') {
+      return res.status(409).json({ error: 'Transfer upload in progress. Please wait.' });
+    }
+    return res.json({ id: activeTransfer.id });
+  }
+
+  // 2. Check if this code belonged to an expired transfer
+  const allTransfers = await storage.transfers.getAll();
+  const matched = (allTransfers || []).slice().reverse().find(t => t.shortCode === shortCode);
+  if (matched && (Date.now() > matched.expiresAt || matched.status === 'EXPIRED')) {
+    return res.status(410).json({ error: 'Transfer has expired.' });
+  }
+
   res.status(404).json({ error: 'Transfer not found.' });
 });
 
@@ -2766,23 +2852,25 @@ app.post('/api/ai/analyze', async (req, res) => {
 });
 
 // --- Serve transfer page (mobile) ---
-// --- Direct transfer access via short code (e.g. /code=1111, /c/1111) ---
+// --- Direct transfer access via short code (e.g. /code=1111, /c/1111, /code=LAB1) ---
 app.get(['/code=:code', '/c/:code'], async (req, res) => {
   const code = (req.params.code || '').trim().toUpperCase();
   if (!code) {
     return res.redirect('/?error=invalid_code');
   }
 
-  for (const transfer of await storage.transfers.getAll()) {
-    if (transfer.shortCode === code) {
-      if (transfer.status === 'PENDING') {
-        return res.redirect(`/?code=${encodeURIComponent(code)}&status=pending`);
-      }
-      if (Date.now() > transfer.expiresAt || transfer.status === 'EXPIRED') {
-        return res.redirect(`/?error=expired&code=${encodeURIComponent(code)}`);
-      }
-      return res.redirect(`/t/${transfer.id}`);
+  const activeTransfer = await storage.transfers.findByActiveCode(code);
+  if (activeTransfer) {
+    if (activeTransfer.status === 'PENDING') {
+      return res.redirect(`/?code=${encodeURIComponent(code)}&status=pending`);
     }
+    return res.redirect(`/t/${activeTransfer.id}`);
+  }
+
+  const allTransfers = await storage.transfers.getAll();
+  const matched = (allTransfers || []).slice().reverse().find(t => t.shortCode === code);
+  if (matched && (Date.now() > matched.expiresAt || matched.status === 'EXPIRED')) {
+    return res.redirect(`/?error=expired&code=${encodeURIComponent(code)}`);
   }
 
   return res.redirect(`/?error=not_found&code=${encodeURIComponent(code)}`);

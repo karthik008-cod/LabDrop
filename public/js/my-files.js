@@ -197,10 +197,10 @@
             </div>
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <div class="code-pill" title="6-Digit Transfer Code">
+            <div class="code-pill" title="Transfer Code">
               <span>${t.shortCode}</span>
             </div>
-            <button type="button" class="btn btn--secondary btn--sm copy-code-btn" data-code="${escapeHtml(t.shortCode)}" title="Copy 6-Digit Transfer Code" style="padding: 5px 8px;">
+            <button type="button" class="btn btn--secondary btn--sm copy-code-btn" data-code="${escapeHtml(t.shortCode)}" title="Copy Transfer Code" style="padding: 5px 8px;">
               ${ICONS.copy} Copy
             </button>
           </div>
