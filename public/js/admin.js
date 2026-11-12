@@ -761,6 +761,22 @@
   // Tables: Active Live Transfers & Daily Activity Ledger
   // ============================================================
 
+  function formatRemainingTime(remainingMs) {
+    if (remainingMs <= 0) return 'Expired';
+    const totalSec = Math.floor(remainingMs / 1000);
+    const days = Math.floor(totalSec / 86400);
+    const hours = Math.floor((totalSec % 86400) / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = (totalSec % 60).toString().padStart(2, '0');
+    if (days > 0) {
+      return `${days}d ${hours}h ${mins}m`;
+    }
+    if (hours > 0) {
+      return `${hours}h ${mins}m ${secs}s`;
+    }
+    return `${mins}m ${secs}s`;
+  }
+
   function renderActiveTransfersTable() {
     const tbody = document.getElementById('activeTransfersBody');
     const emptyNotice = document.getElementById('activeTransfersEmpty');
@@ -781,9 +797,10 @@
       const shortCode = t.shortCode || '------';
       const name = escapeHtml(t.name || 'Untitled');
       const sizeStr = formatBytes(t.totalSize);
-      const expiresSec = Math.max(0, Math.floor(t.timeLeftMs / 1000));
-      const minStr = Math.floor(expiresSec / 60);
-      const secStr = (expiresSec % 60).toString().padStart(2, '0');
+      const remainingMs = Math.max(0, (t.expiresAt || 0) - Date.now());
+      const accountCell = t.account 
+        ? `<span class="account-pill" title="${escapeHtml(t.account)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>${escapeHtml(t.account)}</span>` 
+        : '';
 
       tr.innerHTML = `
         <td>
@@ -792,12 +809,13 @@
           </span>
         </td>
         <td style="font-weight:600;max-width:240px;overflow:hidden;text-overflow:ellipsis;">${name}</td>
+        <td>${accountCell}</td>
         <td>${t.filesCount} file(s)</td>
         <td>${sizeStr}</td>
         <td>${t.downloadCount} dl</td>
         <td>
           <span class="expiry-countdown" data-expires="${t.expiresAt}">
-            ${minStr}m ${secStr}s
+            ${formatRemainingTime(remainingMs)}
           </span>
         </td>
         <td>
@@ -823,14 +841,11 @@
     document.querySelectorAll('[data-expires]').forEach(el => {
       const expiresAt = parseInt(el.dataset.expires, 10);
       const remainingMs = Math.max(0, expiresAt - Date.now());
-      const remainingSec = Math.floor(remainingMs / 1000);
-      const mins = Math.floor(remainingSec / 60);
-      const secs = (remainingSec % 60).toString().padStart(2, '0');
-      if (remainingSec <= 0) {
+      if (remainingMs <= 0) {
         el.textContent = 'Expired';
         el.style.color = '#EF4444';
       } else {
-        el.textContent = `${mins}m ${secs}s`;
+        el.textContent = formatRemainingTime(remainingMs);
       }
     });
   }

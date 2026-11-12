@@ -37,6 +37,7 @@ const transferSchema = new mongoose.Schema({
   downloadCount: { type: Number, default: 0 },
   isSavedForLater: { type: Boolean, default: false },
   userId: String,
+  userEmail: String,
   status: { type: String, default: 'ACTIVE' }
 });
 
@@ -90,6 +91,9 @@ module.exports = {
   users: {
     findOne: async (query) => {
       return await User.findOne(query).lean();
+    },
+    find: async (query) => {
+      return await User.find(query || {}).lean();
     },
     insert: async (user) => {
       const newUser = new User(user);

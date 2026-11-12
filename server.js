@@ -717,25 +717,47 @@ app.get('/api/admin/dashboard-data', async (req, res) => {
     const totalFiles = (analyticsLoaded ? analytics.totalFilesUploaded : (stats.totalFilesUploaded || 0)) + baseFiles;
     const totalDownloads = (analyticsLoaded ? analytics.totalDownloads : (stats.totalDownloads || 0)) + baseDownloads;
 
+    // Build user lookup map for account resolution
+    let userMap = {};
+    try {
+      const allUsers = await storage.users.find({});
+      if (Array.isArray(allUsers)) {
+        for (const u of allUsers) {
+          userMap[u.id] = u.email;
+        }
+      }
+    } catch (e) {
+      console.warn('[Admin Dashboard] Failed to fetch users map:', e);
+    }
+
     // Active transfers list sanitized for admin viewing
-    const activeTransfersList = activeTransfers.map(t => ({
-      id: t.id,
-      shortCode: t.shortCode,
-      name: t.transferName || (t.files && t.files[0] ? t.files[0].originalName : 'Untitled Transfer'),
-      filesCount: (t.files || []).length,
-      linksCount: (t.links || []).length,
-      totalSize: t.totalSize || 0,
-      downloadCount: t.downloadCount || 0,
-      createdAt: t.createdAt,
-      expiresAt: t.expiresAt,
-      timeLeftMs: Math.max(0, t.expiresAt - now),
-      isSavedForLater: !!t.isSavedForLater,
-      filesSummary: (t.files || []).slice(0, 3).map(f => ({
-        name: f.originalName,
-        size: f.size,
-        category: f.category
-      }))
-    })).sort((a, b) => b.createdAt - a.createdAt);
+    const activeTransfersList = activeTransfers.map(t => {
+      // 7-day transfers display the user account; temporary transfers leave it empty
+      let account = '';
+      if (t.isSavedForLater) {
+        account = t.userEmail || userMap[t.userId] || 'Registered User';
+      }
+
+      return {
+        id: t.id,
+        shortCode: t.shortCode,
+        name: t.transferName || (t.files && t.files[0] ? t.files[0].originalName : 'Untitled Transfer'),
+        account,
+        filesCount: (t.files || []).length,
+        linksCount: (t.links || []).length,
+        totalSize: t.totalSize || 0,
+        downloadCount: t.downloadCount || 0,
+        createdAt: t.createdAt,
+        expiresAt: t.expiresAt,
+        timeLeftMs: Math.max(0, t.expiresAt - now),
+        isSavedForLater: !!t.isSavedForLater,
+        filesSummary: (t.files || []).slice(0, 3).map(f => ({
+          name: f.originalName,
+          size: f.size,
+          category: f.category
+        }))
+      };
+    }).sort((a, b) => b.createdAt - a.createdAt);
 
     // Retrieve or initialize Today's genuine record in MongoDB
     const todayStr = getTodayDateStr();
@@ -1171,11 +1193,13 @@ app.post('/api/upload/initiate', optionalAuth, async (req, res) => {
     let expiresAt = now + CONFIG.TRANSFER_EXPIRY_MINUTES * 60 * 1000;
     let isSavedForLater = false;
     let userId = null;
+    let userEmail = null;
 
-    if (req.user && req.body.saveForLater === true) {
+    if (req.user && (req.body.saveForLater === true || req.body.saveForLater === 'true')) {
       expiresAt = now + (7 * 24 * 60 * 60 * 1000); // 7 days
       isSavedForLater = true;
       userId = req.user.userId;
+      userEmail = req.user.email || null;
     }
 
     const transferName = req.body.transferName ? String(req.body.transferName).trim().substring(0, 50) : null;
@@ -1256,6 +1280,7 @@ app.post('/api/upload/initiate', optionalAuth, async (req, res) => {
       downloadCount: 0,
       isSavedForLater,
       userId,
+      userEmail,
       status: initialStatus
     };
 
@@ -1465,11 +1490,13 @@ app.post('/api/upload', optionalAuth, (req, res) => {
     
     let isSavedForLater = false;
     let userId = null;
+    let userEmail = null;
 
-    if (req.user && req.body.saveForLater === 'true') {
+    if (req.user && (req.body.saveForLater === 'true' || req.body.saveForLater === true)) {
       expiresAt = now + (7 * 24 * 60 * 60 * 1000); // exactly 7 days
       isSavedForLater = true;
       userId = req.user.userId;
+      userEmail = req.user.email || null;
     }
 
     const files = await Promise.all(req.files.map(async (f) => {
@@ -1556,7 +1583,8 @@ app.post('/api/upload', optionalAuth, (req, res) => {
       totalSize,
       downloadCount: 0,
       isSavedForLater,
-      userId
+      userId,
+      userEmail
     };
 
     await storage.transfers.set(transferId, transfer);
