@@ -54,6 +54,26 @@
   const modalConfirmTransferBtnIcon = $('#modalConfirmTransferBtnIcon');
   const modalCancelTransferBtn = $('#modalCancelTransferBtn');
 
+  // Multi-stage Transfer Wizard elements
+  const wizardViewport = $('#wizardViewport');
+  const wizardTrack = $('#wizardTrack');
+  const wizardBackBtn = $('#wizardBackBtn');
+  const wizardStepIndicator = $('#wizardStepIndicator');
+  const wizardTypeQuickBtn = $('#wizardTypeQuickBtn');
+  const wizardTypeSaveBtn = $('#wizardTypeSaveBtn');
+  const wizardAuthEmail = $('#wizardAuthEmail');
+  const wizardAuthPassword = $('#wizardAuthPassword');
+  const wizardAuthSubmitBtn = $('#wizardAuthSubmitBtn');
+  const wizardAuthError = $('#wizardAuthError');
+  const wizardAuthToggleLink = $('#wizardAuthToggleLink');
+  const wizardAuthToggleText = $('#wizardAuthToggleText');
+  const wizardAuthTitle = $('#wizardAuthTitle');
+  const wizardAuthFallbackQuickBtn = $('#wizardAuthFallbackQuickBtn');
+  const wizardSelectedModeChip = $('#wizardSelectedModeChip');
+  const wizardBtnWithPin = $('#wizardBtnWithPin');
+  const wizardBtnNoPin = $('#wizardBtnNoPin');
+  const wizardFinalPinTransferBtn = $('#wizardFinalPinTransferBtn');
+
   if (requirePinCheck) {
     requirePinCheck.addEventListener('change', () => {
       const isChecked = requirePinCheck.checked;
@@ -1365,9 +1385,83 @@
     }
   });
 
-  // ---- Custom Transfer Code Modal Logic ----
+  // ---- Multi-Stage Transfer Creation Wizard Logic ----
   let checkCodeDebounceTimer = null;
   let currentCodeCheckState = { code: '', available: false, checking: false };
+  let currentWizardSlide = 0;
+  let wizardSlideHistory = [0];
+  let wizardAuthMode = 'login'; // 'login' or 'register'
+
+  function updateStepDots(slideIdx) {
+    const dots = document.querySelectorAll('.wizard-step-dot');
+    let activeStep = 1;
+    if (slideIdx === 2) activeStep = 2;
+    else if (slideIdx === 3) activeStep = 3;
+    else activeStep = 1;
+
+    dots.forEach((dot, idx) => {
+      const step = parseInt(dot.getAttribute('data-step') || (idx + 1), 10);
+      dot.classList.toggle('active', step <= activeStep);
+    });
+  }
+
+  function updateSelectedModeChip() {
+    if (!wizardSelectedModeChip) return;
+    if (transferMode === 'save') {
+      wizardSelectedModeChip.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline></svg>
+        <span>7-Day Saved</span>
+      `;
+      wizardSelectedModeChip.className = 'wizard-mode-pill-tag wizard-mode-pill-tag--save';
+    } else {
+      wizardSelectedModeChip.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        <span>30-Min Quick</span>
+      `;
+      wizardSelectedModeChip.className = 'wizard-mode-pill-tag wizard-mode-pill-tag--quick';
+    }
+  }
+
+  function goToWizardSlide(targetIdx, pushHistory = true) {
+    currentWizardSlide = targetIdx;
+    if (pushHistory) {
+      wizardSlideHistory.push(targetIdx);
+    }
+
+    if (wizardViewport) {
+      wizardViewport.scrollLeft = 0;
+    }
+
+    if (wizardTrack) {
+      wizardTrack.style.transform = `translateX(-${targetIdx * 100}%)`;
+    }
+
+    if (wizardBackBtn) {
+      wizardBackBtn.style.visibility = (wizardSlideHistory.length > 1) ? 'visible' : 'hidden';
+    }
+
+    updateStepDots(targetIdx);
+
+    // Auto-focus relevant field after slide transition without triggering container scroll
+    setTimeout(() => {
+      if (wizardViewport) wizardViewport.scrollLeft = 0;
+      if (targetIdx === 1 && wizardAuthEmail) {
+        wizardAuthEmail.focus({ preventScroll: true });
+      } else if (targetIdx === 2 && modalCustomCodeInput) {
+        modalCustomCodeInput.focus({ preventScroll: true });
+      } else if (targetIdx === 3 && modalCustomPin) {
+        modalCustomPin.focus({ preventScroll: true });
+      }
+    }, 180);
+  }
+
+  function goBackWizardSlide() {
+    if (wizardSlideHistory.length > 1) {
+      wizardSlideHistory.pop();
+      const prevIdx = wizardSlideHistory[wizardSlideHistory.length - 1];
+      goToWizardSlide(prevIdx, false);
+    }
+  }
 
   function openCustomCodeModal() {
     if (!customCodeModal) {
@@ -1385,9 +1479,10 @@
       customCodeModalItemsCount.textContent = parts.join(' · ') || '1 item';
     }
 
-    // Sync Transfer Mode buttons in modal
-    if (modalModeQuick) modalModeQuick.classList.toggle('active', transferMode === 'quick');
-    if (modalModeSave) modalModeSave.classList.toggle('active', transferMode === 'save');
+    // Reset wizard to initial stage 1
+    wizardSlideHistory = [0];
+    goToWizardSlide(0, false);
+    updateSelectedModeChip();
 
     // Sync Transfer Name from workbench
     if (modalTransferName && transferNameInput) {
@@ -1399,28 +1494,13 @@
     if (modalCustomCodeInput) {
       modalCustomCodeInput.value = codeToSet;
     }
+    updateModalCodeUI(codeToSet);
 
-    // Sync PIN from workbench
-    if (modalRequirePin && requirePinCheck) {
-      modalRequirePin.checked = requirePinCheck.checked;
-      if (modalCustomPinContainer) {
-        modalCustomPinContainer.style.display = requirePinCheck.checked ? 'block' : 'none';
-      }
-    }
-    if (modalCustomPin && customPinInput) {
-      modalCustomPin.value = customPinInput.value.trim();
-    }
+    // Reset PIN inputs
+    if (modalCustomPin) modalCustomPin.value = '';
     if (modalPinError) modalPinError.style.display = 'none';
 
     customCodeModal.classList.add('active');
-    updateModalCodeUI(codeToSet);
-
-    setTimeout(() => {
-      if (modalCustomCodeInput) {
-        modalCustomCodeInput.focus();
-        if (codeToSet) modalCustomCodeInput.select();
-      }
-    }, 60);
   }
 
   function closeCustomCodeModal() {
@@ -1449,17 +1529,9 @@
               <line x1="12" y1="16" x2="12" y2="12"></line>
               <line x1="12" y1="8" x2="12.01" y2="8"></line>
             </svg>
-            <span class="code-status-text">Leave blank to auto-generate a code (press <strong>Enter</strong> to proceed).</span>
+            <span class="code-status-text">Leave blank to auto-generate code.</span>
           </div>
         `;
-      }
-      if (modalConfirmTransferBtnIcon) {
-        modalConfirmTransferBtnIcon.innerHTML = `
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-        `;
-      }
-      if (modalConfirmTransferBtnText) {
-        modalConfirmTransferBtnText.textContent = 'Auto-Generate Code & Transfer';
       }
       return;
     }
@@ -1479,14 +1551,6 @@
           </div>
         `;
       }
-      if (modalConfirmTransferBtnIcon) {
-        modalConfirmTransferBtnIcon.innerHTML = `
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        `;
-      }
-      if (modalConfirmTransferBtnText) {
-        modalConfirmTransferBtnText.textContent = `Needs ${4 - val.length} more char${4 - val.length > 1 ? 's' : ''}`;
-      }
       return;
     }
 
@@ -1503,16 +1567,12 @@
         </div>
       `;
     }
-    if (modalConfirmTransferBtnText) {
-      modalConfirmTransferBtnText.textContent = `Checking "${val}"…`;
-    }
 
     checkCodeDebounceTimer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/transfer/check-code/${encodeURIComponent(val)}`);
         const data = await res.json();
         
-        // Ensure user hasn't changed input during fetch
         if (modalCustomCodeInput && modalCustomCodeInput.value.trim() !== val) return;
 
         if (res.ok && data.available) {
@@ -1531,14 +1591,6 @@
               </div>
             `;
           }
-          if (modalConfirmTransferBtnIcon) {
-            modalConfirmTransferBtnIcon.innerHTML = `
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-            `;
-          }
-          if (modalConfirmTransferBtnText) {
-            modalConfirmTransferBtnText.textContent = `Create with Code "${val}"`;
-          }
         } else {
           currentCodeCheckState = { code: val, available: false, checking: false };
           if (modalCustomCodeInput) {
@@ -1556,14 +1608,6 @@
                 <span class="code-status-text">${escapeHtml(data.error || 'This code is already taken.')}</span>
               </div>
             `;
-          }
-          if (modalConfirmTransferBtnIcon) {
-            modalConfirmTransferBtnIcon.innerHTML = `
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-            `;
-          }
-          if (modalConfirmTransferBtnText) {
-            modalConfirmTransferBtnText.textContent = 'Code already in use';
           }
         }
       } catch (err) {
@@ -1585,41 +1629,9 @@
     }, 280);
   }
 
-  function handleModalConfirmTransfer() {
-    // 1. Validate PIN if enabled
-    if (modalRequirePin && modalRequirePin.checked) {
-      const pinVal = modalCustomPin ? modalCustomPin.value.trim() : '';
-      if (!pinVal || pinVal.length !== 6 || !/^\d{6}$/.test(pinVal)) {
-        if (modalPinError) modalPinError.style.display = 'block';
-        if (modalCustomPin) {
-          modalCustomPin.classList.add('shake');
-          modalCustomPin.focus();
-          setTimeout(() => modalCustomPin.classList.remove('shake'), 350);
-        }
-        return;
-      }
-      if (requirePinCheck) requirePinCheck.checked = true;
-      if (customPinInput) customPinInput.value = pinVal;
-    } else {
-      if (requirePinCheck) requirePinCheck.checked = false;
-      if (customPinInput) customPinInput.value = '';
-    }
-
-    // 2. Sync Transfer Name
-    if (modalTransferName && transferNameInput) {
-      transferNameInput.value = modalTransferName.value.trim();
-    }
-
-    // 3. Custom Code validation
+  async function validateCustomCodeInput() {
     const val = modalCustomCodeInput ? modalCustomCodeInput.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
-
-    if (!val) {
-      // Auto-generate code
-      closeCustomCodeModal();
-      if (workbenchCustomCode) workbenchCustomCode.value = '';
-      executeTransferUpload(null);
-      return;
-    }
+    if (!val) return ''; // blank is allowed (auto-generate)
 
     if (val.length < 4) {
       if (modalCustomCodeInput) {
@@ -1627,11 +1639,14 @@
         modalCustomCodeInput.focus();
         setTimeout(() => modalCustomCodeInput.classList.remove('shake'), 350);
       }
-      return;
+      return null;
     }
 
     if (currentCodeCheckState.checking) {
-      return; // wait for check to resolve
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 100));
+        if (!currentCodeCheckState.checking) break;
+      }
     }
 
     if (!currentCodeCheckState.available) {
@@ -1640,15 +1655,187 @@
         modalCustomCodeInput.focus();
         setTimeout(() => modalCustomCodeInput.classList.remove('shake'), 350);
       }
+      return null;
+    }
+
+    return val;
+  }
+
+  // --- Stage 1 Button Listeners ---
+  if (wizardTypeQuickBtn) {
+    wizardTypeQuickBtn.addEventListener('click', () => {
+      setTransferMode('quick');
+      updateSelectedModeChip();
+      goToWizardSlide(2);
+    });
+  }
+
+  if (wizardTypeSaveBtn) {
+    wizardTypeSaveBtn.addEventListener('click', () => {
+      if (authUser) {
+        setTransferMode('save');
+        updateSelectedModeChip();
+        goToWizardSlide(2);
+      } else {
+        goToWizardSlide(1); // Prompt login in-modal
+      }
+    });
+  }
+
+  // --- In-Wizard Auth Form Listeners ---
+  if (wizardAuthToggleLink) {
+    wizardAuthToggleLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      wizardAuthMode = (wizardAuthMode === 'login') ? 'register' : 'login';
+      if (wizardAuthTitle) {
+        wizardAuthTitle.textContent = (wizardAuthMode === 'login') ? 'Log In to Save for 7 Days' : 'Create Account to Save for 7 Days';
+      }
+      if (wizardAuthSubmitBtn) {
+        wizardAuthSubmitBtn.textContent = (wizardAuthMode === 'login') ? 'Log In & Continue →' : 'Sign Up & Continue →';
+      }
+      if (wizardAuthToggleText) {
+        wizardAuthToggleText.textContent = (wizardAuthMode === 'login') ? "Don't have an account?" : 'Already have an account?';
+      }
+      wizardAuthToggleLink.textContent = (wizardAuthMode === 'login') ? 'Sign Up' : 'Log In';
+      if (wizardAuthError) wizardAuthError.style.display = 'none';
+    });
+  }
+
+  if (wizardAuthSubmitBtn) {
+    wizardAuthSubmitBtn.addEventListener('click', async () => {
+      const email = wizardAuthEmail ? wizardAuthEmail.value.trim() : '';
+      const password = wizardAuthPassword ? wizardAuthPassword.value : '';
+
+      if (!email || !password) {
+        if (wizardAuthError) {
+          wizardAuthError.textContent = 'Please enter both email and password.';
+          wizardAuthError.style.display = 'block';
+        }
+        return;
+      }
+
+      wizardAuthSubmitBtn.disabled = true;
+      wizardAuthSubmitBtn.textContent = 'Connecting…';
+      if (wizardAuthError) wizardAuthError.style.display = 'none';
+
+      try {
+        const endpoint = wizardAuthMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.token) {
+          setAuthToken(data.token);
+          setAuthUser(data.user);
+          updateAuthUI(data.user);
+          setTransferMode('save');
+          updateSelectedModeChip();
+          goToWizardSlide(2);
+        } else {
+          if (wizardAuthError) {
+            wizardAuthError.textContent = data.error || 'Authentication failed. Please check credentials.';
+            wizardAuthError.style.display = 'block';
+          }
+        }
+      } catch (err) {
+        if (wizardAuthError) {
+          wizardAuthError.textContent = 'Network error. Please try again.';
+          wizardAuthError.style.display = 'block';
+        }
+      } finally {
+        wizardAuthSubmitBtn.disabled = false;
+        wizardAuthSubmitBtn.textContent = (wizardAuthMode === 'login') ? 'Log In & Continue →' : 'Sign Up & Continue →';
+      }
+    });
+  }
+
+  if (wizardAuthFallbackQuickBtn) {
+    wizardAuthFallbackQuickBtn.addEventListener('click', () => {
+      setTransferMode('quick');
+      updateSelectedModeChip();
+      goToWizardSlide(2);
+    });
+  }
+
+  // --- Stage 2 Two Buttons (With PIN vs Without PIN) ---
+  if (wizardBtnWithPin) {
+    wizardBtnWithPin.addEventListener('click', async () => {
+      const validCode = await validateCustomCodeInput();
+      if (validCode === null) return;
+
+      if (modalTransferName && transferNameInput) {
+        transferNameInput.value = modalTransferName.value.trim();
+      }
+      if (workbenchCustomCode) {
+        workbenchCustomCode.value = validCode;
+      }
+
+      // Slide to PIN step
+      goToWizardSlide(3);
+    });
+  }
+
+  if (wizardBtnNoPin) {
+    wizardBtnNoPin.addEventListener('click', async () => {
+      const validCode = await validateCustomCodeInput();
+      if (validCode === null) return;
+
+      if (modalTransferName && transferNameInput) {
+        transferNameInput.value = modalTransferName.value.trim();
+      }
+      if (workbenchCustomCode) {
+        workbenchCustomCode.value = validCode;
+      }
+
+      // Create transfer without PIN
+      if (requirePinCheck) requirePinCheck.checked = false;
+      if (customPinInput) customPinInput.value = '';
+      if (modalCustomPin) modalCustomPin.value = '';
+
+      closeCustomCodeModal();
+      executeTransferUpload(validCode || null);
+    });
+  }
+
+  // --- Stage 3 Final PIN Submit ---
+  function handleFinalPinTransfer() {
+    const pinVal = modalCustomPin ? modalCustomPin.value.trim() : '';
+    if (!pinVal || pinVal.length !== 6 || !/^\d{6}$/.test(pinVal)) {
+      if (modalPinError) modalPinError.style.display = 'block';
+      if (modalCustomPin) {
+        modalCustomPin.classList.add('shake');
+        modalCustomPin.focus();
+        setTimeout(() => modalCustomPin.classList.remove('shake'), 350);
+      }
       return;
     }
 
-    // Valid and available custom code
+    if (requirePinCheck) requirePinCheck.checked = true;
+    if (customPinInput) customPinInput.value = pinVal;
+
+    const finalCode = (modalCustomCodeInput && modalCustomCodeInput.value.trim().toUpperCase()) || 
+                      (workbenchCustomCode && workbenchCustomCode.value.trim().toUpperCase()) || '';
+
     closeCustomCodeModal();
-    if (workbenchCustomCode) workbenchCustomCode.value = val;
-    executeTransferUpload(val);
+    executeTransferUpload(finalCode || null);
   }
 
+  if (wizardFinalPinTransferBtn) {
+    wizardFinalPinTransferBtn.addEventListener('click', handleFinalPinTransfer);
+  }
+
+  // --- Modal Navigation & Input Event Listeners ---
+  if (wizardViewport) {
+    wizardViewport.addEventListener('scroll', () => {
+      if (wizardViewport.scrollLeft !== 0) wizardViewport.scrollLeft = 0;
+    });
+  }
+  if (wizardBackBtn) {
+    wizardBackBtn.addEventListener('click', goBackWizardSlide);
+  }
   if (customCodeModalClose) {
     customCodeModalClose.addEventListener('click', closeCustomCodeModal);
   }
@@ -1670,9 +1857,6 @@
       }
     });
   }
-  if (modalConfirmTransferBtn) {
-    modalConfirmTransferBtn.addEventListener('click', handleModalConfirmTransfer);
-  }
   if (modalCustomCodeInput) {
     modalCustomCodeInput.addEventListener('input', () => {
       const cleaned = modalCustomCodeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -1683,7 +1867,7 @@
     modalCustomCodeInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        handleModalConfirmTransfer();
+        if (wizardBtnNoPin) wizardBtnNoPin.click();
       } else if (e.key === 'Escape') {
         e.preventDefault();
         closeCustomCodeModal();
@@ -1697,29 +1881,7 @@
     modalTransferName.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        handleModalConfirmTransfer();
-      }
-    });
-  }
-  if (modalRequirePin) {
-    modalRequirePin.addEventListener('change', () => {
-      const isChecked = modalRequirePin.checked;
-      if (modalCustomPinContainer) {
-        modalCustomPinContainer.style.display = isChecked ? 'block' : 'none';
-      }
-      if (modalPinError) modalPinError.style.display = 'none';
-      if (requirePinCheck) {
-        requirePinCheck.checked = isChecked;
-        if (customPinContainer) {
-          customPinContainer.style.maxHeight = isChecked ? '60px' : '0';
-          customPinContainer.style.opacity = isChecked ? '1' : '0';
-        }
-      }
-      if (isChecked && modalCustomPin) {
-        modalCustomPin.focus();
-      } else if (!isChecked) {
-        if (modalCustomPin) modalCustomPin.value = '';
-        if (customPinInput) customPinInput.value = '';
+        if (modalCustomCodeInput) modalCustomCodeInput.focus();
       }
     });
   }
@@ -1732,7 +1894,23 @@
     modalCustomPin.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        handleModalConfirmTransfer();
+        handleFinalPinTransfer();
+      }
+    });
+  }
+  if (wizardAuthEmail) {
+    wizardAuthEmail.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (wizardAuthPassword) wizardAuthPassword.focus();
+      }
+    });
+  }
+  if (wizardAuthPassword) {
+    wizardAuthPassword.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (wizardAuthSubmitBtn) wizardAuthSubmitBtn.click();
       }
     });
   }

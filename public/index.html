@@ -710,121 +710,259 @@
     </footer>
   </div> <!-- end .page-wrapper -->
 
-  <!-- Custom Transfer Code & Options Modal -->
+  <!-- Multi-Stage Transfer Creation Wizard Modal -->
   <div class="modal-overlay" id="customCodeModal">
-    <div class="modal modal--custom-code" role="dialog" aria-modal="true" aria-labelledby="customCodeModalTitle">
-      <div class="modal__header custom-code-modal-header">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <h3 class="modal__title" id="customCodeModalTitle" style="margin: 0; font-size: 1.15rem; font-weight: 700;">Transfer Options</h3>
-          <span id="customCodeModalItemsCount" class="modal-items-chip"></span>
+    <div class="modal modal--wizard" role="dialog" aria-modal="true" aria-labelledby="customCodeModalTitle">
+      
+      <!-- Top Wizard Navigation Bar -->
+      <div class="wizard-top-nav">
+        <button type="button" class="wizard-back-btn" id="wizardBackBtn" aria-label="Go back to previous step" style="visibility: hidden;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span>Back</span>
+        </button>
+
+        <!-- Progress Steps Pill Indicator -->
+        <div class="wizard-step-indicator" id="wizardStepIndicator">
+          <div class="wizard-step-dot active" data-step="1" title="Transfer Type"></div>
+          <div class="wizard-step-line"></div>
+          <div class="wizard-step-dot" data-step="2" title="Details"></div>
+          <div class="wizard-step-line"></div>
+          <div class="wizard-step-dot" data-step="3" title="Security PIN"></div>
         </div>
-        <button class="modal__close" id="customCodeModalClose" type="button" aria-label="Close transfer dialog">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+
+        <button class="modal__close wizard-close-btn" id="customCodeModalClose" type="button" aria-label="Close transfer dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
-      <!-- Expiry Mode Segmented Toggle -->
-      <div class="modal-config-section">
-        <div class="modal-mode-segmented">
-          <button type="button" class="modal-mode-pill active" id="modalModeQuick">
-            <span class="modal-mode-card-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-              Quick Transfer
-            </span>
-            <span class="modal-mode-tag">30m</span>
-          </button>
-          <button type="button" class="modal-mode-pill" id="modalModeSave">
-            <span class="modal-mode-card-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-              Save for Later
-            </span>
-            <span class="modal-mode-tag modal-mode-tag--save">7d</span>
-          </button>
-        </div>
+      <!-- Item Count Summary Chip -->
+      <div style="display: flex; justify-content: center; margin-bottom: 8px;">
+        <span id="customCodeModalItemsCount" class="modal-items-chip"></span>
       </div>
 
-      <!-- Transfer Name (Optional) -->
-      <div class="modal-config-section">
-        <input 
-          type="text" 
-          id="modalTransferName" 
-          class="form-input modal-input" 
-          placeholder="Transfer Name (Optional, e.g. Lab 3)" 
-          maxlength="50" 
-        />
-      </div>
+      <!-- Viewport that clips the sliding track -->
+      <div class="wizard-viewport" id="wizardViewport">
+        <div class="wizard-track" id="wizardTrack">
 
-      <!-- Custom Transfer Code (Optional) -->
-      <div class="modal-config-section">
-        <div class="custom-code-input-wrap">
-          <input 
-            type="text" 
-            id="modalCustomCodeInput" 
-            class="form-input custom-code-styled-input" 
-            placeholder="CUSTOM CODE (OPTIONAL)" 
-            maxlength="20" 
-            autocomplete="off" 
-            spellcheck="false" 
-            autocapitalize="characters" 
-          />
-          <button type="button" id="modalClearCustomCodeBtn" class="custom-code-clear-btn" title="Clear input" style="display: none;">✕</button>
-        </div>
-        
-        <!-- Real-time status / helper / availability alert -->
-        <div id="modalCodeStatus" class="custom-code-status-msg">
-          <div class="code-status-default">
-            <svg class="code-status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="16" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12.01" y2="8"></line>
-            </svg>
-            <span class="code-status-text">Leave blank to auto-generate code.</span>
+          <!-- ================= STAGE 1: SELECT TRANSFER TYPE ================= -->
+          <div class="wizard-slide" id="wizardSlide1" data-slide="1">
+            <div class="wizard-slide-header">
+              <h3 class="wizard-slide-title" id="customCodeModalTitle">Select Transfer Type</h3>
+              <p class="wizard-slide-sub">Choose how long your transfer should stay accessible.</p>
+            </div>
+
+            <div class="wizard-type-cards">
+              <!-- 30-Minute Quick Transfer Card -->
+              <button type="button" class="wizard-type-card" id="wizardTypeQuickBtn">
+                <div class="wizard-type-icon wizard-type-icon--quick">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                  </svg>
+                </div>
+                <div class="wizard-type-info">
+                  <div class="wizard-type-top">
+                    <span class="wizard-type-name">Quick Transfer</span>
+                    <span class="wizard-badge wizard-badge--quick">30 MINS</span>
+                  </div>
+                  <p class="wizard-type-desc">Instant &amp; temporary. Auto-deletes after 30 mins. No login required.</p>
+                </div>
+                <div class="wizard-type-arrow">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </div>
+              </button>
+
+              <!-- 7-Day Saved Transfer Card -->
+              <button type="button" class="wizard-type-card" id="wizardTypeSaveBtn">
+                <div class="wizard-type-icon wizard-type-icon--save">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                  </svg>
+                </div>
+                <div class="wizard-type-info">
+                  <div class="wizard-type-top">
+                    <span class="wizard-type-name">Save for Later</span>
+                    <span class="wizard-badge wizard-badge--save">7 DAYS</span>
+                  </div>
+                  <p class="wizard-type-desc">Stored in your account for 7 days. View anytime in My Files.</p>
+                </div>
+                <div class="wizard-type-arrow">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </div>
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Protect with PIN -->
-      <div class="modal-config-section modal-pin-card">
-        <div class="modal-pin-header">
-          <label class="checkbox-label" style="margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
-            <input type="checkbox" id="modalRequirePin" />
-            <span style="font-weight: 600; font-size: 0.88rem; color: var(--color-text);">Protect with PIN</span>
-          </label>
-        </div>
-        <div id="modalCustomPinContainer" style="display: none; margin-top: 8px;">
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <input 
-              type="text" 
-              id="modalCustomPin" 
-              class="form-input modal-input" 
-              placeholder="6-DIGIT PIN" 
-              maxlength="6" 
-              pattern="\d*" 
-              style="width: 140px; letter-spacing: 3px; font-weight: 700; text-align: center; font-family: 'Space Grotesk', 'JetBrains Mono', monospace; text-transform: uppercase;" 
-            />
-            <span style="font-size: 0.78rem; color: var(--color-text-secondary); line-height: 1.3;">
-              Recipients will need this PIN to view or download.
-            </span>
-          </div>
-          <div id="modalPinError" style="display: none; color: #dc2626; font-size: 0.78rem; margin-top: 4px; font-weight: 600;">
-            PIN must be exactly 6 digits.
-          </div>
-        </div>
-      </div>
+          <!-- ================= STAGE AUTH (Shown if 7-Day clicked while logged out) ================= -->
+          <div class="wizard-slide" id="wizardSlideAuth" data-slide="auth">
+            <div class="wizard-slide-header">
+              <div class="wizard-auth-icon-badge">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <h3 class="wizard-slide-title" id="wizardAuthTitle">Log In to Save for 7 Days</h3>
+              <p class="wizard-slide-sub">7-day transfers are saved to your account. Log in or create one to continue.</p>
+            </div>
 
-      <div class="custom-code-modal-actions">
-        <button type="button" class="btn btn--primary btn--md btn--block custom-code-submit-btn" id="modalConfirmTransferBtn">
-          <span id="modalConfirmTransferBtnIcon">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          </span>
-          <span id="modalConfirmTransferBtnText">Auto-Generate Code &amp; Transfer</span>
-          <span class="btn-kbd-shortcut">↵ Enter</span>
-        </button>
-        
-        <button type="button" class="btn btn--ghost btn--sm custom-code-cancel-btn" id="modalCancelTransferBtn">
-          Cancel
-        </button>
-      </div>
+            <div class="wizard-auth-form">
+              <div class="form-group" style="margin-bottom: 10px; text-align: left;">
+                <label class="wizard-field-label" for="wizardAuthEmail">Email</label>
+                <input class="form-input modal-input" type="email" id="wizardAuthEmail" placeholder="you@college.edu" autocomplete="email" />
+              </div>
+              <div class="form-group" style="margin-bottom: 12px; text-align: left;">
+                <label class="wizard-field-label" for="wizardAuthPassword">Password</label>
+                <input class="form-input modal-input" type="password" id="wizardAuthPassword" placeholder="Min. 6 characters" minlength="6" autocomplete="current-password" />
+              </div>
+              <div id="wizardAuthError" style="display: none; color: #dc2626; font-size: 0.8rem; margin-bottom: 10px; font-weight: 600;"></div>
+              
+              <button type="button" class="btn btn--primary btn--block btn--md" id="wizardAuthSubmitBtn">
+                Log In &amp; Continue →
+              </button>
+            </div>
+
+            <div class="wizard-auth-footer-actions">
+              <div style="font-size: 0.82rem; color: var(--color-text-secondary); text-align: center; margin-top: 10px;">
+                <span id="wizardAuthToggleText">Don't have an account?</span>
+                <a href="#" id="wizardAuthToggleLink" style="font-weight: 700; color: #b45309; text-decoration: underline;">Sign Up</a>
+              </div>
+              <button type="button" class="btn btn--ghost btn--sm btn--block" id="wizardAuthFallbackQuickBtn" style="margin-top: 6px;">
+                ⚡ Or switch to 30-Min Quick Transfer (No login)
+              </button>
+            </div>
+          </div>
+
+          <!-- ================= STAGE 2: DETAILS (NAME & CUSTOM CODE) ================= -->
+          <div class="wizard-slide" id="wizardSlide2" data-slide="2">
+            <div class="wizard-slide-header" style="text-align: left; margin-bottom: 12px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                <h3 class="wizard-slide-title" style="margin: 0;">Transfer Details</h3>
+                <span class="wizard-mode-pill-tag" id="wizardSelectedModeChip">⚡ 30-Min Transfer</span>
+              </div>
+              <p class="wizard-slide-sub" style="margin: 0;">Set an optional transfer name and custom code.</p>
+            </div>
+
+            <!-- Transfer Name -->
+            <div class="wizard-field-group">
+              <label class="wizard-field-label" for="modalTransferName">
+                <span>Transfer Name</span>
+                <span class="wizard-field-opt">Optional</span>
+              </label>
+              <input 
+                type="text" 
+                id="modalTransferName" 
+                class="form-input modal-input" 
+                placeholder="e.g. Physics Lab 3, Chemistry Record" 
+                maxlength="50" 
+              />
+            </div>
+
+            <!-- Custom Transfer Code -->
+            <div class="wizard-field-group" style="margin-top: 10px;">
+              <label class="wizard-field-label" for="modalCustomCodeInput">
+                <span>Custom Transfer Code</span>
+                <span class="wizard-field-opt">Optional</span>
+              </label>
+              <div class="custom-code-input-wrap">
+                <input 
+                  type="text" 
+                  id="modalCustomCodeInput" 
+                  class="form-input custom-code-styled-input" 
+                  placeholder="CUSTOM CODE (OPTIONAL)" 
+                  maxlength="20" 
+                  autocomplete="off" 
+                  spellcheck="false" 
+                  autocapitalize="characters" 
+                />
+                <button type="button" id="modalClearCustomCodeBtn" class="custom-code-clear-btn" title="Clear input" style="display: none;">✕</button>
+              </div>
+
+              <!-- Real-time status / helper / availability alert -->
+              <div id="modalCodeStatus" class="custom-code-status-msg">
+                <div class="code-status-default">
+                  <svg class="code-status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                  </svg>
+                  <span class="code-status-text">Leave blank to auto-generate code.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- TWO BUTTONS (Requirement 5): Left: With Security Code, Right: Without Security Code -->
+            <div class="wizard-two-actions-grid">
+              <button type="button" class="btn btn--outline btn--md wizard-action-btn-left" id="wizardBtnWithPin">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span>Protect with PIN</span>
+              </button>
+
+              <button type="button" class="btn btn--primary btn--md wizard-action-btn-right" id="wizardBtnNoPin">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+                <span>Transfer Without PIN</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- ================= STAGE 3: SECURITY PIN (Requirement 6) ================= -->
+          <div class="wizard-slide" id="wizardSlide3" data-slide="3">
+            <div class="wizard-slide-header">
+              <div class="wizard-pin-shield-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+              </div>
+              <h3 class="wizard-slide-title">Set 6-Digit Security PIN</h3>
+              <p class="wizard-slide-sub">Recipients will need this PIN to view or download files.</p>
+            </div>
+
+            <div class="wizard-pin-box">
+              <input 
+                type="text" 
+                id="modalCustomPin" 
+                class="form-input wizard-pin-styled-input" 
+                placeholder="••••••" 
+                maxlength="6" 
+                pattern="\d*" 
+                inputmode="numeric"
+                autocomplete="off" 
+              />
+              <div id="modalPinError" style="display: none; color: #dc2626; font-size: 0.8rem; margin-top: 6px; font-weight: 600; text-align: center;">
+                PIN must be exactly 6 digits.
+              </div>
+            </div>
+
+            <div style="margin-top: 18px;">
+              <button type="button" class="btn btn--primary btn--md btn--block" id="wizardFinalPinTransferBtn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span>Create Protected Transfer</span>
+                <span class="btn-kbd-shortcut">↵ Enter</span>
+              </button>
+            </div>
+          </div>
+
+        </div> <!-- end #wizardTrack -->
+      </div> <!-- end #wizardViewport -->
+
     </div>
   </div>
 
