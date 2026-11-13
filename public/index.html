@@ -700,7 +700,7 @@
           <div class="footer-pill-group">
             <a href="/contact.html" class="footer-pill-link">Contact</a>
             <span class="footer-pill-dot" aria-hidden="true">&bull;</span>
-            <a href="https://github.com/karthik008-cod/LabDrop" target="_blank" rel="noopener noreferrer" class="footer-pill-link">
+            <a href="https://github.com/karthik008-cod" target="_blank" rel="noopener noreferrer" class="footer-pill-link">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: -2px; margin-right: 4px;" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>GitHub
             </a>
           </div>
@@ -708,79 +708,43 @@
         <div class="footer-copy">&copy; 2026 Yuvaan Kaarthikeyaa Adulapuram &bull; <a href="https://labdrop.online" style="color: #6b7280; text-decoration: underline;">labdrop.online</a> &bull; All Rights Reserved.</div>
       </div>
     </footer>
+  </div> <!-- end .page-wrapper -->
 
   <!-- Custom Transfer Code & Options Modal -->
   <div class="modal-overlay" id="customCodeModal">
     <div class="modal modal--custom-code" role="dialog" aria-modal="true" aria-labelledby="customCodeModalTitle">
-      <div class="modal__header" style="align-items: flex-start; margin-bottom: var(--space-sm);">
-        <div style="display: flex; gap: 10px; align-items: center;">
-          <div class="custom-code-modal-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-            </svg>
-          </div>
-          <div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <h3 class="modal__title" id="customCodeModalTitle" style="margin: 0; font-size: 1.15rem; font-weight: 700;">Transfer Options</h3>
-              <span class="badge-mini-new">NEW</span>
-            </div>
-            <p style="margin: 2px 0 0; font-size: 0.82rem; color: var(--color-text-secondary); line-height: 1.4;">
-              Choose transfer expiry, optional name, custom code &amp; PIN.
-            </p>
-          </div>
+      <div class="modal__header custom-code-modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <h3 class="modal__title" id="customCodeModalTitle" style="margin: 0; font-size: 1.15rem; font-weight: 700;">Transfer Options</h3>
+          <span id="customCodeModalItemsCount" class="modal-items-chip"></span>
         </div>
         <button class="modal__close" id="customCodeModalClose" type="button" aria-label="Close transfer dialog">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
 
-      <!-- Item Count Summary -->
-      <div class="custom-code-transfer-summary">
-        <span style="font-weight: 600; font-size: 0.82rem; color: #92400e; display: inline-flex; align-items: center; gap: 6px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-          Ready to Transfer
-        </span>
-        <span id="customCodeModalItemsCount" style="color: var(--color-text-muted); font-size: 0.8rem; font-weight: 500;">
-          <!-- 3 files · 1 link -->
-        </span>
-      </div>
-
-      <!-- 1. Transfer Expiry / Type -->
+      <!-- Expiry Mode Segmented Toggle -->
       <div class="modal-config-section">
-        <div class="modal-config-label">
-          <span>1. Transfer Expiry &amp; Type</span>
-        </div>
-        <div class="modal-mode-grid">
-          <button type="button" class="modal-mode-card active" id="modalModeQuick">
-            <div class="modal-mode-card-header">
-              <span class="modal-mode-card-title">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                Quick Transfer
-              </span>
-              <span class="modal-mode-tag">30m</span>
-            </div>
-            <div class="modal-mode-card-desc">Instant &amp; temporary · No login required</div>
+        <div class="modal-mode-segmented">
+          <button type="button" class="modal-mode-pill active" id="modalModeQuick">
+            <span class="modal-mode-card-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              Quick Transfer
+            </span>
+            <span class="modal-mode-tag">30m</span>
           </button>
-
-          <button type="button" class="modal-mode-card" id="modalModeSave">
-            <div class="modal-mode-card-header">
-              <span class="modal-mode-card-title">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                Save for Later
-              </span>
-              <span class="modal-mode-tag modal-mode-tag--save">7d</span>
-            </div>
-            <div class="modal-mode-card-desc">Stored in account · 7 days expiry</div>
+          <button type="button" class="modal-mode-pill" id="modalModeSave">
+            <span class="modal-mode-card-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+              Save for Later
+            </span>
+            <span class="modal-mode-tag modal-mode-tag--save">7d</span>
           </button>
         </div>
       </div>
 
-      <!-- 2. Transfer Name (Optional) -->
+      <!-- Transfer Name (Optional) -->
       <div class="modal-config-section">
-        <label for="modalTransferName" class="modal-config-label">
-          <span>2. Transfer Name</span>
-          <span class="custom-code-hint-tag">Optional</span>
-        </label>
         <input 
           type="text" 
           id="modalTransferName" 
@@ -790,18 +754,14 @@
         />
       </div>
 
-      <!-- 3. Custom Transfer Code -->
+      <!-- Custom Transfer Code (Optional) -->
       <div class="modal-config-section">
-        <div class="modal-config-label">
-          <label for="modalCustomCodeInput">3. Custom Transfer Code</label>
-          <span class="custom-code-hint-tag">Min 4 chars &bull; Letters &amp; Numbers</span>
-        </div>
         <div class="custom-code-input-wrap">
           <input 
             type="text" 
             id="modalCustomCodeInput" 
             class="form-input custom-code-styled-input" 
-            placeholder="E.G. LAB101, PHYS, CS24" 
+            placeholder="CUSTOM CODE (OPTIONAL)" 
             maxlength="20" 
             autocomplete="off" 
             spellcheck="false" 
@@ -818,21 +778,20 @@
               <line x1="12" y1="16" x2="12" y2="12"></line>
               <line x1="12" y1="8" x2="12.01" y2="8"></line>
             </svg>
-            <span class="code-status-text">Leave blank to auto-generate a code (press <strong>Enter</strong> to proceed).</span>
+            <span class="code-status-text">Leave blank to auto-generate code.</span>
           </div>
         </div>
       </div>
 
-      <!-- 4. Protect with PIN -->
+      <!-- Protect with PIN -->
       <div class="modal-config-section modal-pin-card">
         <div class="modal-pin-header">
           <label class="checkbox-label" style="margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
             <input type="checkbox" id="modalRequirePin" />
-            <span style="font-weight: 600; font-size: 0.88rem; color: var(--color-text);">4. Protect with PIN</span>
+            <span style="font-weight: 600; font-size: 0.88rem; color: var(--color-text);">Protect with PIN</span>
           </label>
-          <span class="custom-code-hint-tag">Extra security</span>
         </div>
-        <div id="modalCustomPinContainer" style="display: none; margin-top: 10px;">
+        <div id="modalCustomPinContainer" style="display: none; margin-top: 8px;">
           <div style="display: flex; gap: 10px; align-items: center;">
             <input 
               type="text" 
@@ -843,7 +802,7 @@
               pattern="\d*" 
               style="width: 140px; letter-spacing: 3px; font-weight: 700; text-align: center; font-family: 'Space Grotesk', 'JetBrains Mono', monospace; text-transform: uppercase;" 
             />
-            <span style="font-size: 0.8rem; color: var(--color-text-secondary); line-height: 1.3;">
+            <span style="font-size: 0.78rem; color: var(--color-text-secondary); line-height: 1.3;">
               Recipients will need this PIN to view or download.
             </span>
           </div>
@@ -863,7 +822,7 @@
         </button>
         
         <button type="button" class="btn btn--ghost btn--sm custom-code-cancel-btn" id="modalCancelTransferBtn">
-          Back to Workbench
+          Cancel
         </button>
       </div>
     </div>
