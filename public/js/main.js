@@ -1864,6 +1864,63 @@
       if (e.target === customCodeModal) closeCustomCodeModal();
     });
   }
+
+  // What's New & How to Use In-Page Modals
+  const whatsNewModal = document.getElementById('whatsNewModal');
+  const howToUseModal = document.getElementById('howToUseModal');
+  const whatsNewModalClose = document.getElementById('whatsNewModalClose');
+  const whatsNewModalOkBtn = document.getElementById('whatsNewModalOkBtn');
+  const howToUseModalClose = document.getElementById('howToUseModalClose');
+  const howToUseModalOkBtn = document.getElementById('howToUseModalOkBtn');
+
+  function openWhatsNewModal() {
+    if (whatsNewModal) whatsNewModal.classList.add('active');
+    if (drawerNav && drawerNav.classList.contains('active')) {
+      drawerNav.classList.remove('active');
+    }
+  }
+  function closeWhatsNewModal() {
+    if (whatsNewModal) whatsNewModal.classList.remove('active');
+  }
+
+  function openHowToUseModal() {
+    if (howToUseModal) howToUseModal.classList.add('active');
+    if (drawerNav && drawerNav.classList.contains('active')) {
+      drawerNav.classList.remove('active');
+    }
+  }
+  function closeHowToUseModal() {
+    if (howToUseModal) howToUseModal.classList.remove('active');
+  }
+
+  document.querySelectorAll('.open-whats-new-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openWhatsNewModal();
+    });
+  });
+  document.querySelectorAll('.open-how-to-use-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openHowToUseModal();
+    });
+  });
+
+  if (whatsNewModalClose) whatsNewModalClose.addEventListener('click', closeWhatsNewModal);
+  if (whatsNewModalOkBtn) whatsNewModalOkBtn.addEventListener('click', closeWhatsNewModal);
+  if (whatsNewModal) {
+    whatsNewModal.addEventListener('click', (e) => {
+      if (e.target === whatsNewModal) closeWhatsNewModal();
+    });
+  }
+
+  if (howToUseModalClose) howToUseModalClose.addEventListener('click', closeHowToUseModal);
+  if (howToUseModalOkBtn) howToUseModalOkBtn.addEventListener('click', closeHowToUseModal);
+  if (howToUseModal) {
+    howToUseModal.addEventListener('click', (e) => {
+      if (e.target === howToUseModal) closeHowToUseModal();
+    });
+  }
   if (modalClearCustomCodeBtn) {
     modalClearCustomCodeBtn.addEventListener('click', () => {
       if (modalCustomCodeInput) {
@@ -2218,24 +2275,38 @@
 
   // ---- Show QR / Transfer View ----
   function showTransferView(data) {
+    if (data && data.transfer && (!data.shortCode || !data.qrCode)) {
+      data = Object.assign({}, data.transfer, data);
+    }
+    const resolvedCode = data.shortCode || data.code || (data.transfer && data.transfer.shortCode) || '';
+    const resolvedQr = data.qrCode || (data.transfer && data.transfer.qrCode) || '';
+    const resolvedUrl = data.directUrl || data.url || (data.transfer && (data.transfer.directUrl || data.transfer.url)) || (window.location.origin + '/?code=' + resolvedCode);
+
     showSection(qrSection);
     clearWorkbenchDraft();
 
-    qrImage.src = data.qrCode;
-    transferCode.textContent = data.shortCode;
-    transferUrl.textContent = data.url;
+    // If running in Android APK, notify native bridge to show offline pill when offline transfer is created
+    if (window.AndroidBridge && window.AndroidBridge.showOfflineTransferCreated) {
+      try {
+        window.AndroidBridge.showOfflineTransferCreated(resolvedCode, resolvedUrl);
+      } catch (err) {}
+    }
+
+    qrImage.src = resolvedQr;
+    transferCode.textContent = resolvedCode;
+    transferUrl.textContent = resolvedUrl;
 
     const directLinkWrap = document.getElementById('transferDirectLinkWrap');
     const directLinkEl = document.getElementById('transferDirectLink');
     if (directLinkWrap && directLinkEl) {
-      const link = data.directUrl || (window.location.origin + '/?code=' + data.shortCode);
+      const link = resolvedUrl;
       directLinkWrap.style.display = 'flex';
       directLinkEl.href = link;
       try {
         const u = new URL(link);
-        directLinkEl.textContent = u.host + '/?code=' + data.shortCode;
+        directLinkEl.textContent = u.host + '/?code=' + resolvedCode;
       } catch (e) {
-        directLinkEl.textContent = 'labdrop.online/?code=' + data.shortCode;
+        directLinkEl.textContent = 'labdrop.online/?code=' + resolvedCode;
       }
     }
     statFiles.textContent = data.fileCount + (data.linkCount > 0 ? ` (+${data.linkCount} links)` : '');
@@ -2799,6 +2870,11 @@
 
   // ---- Reset to start state ----
   function resetToStart() {
+    if (window.AndroidBridge && window.AndroidBridge.hideOfflineBanner) {
+      try {
+        window.AndroidBridge.hideOfflineBanner();
+      } catch (err) {}
+    }
     if (timerInterval) clearInterval(timerInterval);
     currentTransfer = null;
     selectedFiles = [];

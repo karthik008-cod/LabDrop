@@ -17,7 +17,7 @@
             android:layout_height="match_parent" />
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <!-- Offline Hotspot Floating Pill Banner -->
+    <!-- Offline Hotspot Floating Pill Banner (Hidden by default; shown only when offline transfer is created) -->
     <LinearLayout
         android:id="@+id/llHotspotBanner"
         android:layout_width="wrap_content"
@@ -29,7 +29,8 @@
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingHorizontal="14dp"
-        android:paddingVertical="7dp">
+        android:paddingVertical="7dp"
+        android:visibility="gone">
 
         <View
             android:layout_width="8dp"

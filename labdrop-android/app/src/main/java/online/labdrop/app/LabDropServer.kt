@@ -281,6 +281,18 @@ class LabDropServer(
             val transferJson = buildTransferJsonObject(transfer)
             val res = JSONObject().apply {
                 put("success", true)
+                put("transferId", transfer.id)
+                put("shortCode", transfer.shortCode)
+                put("code", transfer.shortCode)
+                put("url", directUrl)
+                put("directUrl", directUrl)
+                put("qrCode", qrCodeDataUrl)
+                put("expiresAt", transfer.expiresAt)
+                put("fileCount", transfer.files.size)
+                put("linkCount", 0)
+                put("totalSize", transfer.totalSize)
+                put("files", transferJson.optJSONArray("files"))
+                put("folderStructure", JSONObject())
                 put("transfer", transferJson)
             }
             newJsonResponse(res.toString())
@@ -312,6 +324,7 @@ class LabDropServer(
         return JSONObject().apply {
             put("id", transfer.id)
             put("shortCode", transfer.shortCode)
+            put("code", transfer.shortCode)
             put("transferName", transfer.transferName)
             put("totalSize", transfer.totalSize)
             put("fileCount", transfer.files.size)
@@ -321,6 +334,7 @@ class LabDropServer(
             put("hasPin", false)
             put("qrCode", transfer.qrCode)
             put("directUrl", transfer.directUrl)
+            put("url", transfer.directUrl)
             put("files", filesArray)
             put("links", JSONArray())
         }

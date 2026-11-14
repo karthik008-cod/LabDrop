@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.view.View
 import android.webkit.CookieManager
+import android.webkit.JavascriptInterface
 import android.webkit.URLUtil
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -85,12 +86,8 @@ class MainActivity : AppCompatActivity() {
             }
             server?.start()
 
-            val ip = NetworkUtils.getLocalIpAddress()
-            tvHotspotIp.text = "Offline Hub Active • http://$ip:8080"
-
-            llHotspotBanner.setOnClickListener {
-                Toast.makeText(this, "Friends can connect to your Hotspot and open http://$ip:8080", Toast.LENGTH_LONG).show()
-            }
+            // Keep floating banner hidden until offline transfer is explicitly created
+            llHotspotBanner.visibility = View.GONE
         } catch (e: Exception) {
             tvHotspotIp.text = "Local Server Error: ${e.message}"
         }
@@ -153,8 +150,31 @@ class MainActivity : AppCompatActivity() {
             startFileDownload(url, contentDisposition, mimetype)
         }
 
+        webView.addJavascriptInterface(WebAppInterface(this), "AndroidBridge")
+
         // Load the local full LabDrop web application
         webView.loadUrl("http://127.0.0.1:8080")
+    }
+
+    class WebAppInterface(private val activity: MainActivity) {
+        @JavascriptInterface
+        fun showOfflineTransferCreated(code: String, url: String) {
+            activity.runOnUiThread {
+                val ip = NetworkUtils.getLocalIpAddress()
+                activity.tvHotspotIp.text = "Offline Hub Active • Code: $code"
+                activity.llHotspotBanner.visibility = View.VISIBLE
+                activity.llHotspotBanner.setOnClickListener {
+                    Toast.makeText(activity, "Code: $code\nOpen in browser: $url", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun hideOfflineBanner() {
+            activity.runOnUiThread {
+                activity.llHotspotBanner.visibility = View.GONE
+            }
+        }
     }
 
     private fun startFileDownload(url: String, contentDisposition: String? = null, mimetype: String? = null) {

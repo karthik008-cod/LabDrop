@@ -237,22 +237,22 @@
       <!-- Auth Navigation (Desktop) -->
       <nav class="header__nav header__nav--desktop" id="authNav">
         <div id="authLoggedOut" style="display: flex; gap: var(--space-md); align-items: center;">
-          <a href="/whats-new.html" class="nav-whats-new-btn" title="Discover what's new in LabDrop">
+          <button type="button" class="nav-whats-new-btn open-whats-new-btn" title="Discover what's new in LabDrop" style="cursor:pointer; border:none; background:inherit; font-family:inherit;">
             <svg class="nav-sparkle-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z"/></svg>
             <span>What's New</span>
             <span class="nav-whats-new-badge">NEW</span>
-          </a>
-          <a href="/how-to-use.html" class="nav-link" style="text-decoration: none;">How to Use</a>
+          </button>
+          <button type="button" class="nav-link open-how-to-use-btn" style="background:none;border:none;cursor:pointer;text-decoration:none;">How to Use</button>
           <button class="nav-link" id="navLoginBtn" style="background:none;border:none;cursor:pointer;">Login</button>
           <button class="nav-link" id="navSignupBtn" style="background:none;border:none;cursor:pointer;">Sign Up</button>
         </div>
         <div id="authLoggedIn" style="display: none; gap: var(--space-md); align-items: center;">
-          <a href="/whats-new.html" class="nav-whats-new-btn" title="Discover what's new in LabDrop">
+          <button type="button" class="nav-whats-new-btn open-whats-new-btn" title="Discover what's new in LabDrop" style="cursor:pointer; border:none; background:inherit; font-family:inherit;">
             <svg class="nav-sparkle-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z"/></svg>
             <span>What's New</span>
             <span class="nav-whats-new-badge">NEW</span>
-          </a>
-          <a href="/how-to-use.html" class="nav-link" style="text-decoration: none;">How to Use</a>
+          </button>
+          <button type="button" class="nav-link open-how-to-use-btn" style="background:none;border:none;cursor:pointer;text-decoration:none;">How to Use</button>
           <div class="user-menu-wrapper" id="userMenuWrapper">
             <button type="button" class="user-profile-trigger" id="userMenuTrigger" aria-expanded="false" aria-haspopup="true" aria-label="User Account Menu">
               <div class="user-avatar-pill">
@@ -335,19 +335,19 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
             <span>Home</span>
           </a>
-          <a href="/whats-new.html" class="drawer-nav-item drawer-nav-item--whats-new" title="Discover what's new in LabDrop">
+          <button type="button" class="drawer-nav-item drawer-nav-item--whats-new open-whats-new-btn" title="Discover what's new in LabDrop" style="width: 100%; border: none; background: transparent; cursor: pointer; text-align: left; font-family: inherit;">
             <svg class="nav-sparkle-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z"/></svg>
             <span style="font-weight: 700; color: #92400E;">What's New</span>
             <span style="margin-left: auto; background: #D97706; color: #ffffff; font-size: 0.68rem; font-weight: 800; padding: 2px 7px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.4px;">New</span>
-          </a>
+          </button>
           <a href="/my-files.html" class="drawer-nav-item" id="drawerSavedTransfersLink" style="display: none; align-items: center; gap: 8px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>
             <span>Saved Transfers (7 Days)</span>
           </a>
-          <a href="/how-to-use.html" class="drawer-nav-item">
+          <button type="button" class="drawer-nav-item open-how-to-use-btn" style="width: 100%; border: none; background: transparent; cursor: pointer; text-align: left; font-family: inherit;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
             <span>How to Use</span>
-          </a>
+          </button>
           <div id="drawerAuthLoggedOut">
             <button type="button" class="btn btn--outline btn--sm" id="drawerNavLoginBtn">Login</button>
             <button type="button" class="btn btn--primary btn--sm" id="drawerNavSignupBtn">Sign Up</button>
@@ -683,31 +683,7 @@
       </main>
     </div>
 
-    <!-- Footer -->
-    <footer class="footer" style="margin-top: auto; padding-top: var(--space-xl); padding-bottom: var(--space-md); text-align: left; color: #4b5563; font-size: 0.85rem;">
-      <div class="footer-modern-wrap">
-        <nav class="footer-grouped-nav" aria-label="Footer Navigation">
-          <div class="footer-pill-group">
-            <a href="/about.html" class="footer-pill-link">About</a>
-            <span class="footer-pill-dot" aria-hidden="true">&bull;</span>
-            <a href="/security.html" class="footer-pill-link">Security</a>
-          </div>
-          <div class="footer-pill-group">
-            <a href="/privacy.html" class="footer-pill-link">Privacy</a>
-            <span class="footer-pill-dot" aria-hidden="true">&bull;</span>
-            <a href="/terms.html" class="footer-pill-link">Terms</a>
-          </div>
-          <div class="footer-pill-group">
-            <a href="/contact.html" class="footer-pill-link">Contact</a>
-            <span class="footer-pill-dot" aria-hidden="true">&bull;</span>
-            <a href="https://github.com/karthik008-cod" target="_blank" rel="noopener noreferrer" class="footer-pill-link">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: -2px; margin-right: 4px;" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>GitHub
-            </a>
-          </div>
-        </nav>
-        <div class="footer-copy">&copy; 2026 Yuvaan Kaarthikeyaa Adulapuram &bull; <a href="https://labdrop.online" style="color: #6b7280; text-decoration: underline;">labdrop.online</a> &bull; All Rights Reserved.</div>
-      </div>
-    </footer>
+    <!-- Footer removed for clean standalone app view -->
   </div> <!-- end .page-wrapper -->
 
   <!-- Multi-Stage Transfer Creation Wizard Modal -->
@@ -1878,6 +1854,108 @@
 
       </div>
 
+    </div>
+  </div>
+
+  <!-- What's New In-Page Modal -->
+  <div class="modal-overlay" id="whatsNewModal" style="z-index: 1050;">
+    <div class="modal" style="max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; padding: 0;">
+      <div class="modal__header" style="padding: 18px 24px; border-bottom: 1px solid var(--color-border); margin-bottom: 0;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(217, 119, 6, 0.12); display: flex; align-items: center; justify-content: center; color: #D97706;">
+            <svg class="nav-sparkle-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; fill: currentColor;"><path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z"/></svg>
+          </div>
+          <div>
+            <div class="modal__title" style="font-size: 1.15rem; font-weight: 700; margin: 0;">What's New in LabDrop</div>
+            <div style="font-size: 0.78rem; color: #6b7280;">Latest updates, offline features &amp; changelog</div>
+          </div>
+        </div>
+        <button class="modal__close" id="whatsNewModalClose" aria-label="Close What's New Dialog"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+      </div>
+      <div class="modal__body" style="padding: 20px 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px;">
+        <div style="padding: 14px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #92400E; font-size: 0.95rem; margin-bottom: 4px;">
+            <span>⚡ 100% Offline Direct Transfer &amp; Standalone APK</span>
+            <span style="background: #D97706; color: #fff; font-size: 0.65rem; padding: 2px 6px; border-radius: 999px;">LATEST</span>
+          </div>
+          <p style="font-size: 0.85rem; color: #78350F; margin: 0; line-height: 1.45;">Share files directly between PC and phone or phone to phone without internet, cellular data, or external servers. Built for college labs with zero reception.</p>
+        </div>
+
+        <div style="padding: 14px; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #166534; font-size: 0.95rem; margin-bottom: 4px;">
+            <span>🔑 Custom Transfer Codes</span>
+          </div>
+          <p style="font-size: 0.85rem; color: #14532D; margin: 0; line-height: 1.45;">Choose your own custom 6-character code (e.g. <code>MYLAB1</code>) or let LabDrop auto-generate one. Displayed right on the screen alongside the instant QR code.</p>
+        </div>
+
+        <div style="padding: 14px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #1E40AF; font-size: 0.95rem; margin-bottom: 4px;">
+            <span>🤖 Built-in LabDrop AI Assistant (Beta)</span>
+          </div>
+          <p style="font-size: 0.85rem; color: #1E3A8A; margin: 0; line-height: 1.45;">Generate comprehensive lab records, convert messy code into clean step-by-step reports, and practice Viva drill questions before exams.</p>
+        </div>
+
+        <div style="padding: 14px; background: #FAF5FF; border: 1px solid #E9D5FF; border-radius: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #6B21A8; font-size: 0.95rem; margin-bottom: 4px;">
+            <span>🛡️ Proximity Lock &amp; PIN Protection</span>
+          </div>
+          <p style="font-size: 0.85rem; color: #581C87; margin: 0; line-height: 1.45;">Optional proximity geofencing ensures only people in the same classroom or lab bench can download your transfer.</p>
+        </div>
+      </div>
+      <div class="modal__footer" style="padding: 14px 24px; border-top: 1px solid var(--color-border); justify-content: flex-end;">
+        <button type="button" class="btn btn--primary btn--sm" id="whatsNewModalOkBtn">Awesome, Got It!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- How to Use In-Page Modal -->
+  <div class="modal-overlay" id="howToUseModal" style="z-index: 1050;">
+    <div class="modal" style="max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; padding: 0;">
+      <div class="modal__header" style="padding: 18px 24px; border-bottom: 1px solid var(--color-border); margin-bottom: 0;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(59, 130, 246, 0.12); display: flex; align-items: center; justify-content: center; color: #2563EB;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          </div>
+          <div>
+            <div class="modal__title" style="font-size: 1.15rem; font-weight: 700; margin: 0;">How to Use LabDrop</div>
+            <div style="font-size: 0.78rem; color: #6b7280;">Quick guide for offline &amp; online transfers</div>
+          </div>
+        </div>
+        <button class="modal__close" id="howToUseModalClose" aria-label="Close How to Use Dialog"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+      </div>
+      <div class="modal__body" style="padding: 20px 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <div style="font-weight: 700; color: var(--color-text); font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+            <span style="background: var(--color-primary); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">1</span>
+            Add Files or Paste Code / Notes
+          </div>
+          <p style="font-size: 0.85rem; color: #4b5563; margin: 0 0 0 28px; line-height: 1.45;">Drag and drop files, select folders, or paste code snippets into the workbench. Click <strong>"Create Transfer"</strong>.</p>
+        </div>
+
+        <div>
+          <div style="font-weight: 700; color: var(--color-text); font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+            <span style="background: var(--color-primary); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">2</span>
+            Choose Online or 100% Offline Mode
+          </div>
+          <p style="font-size: 0.85rem; color: #4b5563; margin: 0 0 0 28px; line-height: 1.45;">Select <strong>Fast Online Transfer</strong> for regular sharing, or <strong>100% Offline Direct Transfer</strong> if your lab or classroom has no internet connection.</p>
+        </div>
+
+        <div>
+          <div style="font-weight: 700; color: var(--color-text); font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+            <span style="background: var(--color-primary); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">3</span>
+            Scan QR Code or Type Transfer Code
+          </div>
+          <p style="font-size: 0.85rem; color: #4b5563; margin: 0 0 0 28px; line-height: 1.45;">Your 6-letter transfer code and QR code appear on screen instantly. Anyone on your network can scan or type the code to download the files or full ZIP archive.</p>
+        </div>
+
+        <div style="padding: 12px 14px; background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 8px;">
+          <div style="font-weight: 700; color: #92400E; font-size: 0.85rem; margin-bottom: 2px;">💡 College Lab Tip:</div>
+          <p style="font-size: 0.8rem; color: #78350F; margin: 0; line-height: 1.4;">When using Offline Mode on mobile or PC, connect both devices to the same Mobile Hotspot or local Wi-Fi. No data or active internet is required!</p>
+        </div>
+      </div>
+      <div class="modal__footer" style="padding: 14px 24px; border-top: 1px solid var(--color-border); justify-content: flex-end;">
+        <button type="button" class="btn btn--primary btn--sm" id="howToUseModalOkBtn">Got It!</button>
+      </div>
     </div>
   </div>
 
