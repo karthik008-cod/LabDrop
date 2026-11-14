@@ -76,6 +76,11 @@ class LabDropServer(
             return handleUploadInitiate(session)
         }
 
+        // 4b. API: Fallback Form-Relayed Upload (POST /api/upload)
+        if (uri == "/api/upload" && method == Method.POST) {
+            return handleMultipartUpload(session)
+        }
+
         // 5. Local File Upload Stream (PUT /api/upload/local/:transferId/:storageName)
         if (uri.startsWith("/api/upload/local/") && method == Method.PUT) {
             return handleLocalUploadPut(session, uri)
@@ -183,6 +188,8 @@ class LabDropServer(
 
                 val uploadUrlObj = JSONObject().apply {
                     put("fileId", fileId)
+                    put("name", originalName)
+                    put("originalName", originalName)
                     put("storageName", storageName)
                     put("uploadUrl", "/api/upload/local/$transferId/$storageName")
                 }
@@ -202,10 +209,91 @@ class LabDropServer(
             transfers[transferId] = transfer
 
             val res = JSONObject().apply {
+                put("success", true)
                 put("transferId", transferId)
                 put("shortCode", shortCode)
+                put("files", uploadUrlsArray)
                 put("uploadUrls", uploadUrlsArray)
                 put("proximity", JSONObject().put("enabled", false))
+            }
+            newJsonResponse(res.toString())
+        } catch (e: Exception) {
+            newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\":\"${e.message}\"}")
+        }
+    }
+
+    private fun handleMultipartUpload(session: IHTTPSession): Response {
+        return try {
+            val filesMap = HashMap<String, String>()
+            session.parseBody(filesMap)
+
+            val params = session.parameters
+            val customCode = params["customCode"]?.firstOrNull()?.trim()?.uppercase() ?: ""
+            val transferName = params["transferName"]?.firstOrNull() ?: "Offline Transfer"
+            val transferId = UUID.randomUUID().toString()
+            val shortCode = if (customCode.isNotEmpty()) customCode else UUID.randomUUID().toString().substring(0, 6).uppercase()
+
+            val transferDir = File(uploadsDir, transferId).apply { mkdirs() }
+            val fileRecords = mutableListOf<TransferFileRecord>()
+            var totalBytes = 0L
+
+            for ((key, tempFilePath) in filesMap) {
+                if (key.startsWith("files") || key == "files") {
+                    val tempFile = File(tempFilePath)
+                    if (tempFile.exists()) {
+                        val originalName = params[key]?.firstOrNull() ?: tempFile.name
+                        val fileId = UUID.randomUUID().toString()
+                        val storageName = "${fileId}__$originalName"
+                        val destFile = File(transferDir, storageName)
+                        tempFile.copyTo(destFile, overwrite = true)
+                        val fileSize = destFile.length()
+                        totalBytes += fileSize
+                        fileRecords.add(
+                            TransferFileRecord(
+                                id = fileId,
+                                originalName = originalName,
+                                storageName = storageName,
+                                size = fileSize,
+                                mimetype = "application/octet-stream"
+                            )
+                        )
+                    }
+                }
+            }
+
+            val now = System.currentTimeMillis()
+            val expiresAt = now + 30 * 60 * 1000L
+            val localIp = NetworkUtils.getLocalIpAddress()
+            val directUrl = "http://$localIp:8080/?CODE=$shortCode"
+            val qrCodeDataUrl = NetworkUtils.generateQrBase64(directUrl, 400)
+
+            val transfer = TransferRecord(
+                id = transferId,
+                shortCode = shortCode,
+                transferName = transferName,
+                createdAt = now,
+                expiresAt = expiresAt,
+                totalSize = totalBytes,
+                files = fileRecords,
+                directUrl = directUrl,
+                qrCode = qrCodeDataUrl
+            )
+            transfers[transferId] = transfer
+
+            val transferJson = buildTransferJsonObject(transfer)
+            val res = JSONObject().apply {
+                put("success", true)
+                put("transferId", transferId)
+                put("shortCode", shortCode)
+                put("code", shortCode)
+                put("url", directUrl)
+                put("directUrl", directUrl)
+                put("qrCode", qrCodeDataUrl)
+                put("expiresAt", expiresAt)
+                put("fileCount", fileRecords.size)
+                put("totalSize", totalBytes)
+                put("files", transferJson.optJSONArray("files"))
+                put("transfer", transferJson)
             }
             newJsonResponse(res.toString())
         } catch (e: Exception) {

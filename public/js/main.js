@@ -2140,8 +2140,9 @@
           const loadedPerFile = new Array(allFiles.length).fill(0);
           const totalBytes = allFiles.reduce((sum, f) => sum + (f.size || 0), 0) || 1;
 
+          const presignedList = initData.files || initData.uploadUrls || [];
           const uploadPromises = allFiles.map((file, idx) => {
-            const presigned = initData.files[idx];
+            const presigned = presignedList[idx];
             if (!presigned || !presigned.uploadUrl) {
               return Promise.reject(new Error(`Missing upload URL for "${file.name}".`));
             }
