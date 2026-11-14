@@ -1,0 +1,232 @@
+{
+  "id": "/?source=pwa",
+  "name": "LabDrop — Fast Lab File Transfer",
+  "short_name": "LabDrop",
+  "description": "Instantly transfer lab files, code, and documents between lab computers and mobile devices with QR codes. No login required.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FAF5E8",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "utilities",
+    "productivity",
+    "education"
+  ],
+  "icons": [
+    {
+      "src": "/labdroplogo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Transfer",
+      "short_name": "Transfer",
+      "description": "Start a new quick file transfer with QR code",
+      "url": "/?source=shortcut",
+      "icons": [
+        {
+          "src": "/labdroplogo.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Saved Transfers",
+      "short_name": "Saved Files",
+      "description": "Access your saved cloud transfers",
+      "url": "/my-files.html?source=shortcut",
+      "icons": [
+        {
+          "src": "/labdroplogo.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "How to Use",
+      "short_name": "Guide",
+      "description": "LabDrop user guide and FAQ",
+      "url": "/how-to-use.html?source=shortcut",
+      "icons": [
+        {
+          "src": "/labdroplogo.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "shared_files",
+          "accept": [
+            "image/*",
+            "video/*",
+            "audio/*",
+            "text/*",
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/zip",
+            "application/x-zip-compressed",
+            "application/x-7z-compressed",
+            "application/x-rar-compressed",
+            "application/vnd.rar",
+            "application/x-tar",
+            "application/octet-stream",
+            "application/json",
+            "application/rtf",
+            "application/xml",
+            "application/javascript",
+            "application/x-python-code",
+            "text/csv",
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".ppt",
+            ".pptx",
+            ".xls",
+            ".xlsx",
+            ".txt",
+            ".csv",
+            ".zip",
+            ".rar",
+            ".7z",
+            ".tar",
+            ".gz",
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".webp",
+            ".gif",
+            ".svg",
+            ".bmp",
+            ".ico",
+            ".mp4",
+            ".mov",
+            ".mp3",
+            ".wav",
+            ".ogg",
+            ".m4a",
+            ".c",
+            ".cpp",
+            ".h",
+            ".hpp",
+            ".java",
+            ".py",
+            ".js",
+            ".ts",
+            ".html",
+            ".css",
+            ".json",
+            ".sql",
+            ".sh",
+            ".bin",
+            ".apk"
+          ]
+        }
+      ]
+    }
+  },
+  "file_handlers": [
+    {
+      "action": "/?source=file_handler",
+      "name": "LabDrop",
+      "icons": [
+        {
+          "src": "/labdroplogo.png",
+          "sizes": "192x192 512x512",
+          "type": "image/png"
+        }
+      ],
+      "accept": {
+        "image/*": [
+          ".png",
+          ".jpg",
+          ".jpeg",
+          ".gif",
+          ".webp",
+          ".svg",
+          ".bmp",
+          ".ico"
+        ],
+        "text/*": [
+          ".txt",
+          ".c",
+          ".cpp",
+          ".h",
+          ".hpp",
+          ".java",
+          ".py",
+          ".js",
+          ".ts",
+          ".html",
+          ".css",
+          ".json",
+          ".sql",
+          ".sh",
+          ".r",
+          ".cs",
+          ".md"
+        ],
+        "application/pdf": [
+          ".pdf"
+        ],
+        "application/zip": [
+          ".zip",
+          ".rar",
+          ".7z",
+          ".tar",
+          ".gz"
+        ],
+        "application/msword": [
+          ".doc"
+        ],
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+          ".docx"
+        ],
+        "application/vnd.ms-powerpoint": [
+          ".ppt"
+        ],
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": [
+          ".pptx"
+        ],
+        "application/vnd.ms-excel": [
+          ".xls"
+        ],
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+          ".xlsx"
+        ]
+      }
+    }
+  ],
+  "launch_handler": {
+    "client_mode": [
+      "focus-existing",
+      "auto"
+    ]
+  }
+}

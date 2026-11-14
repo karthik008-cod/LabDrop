@@ -1,250 +1,185 @@
 package online.labdrop.app
 
+import android.annotation.SuppressLint
+import android.app.DownloadManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.provider.OpenableColumns
+import android.os.Environment
 import android.view.View
-import android.widget.Button
-import android.widget.ImageView
+import android.webkit.CookieManager
+import android.webkit.URLUtil
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.cardview.widget.CardView
-import java.util.UUID
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 class MainActivity : AppCompatActivity() {
 
-    private val selectedFiles = mutableListOf<SharedFile>()
     private var server: LabDropServer? = null
-    private var totalDownloads = 0
+    private lateinit var webView: WebView
+    private lateinit var swipeRefresh: SwipeRefreshLayout
+    private lateinit var llHotspotBanner: LinearLayout
+    private lateinit var tvHotspotIp: TextView
 
-    private lateinit var tvStatusTitle: TextView
-    private lateinit var tvStatusSub: TextView
-    private lateinit var tvServerUrl: TextView
-    private lateinit var tvSelectedSummary: TextView
-    private lateinit var llFileListContainer: LinearLayout
-    private lateinit var btnSelectFiles: Button
-    private lateinit var btnBroadcast: Button
-    private lateinit var cardLiveBroadcast: CardView
-    private lateinit var ivQrCode: ImageView
-    private lateinit var tvDirectUrl: TextView
-    private lateinit var tvDownloadCount: TextView
+    private var filePathCallback: ValueCallback<Array<Uri>>? = null
 
-    private val filePickerLauncher = registerForActivityResult(
-        ActivityResultContracts.GetMultipleContents()
-    ) { uris ->
-        if (uris != null && uris.isNotEmpty()) {
-            addUrisToSelection(uris)
+    private val fileChooserLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (filePathCallback == null) return@registerForActivityResult
+
+        val uris = mutableListOf<Uri>()
+        val data = result.data
+
+        if (result.resultCode == RESULT_OK && data != null) {
+            val clipData = data.clipData
+            if (clipData != null) {
+                for (i in 0 until clipData.itemCount) {
+                    uris.add(clipData.getItemAt(i).uri)
+                }
+            } else if (data.data != null) {
+                uris.add(data.data!!)
+            }
         }
+
+        filePathCallback?.onReceiveValue(if (uris.isNotEmpty()) uris.toTypedArray() else null)
+        filePathCallback = null
     }
 
+    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         initViews()
-        setupListeners()
-        handleIncomingIntent(intent)
+        startOfflineServer()
+        setupWebView()
     }
 
     private fun initViews() {
-        tvStatusTitle = findViewById(R.id.tvStatusTitle)
-        tvStatusSub = findViewById(R.id.tvStatusSub)
-        tvServerUrl = findViewById(R.id.tvServerUrl)
-        tvSelectedSummary = findViewById(R.id.tvSelectedSummary)
-        llFileListContainer = findViewById(R.id.llFileListContainer)
-        btnSelectFiles = findViewById(R.id.btnSelectFiles)
-        btnBroadcast = findViewById(R.id.btnBroadcast)
-        cardLiveBroadcast = findViewById(R.id.cardLiveBroadcast)
-        ivQrCode = findViewById(R.id.ivQrCode)
-        tvDirectUrl = findViewById(R.id.tvDirectUrl)
-        tvDownloadCount = findViewById(R.id.tvDownloadCount)
-    }
+        webView = findViewById(R.id.webView)
+        swipeRefresh = findViewById(R.id.swipeRefresh)
+        llHotspotBanner = findViewById(R.id.llHotspotBanner)
+        tvHotspotIp = findViewById(R.id.tvHotspotIp)
 
-    private fun setupListeners() {
-        btnSelectFiles.setOnClickListener {
-            filePickerLauncher.launch("*/*")
-        }
-
-        btnBroadcast.setOnClickListener {
-            if (server == null) {
-                startBroadcast()
-            } else {
-                stopBroadcast()
-            }
+        swipeRefresh.setOnRefreshListener {
+            webView.reload()
         }
     }
 
-    private fun addUrisToSelection(uris: List<Uri>) {
-        for (uri in uris) {
-            val file = resolveSharedFile(uri)
-            if (file != null && selectedFiles.none { it.uri == uri }) {
-                selectedFiles.add(file)
-            }
-        }
-        updateFileListUI()
-    }
-
-    private fun resolveSharedFile(uri: Uri): SharedFile? {
-        var name = "unknown_file"
-        var size = 0L
-        val mimeType = contentResolver.getType(uri) ?: "application/octet-stream"
-
-        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-            if (cursor.moveToFirst()) {
-                if (nameIndex != -1) name = cursor.getString(nameIndex) ?: name
-                if (sizeIndex != -1) size = cursor.getLong(sizeIndex)
-            }
-        }
-
-        return SharedFile(
-            id = UUID.randomUUID().toString().substring(0, 8),
-            name = name,
-            size = size,
-            mimeType = mimeType,
-            uri = uri
-        )
-    }
-
-    private fun updateFileListUI() {
-        llFileListContainer.removeAllViews()
-
-        if (selectedFiles.isEmpty()) {
-            tvSelectedSummary.text = "No files selected yet"
-            return
-        }
-
-        var totalBytes = 0L
-        for (file in selectedFiles) {
-            totalBytes += file.size
-
-            val itemView = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                setPadding(16, 12, 16, 12)
-                setBackgroundResource(android.R.drawable.dialog_holo_light_frame)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { topMargin = 8 }
-            }
-
-            val tvName = TextView(this).apply {
-                text = "${file.name} (${file.getFormattedSize()})"
-                textSize = 13f
-                setTextColor(resources.getColor(R.color.text_primary, theme))
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            }
-
-            val btnRemove = TextView(this).apply {
-                text = "✕"
-                textSize = 14f
-                setTextColor(resources.getColor(R.color.text_secondary, theme))
-                setPadding(12, 4, 12, 4)
-                setOnClickListener {
-                    selectedFiles.remove(file)
-                    updateFileListUI()
-                    server?.setFiles(selectedFiles)
-                }
-            }
-
-            itemView.addView(tvName)
-            itemView.addView(btnRemove)
-            llFileListContainer.addView(itemView)
-        }
-
-        tvSelectedSummary.text = "${selectedFiles.size} file(s) selected • ${formatBytes(totalBytes)}"
-    }
-
-    private fun startBroadcast() {
-        if (selectedFiles.isEmpty()) {
-            Toast.makeText(this, "Please select at least one file first!", Toast.LENGTH_SHORT).show()
-            return
-        }
-
+    private fun startOfflineServer() {
         try {
-            server = LabDropServer(this, 8080) { filename ->
+            server = LabDropServer(this, 8080) { fileName ->
                 runOnUiThread {
-                    totalDownloads++
-                    tvDownloadCount.text = "📥 Total Downloads: $totalDownloads ($filename)"
-                    Toast.makeText(this, "Friend downloading: $filename", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Friend downloading: $fileName", Toast.LENGTH_SHORT).show()
                 }
             }
-            server?.setFiles(selectedFiles)
             server?.start()
 
             val ip = NetworkUtils.getLocalIpAddress()
-            val url = "http://$ip:8080"
+            tvHotspotIp.text = "Offline Hub Active • http://$ip:8080"
 
-            tvStatusTitle.text = "🟢 Live Offline Hub"
-            tvStatusSub.text = "Streaming files directly to anyone connected to your Wi-Fi or Hotspot."
-            tvServerUrl.text = "Access URL: $url"
-            tvDirectUrl.text = url
-
-            val qrBitmap = NetworkUtils.generateQrBitmap(url, 512)
-            ivQrCode.setImageBitmap(qrBitmap)
-
-            cardLiveBroadcast.visibility = View.VISIBLE
-            btnBroadcast.text = "⏹ Stop Broadcasting"
-            btnBroadcast.setBackgroundColor(resources.getColor(R.color.primary_dark, theme))
-
-            Toast.makeText(this, "LabDrop Hub started! Friends can scan QR now.", Toast.LENGTH_LONG).show()
+            llHotspotBanner.setOnClickListener {
+                Toast.makeText(this, "Friends can connect to your Hotspot and open http://$ip:8080", Toast.LENGTH_LONG).show()
+            }
         } catch (e: Exception) {
-            Toast.makeText(this, "Failed to start server: ${e.message}", Toast.LENGTH_LONG).show()
-            stopBroadcast()
+            tvHotspotIp.text = "Local Server Error: ${e.message}"
         }
     }
 
-    private fun stopBroadcast() {
-        server?.stop()
-        server = null
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun setupWebView() {
+        val settings = webView.settings
+        settings.javaScriptEnabled = true
+        settings.domStorageEnabled = true
+        settings.databaseEnabled = true
+        settings.allowFileAccess = true
+        settings.allowContentAccess = true
+        settings.useWideViewPort = true
+        settings.loadWithOverviewMode = true
+        settings.cacheMode = WebSettings.LOAD_NO_CACHE
 
-        tvStatusTitle.text = "Offline Lab Broadcaster"
-        tvStatusSub.text = "Share lab files to everyone around you without internet or mobile data."
-        tvServerUrl.text = "Status: Server stopped"
-        cardLiveBroadcast.visibility = View.GONE
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                swipeRefresh.isRefreshing = false
+            }
 
-        btnBroadcast.text = "⚡ Start Offline Broadcast"
-        btnBroadcast.setBackgroundColor(resources.getColor(R.color.primary, theme))
-        totalDownloads = 0
-        tvDownloadCount.text = "📥 Total Downloads: 0"
+            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                if (url == null) return false
+                if (url.contains("/download/")) {
+                    startFileDownload(url)
+                    return true
+                }
+                return false
+            }
+        }
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onShowFileChooser(
+                mWebView: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                this@MainActivity.filePathCallback?.onReceiveValue(null)
+                this@MainActivity.filePathCallback = filePathCallback
+
+                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                    type = "*/*"
+                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                }
+
+                try {
+                    fileChooserLauncher.launch(Intent.createChooser(intent, "Select Files to Transfer"))
+                } catch (e: Exception) {
+                    this@MainActivity.filePathCallback = null
+                    return false
+                }
+                return true
+            }
+        }
+
+        webView.setDownloadListener { url, userAgent, contentDisposition, mimetype, contentLength ->
+            startFileDownload(url, contentDisposition, mimetype)
+        }
+
+        // Load the local full LabDrop web application
+        webView.loadUrl("http://127.0.0.1:8080")
     }
 
-    private fun handleIncomingIntent(intent: Intent?) {
-        if (intent == null) return
-        when (intent.action) {
-            Intent.ACTION_SEND -> {
-                val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-                } else {
-                    @Suppress("DEPRECATION")
-                    intent.getParcelableExtra(Intent.EXTRA_STREAM)
-                }
-                if (uri != null) addUrisToSelection(listOf(uri))
+    private fun startFileDownload(url: String, contentDisposition: String? = null, mimetype: String? = null) {
+        try {
+            val request = DownloadManager.Request(Uri.parse(url)).apply {
+                val filename = URLUtil.guessFileName(url, contentDisposition, mimetype ?: "application/octet-stream")
+                setTitle(filename)
+                setDescription("Downloading from LabDrop")
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
             }
-            Intent.ACTION_SEND_MULTIPLE -> {
-                val uris = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
-                } else {
-                    @Suppress("DEPRECATION")
-                    intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
-                }
-                if (uris != null) addUrisToSelection(uris)
-            }
+            val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            dm.enqueue(request)
+            Toast.makeText(this, "Downloading file...", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun formatBytes(bytes: Long): String {
-        if (bytes <= 0) return "0 B"
-        val units = arrayOf("B", "KB", "MB", "GB")
-        val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
-        val num = bytes / Math.pow(1024.0, digitGroups.toDouble())
-        return String.format(java.util.Locale.US, "%.1f %s", num, units[digitGroups.coerceIn(0, units.size - 1)])
+    override fun onBackPressed() {
+        if (webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
+        }
     }
 
     override fun onDestroy() {

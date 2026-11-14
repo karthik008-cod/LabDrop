@@ -1,251 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@color/background_warm">
 
-    <!-- Top App Bar -->
-    <LinearLayout
+    <!-- Full-screen Web Application (Exact LabDrop Website UI) -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefresh"
         android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <WebView
+            android:id="@+id/webView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <!-- Offline Hotspot Floating Pill Banner -->
+    <LinearLayout
+        android:id="@+id/llHotspotBanner"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_status_pill"
+        android:elevation="8dp"
         android:gravity="center_vertical"
-        android:paddingHorizontal="20dp"
-        android:paddingVertical="14dp"
-        android:background="@color/surface_card"
-        android:elevation="2dp">
+        android:orientation="horizontal"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="7dp">
+
+        <View
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:background="@drawable/dot_green"
+            android:layout_marginEnd="8dp" />
 
         <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="LabDrop"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textColor="@color/primary_dark" />
-
-        <TextView
-            android:id="@+id/tvModeBadge"
+            android:id="@+id/tvHotspotIp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="100% OFFLINE HUB"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="@color/accent_emerald_dark"
-            android:background="@color/accent_emerald_light"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="5dp" />
+            android:text="Offline Hub Active • http://192.168.43.1:8080"
+            android:textColor="#065F46"
+            android:textSize="12sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
-
-            <!-- Status Card -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="14dp"
-                app:cardElevation="3dp"
-                app:cardBackgroundColor="@color/surface_card"
-                android:layout_marginBottom="16dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="18dp">
-
-                    <TextView
-                        android:id="@+id/tvStatusTitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Offline Lab Broadcaster"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary" />
-
-                    <TextView
-                        android:id="@+id/tvStatusSub"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="Share lab files to everyone around you without internet or mobile data."
-                        android:textSize="13sp"
-                        android:textColor="@color/text_secondary" />
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="@color/border_subtle"
-                        android:layout_marginVertical="12dp" />
-
-                    <TextView
-                        android:id="@+id/tvServerUrl"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Status: Server stopped"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_secondary" />
-
-                    <TextView
-                        android:id="@+id/tvHotspotHint"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="Tip: Turn on Personal Hotspot (0% data needed) so friends can connect."
-                        android:textSize="12sp"
-                        android:textColor="@color/primary_dark" />
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <!-- File Selection Card -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="14dp"
-                app:cardElevation="3dp"
-                app:cardBackgroundColor="@color/surface_card"
-                android:layout_marginBottom="16dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="18dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Selected Files"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_primary" />
-
-                        <Button
-                            android:id="@+id/btnSelectFiles"
-                            android:layout_width="wrap_content"
-                            android:layout_height="38dp"
-                            android:text="+ Add Files"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white"
-                            android:backgroundTint="@color/primary_dark" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tvSelectedSummary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="No files selected yet"
-                        android:textSize="13sp"
-                        android:textColor="@color/text_secondary" />
-
-                    <LinearLayout
-                        android:id="@+id/llFileListContainer"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:layout_marginTop="10dp" />
-
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <!-- Broadcast Control Button -->
-            <Button
-                android:id="@+id/btnBroadcast"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="⚡ Start Offline Broadcast"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="@color/white"
-                android:backgroundTint="@color/primary"
-                android:layout_marginBottom="16dp" />
-
-            <!-- Live Broadcast Details Card (Shown when broadcasting) -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/cardLiveBroadcast"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                app:cardCornerRadius="14dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/surface_card"
-                android:layout_marginBottom="24dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:gravity="center_horizontal"
-                    android:padding="20dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Friends Can Scan &amp; Download"
-                        android:textSize="17sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/accent_emerald_dark" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="Point any phone camera at this QR code to download instantly in Chrome/Safari."
-                        android:textSize="12sp"
-                        android:gravity="center"
-                        android:textColor="@color/text_secondary" />
-
-                    <ImageView
-                        android:id="@+id/ivQrCode"
-                        android:layout_width="220dp"
-                        android:layout_height="220dp"
-                        android:layout_marginVertical="16dp"
-                        android:background="@color/white"
-                        android:padding="8dp" />
-
-                    <TextView
-                        android:id="@+id/tvDirectUrl"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="http://192.168.43.1:8080"
-                        android:textSize="15sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/primary_dark" />
-
-                    <TextView
-                        android:id="@+id/tvDownloadCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:text="📥 Total Downloads: 0"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary" />
-
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-        </LinearLayout>
-    </ScrollView>
-</LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

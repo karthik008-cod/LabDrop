@@ -2,9 +2,11 @@ package online.labdrop.app
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.util.Base64
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
+import java.io.ByteArrayOutputStream
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.EnumMap
@@ -30,7 +32,6 @@ object NetworkUtils {
                 }
             }
         } catch (_: Exception) {}
-        // Default Android Hotspot gateway IP
         return "192.168.43.1"
     }
 
@@ -48,5 +49,17 @@ object NetworkUtils {
             }
         }
         return bitmap
+    }
+
+    fun generateQrBase64(content: String, size: Int = 400): String {
+        return try {
+            val bitmap = generateQrBitmap(content, size)
+            val baos = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos)
+            val base64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+            "data:image/png;base64,$base64"
+        } catch (_: Exception) {
+            ""
+        }
     }
 }

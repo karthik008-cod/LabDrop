@@ -4,110 +4,371 @@ import android.content.Context
 import fi.iki.elonen.NanoHTTPD
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.ByteArrayInputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
 import java.net.URLEncoder
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+
+data class TransferFileRecord(
+    val id: String,
+    val originalName: String,
+    val storageName: String,
+    var size: Long,
+    val mimetype: String,
+    val category: String = "general"
+)
+
+data class TransferRecord(
+    val id: String,
+    val shortCode: String,
+    val transferName: String,
+    val createdAt: Long,
+    val expiresAt: Long,
+    val files: MutableList<TransferFileRecord>,
+    var totalSize: Long = 0,
+    val isOffline: Boolean = true,
+    var qrCode: String = "",
+    var directUrl: String = ""
+)
 
 class LabDropServer(
     private val context: Context,
     port: Int = 8080,
-    private val onDownload: (String) -> Unit
-) : NanoHTTPD(port) {
+    private val onDownloadCompleted: ((String) -> Unit)? = null
+) : NanoHTTPD("0.0.0.0", port) {
 
-    private val sharedFiles = mutableListOf<SharedFile>()
-
-    fun setFiles(files: List<SharedFile>) {
-        synchronized(sharedFiles) {
-            sharedFiles.clear()
-            sharedFiles.addAll(files)
-        }
-    }
+    private val transfers = ConcurrentHashMap<String, TransferRecord>()
+    private val uploadsDir = File(context.filesDir, "uploads").apply { mkdirs() }
 
     override fun serve(session: IHTTPSession): Response {
         val uri = session.uri
         val method = session.method
 
-        if (method != Method.GET) {
-            return newFixedLengthResponse(Response.Status.METHOD_NOT_ALLOWED, MIME_PLAINTEXT, "Method Not Allowed")
+        // 1. Static Configuration for Frontend
+        if (uri == "/js/site-config.js") {
+            val script = "window.LABDROP_CONFIG = { contactEmail: 'yuvaankaarthikeyaa.1206@gmail.com', portfolioUrl: '' };"
+            return newFixedLengthResponse(Response.Status.OK, "application/javascript; charset=UTF-8", script)
         }
 
-        return when {
-            uri == "/" || uri == "/index.html" -> servePortalHtml()
-            uri == "/api/info" -> serveApiInfo()
-            uri == "/download/all" -> serveZipAll()
-            uri.startsWith("/download/") -> serveSingleFile(uri.removePrefix("/download/"))
-            else -> newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found")
+        // 2. API: Config
+        if (uri == "/api/config") {
+            val config = JSONObject().apply {
+                put("contactEmail", "yuvaankaarthikeyaa.1206@gmail.com")
+                put("portfolioUrl", "")
+            }
+            return newJsonResponse(config.toString())
         }
-    }
 
-    private fun servePortalHtml(): Response {
-        return try {
-            val html = context.assets.open("web/portal.html").bufferedReader().use { it.readText() }
-            newFixedLengthResponse(Response.Status.OK, "text/html; charset=UTF-8", html)
-        } catch (_: Exception) {
-            newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Failed to load portal")
+        // 3. API: Analytics visit ping
+        if (uri == "/api/analytics/visit") {
+            return newJsonResponse("{\"success\":true}")
         }
-    }
 
-    private fun serveApiInfo(): Response {
-        val root = JSONObject()
-        val filesArray = JSONArray()
-        var totalBytes = 0L
+        // 4. API: Upload Initiate (POST)
+        if (uri == "/api/upload/initiate" && method == Method.POST) {
+            return handleUploadInitiate(session)
+        }
 
-        synchronized(sharedFiles) {
-            for (f in sharedFiles) {
-                totalBytes += f.size
-                val fileObj = JSONObject().apply {
-                    put("id", f.id)
-                    put("name", f.name)
-                    put("size", f.size)
-                    put("formattedSize", f.getFormattedSize())
-                    put("mimeType", f.mimeType)
-                }
-                filesArray.put(fileObj)
+        // 5. Local File Upload Stream (PUT /api/upload/local/:transferId/:storageName)
+        if (uri.startsWith("/api/upload/local/") && method == Method.PUT) {
+            return handleLocalUploadPut(session, uri)
+        }
+
+        // 6. API: Upload Complete (POST)
+        if (uri == "/api/upload/complete" && method == Method.POST) {
+            return handleUploadComplete(session)
+        }
+
+        // 7. API: Code Lookup (GET /api/transfer/code/:code)
+        if (uri.startsWith("/api/transfer/code/") && method == Method.GET) {
+            val code = uri.removePrefix("/api/transfer/code/").trim().uppercase()
+            val transfer = transfers.values.find { it.shortCode.equals(code, ignoreCase = true) }
+            return if (transfer != null) {
+                newJsonResponse(JSONObject().put("id", transfer.id).put("shortCode", transfer.shortCode).toString())
+            } else {
+                newFixedLengthResponse(Response.Status.NOT_FOUND, "application/json", "{\"error\":\"Transfer code not found\"}")
             }
         }
 
-        root.put("files", filesArray)
-        root.put("totalSize", totalBytes)
-        root.put("totalSizeFormatted", formatBytes(totalBytes))
+        // 8. API: Get Transfer Metadata (GET /api/transfer/:id)
+        if (uri.startsWith("/api/transfer/") && !uri.contains("/verify-") && method == Method.GET) {
+            val id = uri.removePrefix("/api/transfer/").trim()
+            val transfer = transfers[id] ?: transfers.values.find { it.shortCode.equals(id, ignoreCase = true) }
+            return if (transfer != null) {
+                handleGetTransfer(transfer)
+            } else {
+                newFixedLengthResponse(Response.Status.NOT_FOUND, "application/json", "{\"error\":\"Transfer not found\"}")
+            }
+        }
 
-        return newFixedLengthResponse(Response.Status.OK, "application/json; charset=UTF-8", root.toString())
+        // 9. API: Proximity & PIN Verification endpoints
+        if (uri.contains("/verify-proximity") || uri.contains("/verify-pin")) {
+            return newJsonResponse("{\"success\":true,\"verified\":true}")
+        }
+
+        // 10. File Download (GET /download/:transferId/:fileId)
+        if (uri.startsWith("/download/") && !uri.endsWith("/zip") && method == Method.GET) {
+            val parts = uri.removePrefix("/download/").split("/")
+            if (parts.size >= 2) {
+                return handleFileDownload(parts[0], parts[1])
+            }
+        }
+
+        // 11. Download All as ZIP (GET /download/:transferId/zip)
+        if (uri.startsWith("/download/") && uri.endsWith("/zip") && method == Method.GET) {
+            val transferId = uri.removePrefix("/download/").removeSuffix("/zip").trim()
+            return handleZipDownload(transferId)
+        }
+
+        // 12. Frontend Pages: /t/:id -> transfer.html
+        if (uri.startsWith("/t/")) {
+            return serveAssetFile("transfer.html", "text/html; charset=UTF-8")
+                ?: newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found")
+        }
+
+        // 13. Root or index: / or /index.html
+        if (uri == "/" || uri == "/index.html") {
+            return serveAssetFile("index.html", "text/html; charset=UTF-8")
+                ?: newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found")
+        }
+
+        // 14. Static Assets: /css/*, /js/*, *.png, etc.
+        val assetPath = uri.removePrefix("/")
+        val mime = getMimeTypeForAsset(assetPath)
+        val assetResponse = serveAssetFile(assetPath, mime)
+        if (assetResponse != null) return assetResponse
+
+        return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found")
     }
 
-    private fun serveSingleFile(fileId: String): Response {
-        val file = synchronized(sharedFiles) { sharedFiles.find { it.id == fileId } }
-            ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "File Not Found")
-
+    private fun handleUploadInitiate(session: IHTTPSession): Response {
         return try {
-            val inputStream = context.contentResolver.openInputStream(file.uri)
-                ?: return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Cannot read file")
+            val map = HashMap<String, String>()
+            session.parseBody(map)
+            val postData = map["postData"] ?: ""
+            val json = JSONObject(postData)
 
-            val safeFilename = URLEncoder.encode(file.name, "UTF-8").replace("+", "%20")
-            val response = newFixedLengthResponse(
-                Response.Status.OK,
-                file.mimeType.ifEmpty { "application/octet-stream" },
-                inputStream,
-                file.size
+            val transferId = UUID.randomUUID().toString()
+            val customCode = json.optString("customCode", "").trim().uppercase()
+            val shortCode = if (customCode.isNotEmpty()) customCode else UUID.randomUUID().toString().substring(0, 6).uppercase()
+            val transferName = json.optString("transferName", "Offline Lab Transfer")
+
+            val filesArray = json.optJSONArray("files") ?: JSONArray()
+            val fileRecords = mutableListOf<TransferFileRecord>()
+            val uploadUrlsArray = JSONArray()
+
+            for (i in 0 until filesArray.length()) {
+                val fileObj = filesArray.getJSONObject(i)
+                val originalName = fileObj.optString("name", "file_$i")
+                val size = fileObj.optLong("size", 0L)
+                val type = fileObj.optString("type", "application/octet-stream")
+                val fileId = UUID.randomUUID().toString()
+                val storageName = "${fileId}__${originalName}"
+
+                val record = TransferFileRecord(
+                    id = fileId,
+                    originalName = originalName,
+                    storageName = storageName,
+                    size = size,
+                    mimetype = type
+                )
+                fileRecords.add(record)
+
+                val uploadUrlObj = JSONObject().apply {
+                    put("fileId", fileId)
+                    put("storageName", storageName)
+                    put("uploadUrl", "/api/upload/local/$transferId/$storageName")
+                }
+                uploadUrlsArray.put(uploadUrlObj)
+            }
+
+            val now = System.currentTimeMillis()
+            val expiresAt = now + 30 * 60 * 1000L // 30 minutes
+            val transfer = TransferRecord(
+                id = transferId,
+                shortCode = shortCode,
+                transferName = transferName,
+                createdAt = now,
+                expiresAt = expiresAt,
+                files = fileRecords
             )
-            response.addHeader("Content-Disposition", "attachment; filename=\"${file.name}\"; filename*=UTF-8''$safeFilename")
-            response.addHeader("Accept-Ranges", "bytes")
+            transfers[transferId] = transfer
 
-            onDownload(file.name)
-            response
+            val res = JSONObject().apply {
+                put("transferId", transferId)
+                put("shortCode", shortCode)
+                put("uploadUrls", uploadUrlsArray)
+                put("proximity", JSONObject().put("enabled", false))
+            }
+            newJsonResponse(res.toString())
         } catch (e: Exception) {
-            newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error: ${e.message}")
+            newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\":\"${e.message}\"}")
         }
     }
 
-    private fun serveZipAll(): Response {
-        val filesCopy = synchronized(sharedFiles) { sharedFiles.toList() }
-        if (filesCopy.isEmpty()) {
-            return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "No files available")
+    private fun handleLocalUploadPut(session: IHTTPSession, uri: String): Response {
+        return try {
+            val parts = uri.removePrefix("/api/upload/local/").split("/")
+            if (parts.size < 2) {
+                return newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json", "{\"error\":\"Invalid upload URL\"}")
+            }
+            val transferId = parts[0]
+            val storageName = parts[1]
+
+            val destDir = File(uploadsDir, transferId).apply { mkdirs() }
+            val destFile = File(destDir, storageName)
+
+            val contentLength = session.headers["content-length"]?.toLongOrNull() ?: -1L
+            FileOutputStream(destFile).use { fos ->
+                val buf = ByteArray(64 * 1024)
+                var remaining = contentLength
+                while (remaining > 0 || contentLength == -1L) {
+                    val toRead = if (contentLength == -1L) buf.size else Math.min(buf.size.toLong(), remaining).toInt()
+                    val read = session.inputStream.read(buf, 0, toRead)
+                    if (read <= 0) break
+                    fos.write(buf, 0, read)
+                    if (contentLength != -1L) remaining -= read
+                }
+            }
+
+            // Update file record size
+            val transfer = transfers[transferId]
+            transfer?.files?.find { it.storageName == storageName }?.let {
+                it.size = destFile.length()
+            }
+
+            newJsonResponse("{\"success\":true}")
+        } catch (e: Exception) {
+            newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\":\"${e.message}\"}")
+        }
+    }
+
+    private fun handleUploadComplete(session: IHTTPSession): Response {
+        return try {
+            val map = HashMap<String, String>()
+            session.parseBody(map)
+            val postData = map["postData"] ?: ""
+            val json = JSONObject(postData)
+            val transferId = json.optString("transferId", "")
+
+            val transfer = transfers[transferId]
+                ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, "application/json", "{\"error\":\"Transfer not found\"}")
+
+            val transferDir = File(uploadsDir, transferId)
+            var totalBytes = 0L
+            for (f in transfer.files) {
+                val fileOnDisk = File(transferDir, f.storageName)
+                if (fileOnDisk.exists()) {
+                    f.size = fileOnDisk.length()
+                    totalBytes += f.size
+                }
+            }
+            transfer.totalSize = totalBytes
+
+            val localIp = NetworkUtils.getLocalIpAddress()
+            val directUrl = "http://$localIp:8080/?CODE=${transfer.shortCode}"
+            val qrCodeDataUrl = NetworkUtils.generateQrBase64(directUrl, 400)
+            transfer.directUrl = directUrl
+            transfer.qrCode = qrCodeDataUrl
+
+            val transferJson = buildTransferJsonObject(transfer)
+            val res = JSONObject().apply {
+                put("success", true)
+                put("transfer", transferJson)
+            }
+            newJsonResponse(res.toString())
+        } catch (e: Exception) {
+            newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\":\"${e.message}\"}")
+        }
+    }
+
+    private fun handleGetTransfer(transfer: TransferRecord): Response {
+        val transferJson = buildTransferJsonObject(transfer)
+        val res = JSONObject().apply {
+            put("transfer", transferJson)
+        }
+        return newJsonResponse(res.toString())
+    }
+
+    private fun buildTransferJsonObject(transfer: TransferRecord): JSONObject {
+        val filesArray = JSONArray()
+        for (f in transfer.files) {
+            val fObj = JSONObject().apply {
+                put("id", f.id)
+                put("originalName", f.originalName)
+                put("storageName", f.storageName)
+                put("size", f.size)
+                put("mimetype", f.mimetype)
+            }
+            filesArray.put(fObj)
+        }
+        return JSONObject().apply {
+            put("id", transfer.id)
+            put("shortCode", transfer.shortCode)
+            put("transferName", transfer.transferName)
+            put("totalSize", transfer.totalSize)
+            put("fileCount", transfer.files.size)
+            put("createdAt", transfer.createdAt)
+            put("expiresAt", transfer.expiresAt)
+            put("isOffline", true)
+            put("hasPin", false)
+            put("qrCode", transfer.qrCode)
+            put("directUrl", transfer.directUrl)
+            put("files", filesArray)
+            put("links", JSONArray())
+        }
+    }
+
+    private fun handleFileDownload(transferId: String, fileId: String): Response {
+        val transfer = transfers[transferId]
+            ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Transfer not found")
+
+        val fileRecord = transfer.files.find { it.id == fileId || it.storageName == fileId }
+            ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "File not found")
+
+        val fileOnDisk = File(uploadsDir, "$transferId/${fileRecord.storageName}")
+        if (!fileOnDisk.exists()) {
+            return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "File missing on disk")
+        }
+
+        return try {
+            val fis = FileInputStream(fileOnDisk)
+            val safeName = URLEncoder.encode(fileRecord.originalName, "UTF-8").replace("+", "%20")
+            val res = newFixedLengthResponse(
+                Response.Status.OK,
+                fileRecord.mimetype.ifEmpty { "application/octet-stream" },
+                fis,
+                fileOnDisk.length()
+            )
+            res.addHeader("Content-Disposition", "attachment; filename=\"${fileRecord.originalName}\"; filename*=UTF-8''$safeName")
+            res.addHeader("Accept-Ranges", "bytes")
+
+            onDownloadCompleted?.invoke(fileRecord.originalName)
+            res
+        } catch (e: Exception) {
+            newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Download error: ${e.message}")
+        }
+    }
+
+    private fun handleZipDownload(transferId: String): Response {
+        val transfer = transfers[transferId]
+            ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Transfer not found")
+
+        val transferDir = File(uploadsDir, transferId)
+        val filesToZip = transfer.files.mapNotNull { f ->
+            val diskFile = File(transferDir, f.storageName)
+            if (diskFile.exists()) Pair(f.originalName, diskFile) else null
+        }
+
+        if (filesToZip.isEmpty()) {
+            return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "No files found to zip")
         }
 
         val pipedOut = PipedOutputStream()
@@ -117,10 +378,10 @@ class LabDropServer(
             try {
                 ZipOutputStream(pipedOut).use { zos ->
                     val buffer = ByteArray(32 * 1024)
-                    for (file in filesCopy) {
+                    for ((name, diskFile) in filesToZip) {
                         try {
-                            context.contentResolver.openInputStream(file.uri)?.use { fis ->
-                                zos.putNextEntry(ZipEntry(file.name))
+                            FileInputStream(diskFile).use { fis ->
+                                zos.putNextEntry(ZipEntry(name))
                                 var len: Int
                                 while (fis.read(buffer).also { len = it } > 0) {
                                     zos.write(buffer, 0, len)
@@ -135,16 +396,37 @@ class LabDropServer(
         }.start()
 
         val response = newChunkedResponse(Response.Status.OK, "application/zip", pipedIn)
-        response.addHeader("Content-Disposition", "attachment; filename=\"LabDrop_Files.zip\"")
-        onDownload("All Files (ZIP)")
+        response.addHeader("Content-Disposition", "attachment; filename=\"${transfer.transferName}.zip\"")
+        onDownloadCompleted?.invoke("All Files (ZIP)")
         return response
     }
 
-    private fun formatBytes(bytes: Long): String {
-        if (bytes <= 0) return "0 B"
-        val units = arrayOf("B", "KB", "MB", "GB")
-        val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
-        val num = bytes / Math.pow(1024.0, digitGroups.toDouble())
-        return String.format(java.util.Locale.US, "%.1f %s", num, units[digitGroups.coerceIn(0, units.size - 1)])
+    private fun serveAssetFile(path: String, mimeType: String): Response? {
+        return try {
+            val fullPath = "web/$path"
+            val stream: InputStream = context.assets.open(fullPath)
+            newChunkedResponse(Response.Status.OK, mimeType, stream)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun getMimeTypeForAsset(path: String): String {
+        val lower = path.lowercase()
+        return when {
+            lower.endsWith(".html") -> "text/html; charset=UTF-8"
+            lower.endsWith(".css") -> "text/css; charset=UTF-8"
+            lower.endsWith(".js") -> "application/javascript; charset=UTF-8"
+            lower.endsWith(".png") -> "image/png"
+            lower.endsWith(".webp") -> "image/webp"
+            lower.endsWith(".svg") -> "image/svg+xml"
+            lower.endsWith(".ico") -> "image/x-icon"
+            lower.endsWith(".json") -> "application/json; charset=UTF-8"
+            else -> "application/octet-stream"
+        }
+    }
+
+    private fun newJsonResponse(json: String): Response {
+        return newFixedLengthResponse(Response.Status.OK, "application/json; charset=UTF-8", json)
     }
 }
