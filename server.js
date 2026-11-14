@@ -2607,6 +2607,280 @@ app.post('/api/ai/lab-record', async (req, res) => {
   }
 });
 
+// --- LabDrop AI Chat Stream (SSE) ---
+// Real-time streaming AI chat endpoint using Server-Sent Events
+app.post('/api/ai/chat/stream', async (req, res) => {
+  const {
+    prompt,
+    conversationHistory = [],
+    previousOutput = '',
+    directFiles = []
+  } = req.body;
+
+  if (!prompt || !prompt.trim()) {
+    return res.status(400).json({ error: 'Prompt is required.' });
+  }
+
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const send = (obj) => {
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify(obj)}\n\n`);
+    }
+  };
+
+  try {
+    // Build file context (supports directFiles with imageBase64, pdfBase64)
+    let filesContext = 'Direct Lab Workspace\n';
+    const mediaParts = [];
+
+    if (Array.isArray(directFiles)) {
+      for (const df of directFiles) {
+        if (!df || !df.name) continue;
+        if (df.pdfBase64) {
+          mediaParts.push({ inlineData: { mimeType: 'application/pdf', data: df.pdfBase64 } });
+          filesContext += `\n--- Attached PDF: ${df.name} ---\n${(df.content || '').slice(0, 15000)}\n`;
+        } else if (df.imageBase64) {
+          mediaParts.push({ inlineData: { mimeType: df.mimeType || 'image/jpeg', data: df.imageBase64 } });
+          filesContext += `\n--- Attached Image: ${df.name} ---\n`;
+        } else {
+          const content = (df.content || df.codeContent || '').slice(0, 25000);
+          filesContext += `\n--- ${df.name} ---\n${content}\n`;
+        }
+      }
+    }
+
+    // Build the same system prompt as chatWithFiles
+    const isEmojiRequested = /emoji|emoticon|smileys|use emojis|with emojis|add emojis/i.test(prompt);
+    const hasVisualMedia = mediaParts.length > 0;
+
+    const systemInstruction = `You are LabDrop AI, a distinguished computer science professor and software engineering examiner.
+You have access to the student's lab files and attachments.
+
+STRICT EMOJI POLICY:
+${isEmojiRequested ? 'The student explicitly requested emojis. You may include relevant emojis.' : 'Do NOT use ANY emojis or pictograms in your response under any circumstances.'}
+
+AUTHENTIC REAL UNICODE ARROWS & SYMBOLS (NO LATEX):
+NEVER output LaTeX math notation or dollar signs. ALWAYS use clean Unicode symbols: →, ←, ⇒, ≥, ≤, ≠, ±, ×, ÷, •, etc.`;
+
+    let fullPrompt = `=== CONTEXT OF STUDENT'S UPLOADED FILES ===\n${filesContext.slice(0, 30000)}\n`;
+    if (previousOutput && previousOutput.trim()) {
+      fullPrompt += `\n=== CONTEXT OF GENERATED LAB RECORD ===\n${previousOutput.slice(0, 20000)}\n`;
+    }
+    if (conversationHistory && conversationHistory.length > 0) {
+      fullPrompt += `\n=== PREVIOUS CHAT HISTORY ===\n`;
+      conversationHistory.slice(-8).forEach(msg => {
+        fullPrompt += `${msg.role === 'user' ? 'Student' : 'AI'}: ${msg.content}\n`;
+      });
+    }
+    fullPrompt += `\n=== STUDENT'S CURRENT QUESTION ===\n"${prompt.trim()}"\n${hasVisualMedia ? '\nNOTE: Multimodal visual document is attached. Inspect carefully.' : ''}\nProvide a complete, accurate response:`;
+
+    const geminiParts = [];
+    if (mediaParts.length > 0) mediaParts.forEach(mp => geminiParts.push(mp));
+    geminiParts.push({ text: fullPrompt });
+
+    let fullText = '';
+    let firstChunkSent = false;
+
+    await aiService.callGeminiStream(
+      geminiParts,
+      systemInstruction,
+      8192,
+      (chunkText) => {
+        // Strip ads on first substantial chunk only; we'll apply full strip at end
+        fullText += chunkText;
+        if (!firstChunkSent) {
+          send({ type: 'start' });
+          firstChunkSent = true;
+        }
+        send({ type: 'chunk', text: chunkText });
+      },
+      () => {
+        // Stream complete — send cleaned full text for final render
+        const cleaned = aiService.stripAiAds(fullText, isEmojiRequested);
+        send({ type: 'done', fullText: cleaned });
+        res.end();
+      },
+      (err) => {
+        send({ type: 'error', error: err.message || 'Stream error' });
+        res.end();
+      }
+    );
+  } catch (err) {
+    console.error('[LabDrop AI Stream] Error:', err);
+    send({ type: 'error', error: err.message || 'AI stream failed.' });
+    res.end();
+  }
+});
+
+// --- LabDrop AI Viva Drill Mode ---
+// Interactive Q&A drill: AI asks viva questions one at a time, grades student answers
+const vivaDrillSessions = new Map(); // sessionId -> { questions, currentQ, history }
+
+app.post('/api/ai/viva-drill', async (req, res) => {
+  const { action, sessionId, topic, answer, fileContent, filename } = req.body;
+
+  if (!action) return res.status(400).json({ error: 'Missing action.' });
+
+  try {
+    if (action === 'start') {
+      // Generate 5 viva questions on the topic/file
+      const topicText = topic || filename || 'Computer Science Lab';
+      const contextText = fileContent ? `\nCode/Content:\n\`\`\`\n${fileContent.slice(0, 8000)}\n\`\`\`` : '';
+
+      const systemPrompt = `You are a strict but encouraging viva examiner. Generate exactly 5 short viva questions for a CS lab student.
+Format your response as valid JSON ONLY: { "questions": ["Q1?", "Q2?", "Q3?", "Q4?", "Q5?"] }
+Questions should be specific, testable, and appropriate for a university lab viva. No preamble, no markdown, just the JSON.`;
+
+      const userPrompt = `Generate 5 viva questions for: ${topicText}${contextText}`;
+
+      let rawResponse = '';
+      try {
+        rawResponse = await aiService.callAi(userPrompt, systemPrompt, 1024);
+      } catch (e) {
+        // Fallback: synthesize generic questions
+        rawResponse = JSON.stringify({
+          questions: [
+            `What is the aim and objective of this program: ${topicText}?`,
+            `Explain the algorithm used in ${topicText} step by step.`,
+            `What is the time complexity (Big-O) of the main operation in ${topicText}?`,
+            `What are the key inputs and expected outputs for ${topicText}?`,
+            `What precautions should be taken while executing ${topicText}?`
+          ]
+        });
+      }
+
+      // Parse JSON (Gemini sometimes wraps in markdown)
+      let questions = [];
+      try {
+        const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
+        const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : rawResponse);
+        questions = parsed.questions || [];
+      } catch (_) {
+        questions = [
+          `What is the aim of ${topicText}?`,
+          `Explain the algorithm used in ${topicText}.`,
+          `What is the time complexity of ${topicText}?`,
+          `Describe the inputs and outputs for ${topicText}.`,
+          `What precautions are needed for ${topicText}?`
+        ];
+      }
+
+      questions = questions.slice(0, 5);
+      if (questions.length < 5) {
+        while (questions.length < 5) {
+          questions.push(`Explain a key concept related to ${topicText}.`);
+        }
+      }
+
+      const newSessionId = require('crypto').randomUUID();
+      vivaDrillSessions.set(newSessionId, {
+        questions,
+        currentQ: 0,
+        history: [],
+        topic: topicText,
+        createdAt: Date.now()
+      });
+
+      // Auto-clean old sessions (older than 1hr)
+      for (const [id, sess] of vivaDrillSessions) {
+        if (Date.now() - sess.createdAt > 3600000) vivaDrillSessions.delete(id);
+      }
+
+      return res.json({
+        success: true,
+        sessionId: newSessionId,
+        totalQuestions: questions.length,
+        currentQ: 1,
+        question: questions[0]
+      });
+
+    } else if (action === 'answer') {
+      if (!sessionId || !vivaDrillSessions.has(sessionId)) {
+        return res.status(404).json({ error: 'Session not found. Please start a new drill.' });
+      }
+      if (!answer || !answer.trim()) {
+        return res.status(400).json({ error: 'Answer is required.' });
+      }
+
+      const session = vivaDrillSessions.get(sessionId);
+      const qIdx = session.currentQ;
+      const question = session.questions[qIdx];
+
+      // Grade the answer
+      const gradePrompt = `You are a viva examiner. Grade this student's answer:
+
+Question: ${question}
+Student's Answer: ${answer.trim()}
+
+Respond in this EXACT JSON format only:
+{ "score": <1-10>, "feedback": "<2-3 sentence feedback>", "modelAnswer": "<brief model answer>" }
+
+No markdown, no preamble. Just valid JSON.`;
+
+      let gradeRaw = '';
+      try {
+        gradeRaw = await aiService.callAi(gradePrompt, 'You are a strict but encouraging CS examiner. Respond with JSON only.', 512);
+      } catch (e) {
+        gradeRaw = JSON.stringify({ score: 7, feedback: 'Good attempt! Review the core concepts for a stronger answer.', modelAnswer: 'Please refer to your textbook for the complete answer.' });
+      }
+
+      let score = 7, feedback = '', modelAnswer = '';
+      try {
+        const jsonMatch = gradeRaw.match(/\{[\s\S]*\}/);
+        const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : gradeRaw);
+        score = Math.max(1, Math.min(10, parseInt(parsed.score) || 7));
+        feedback = parsed.feedback || 'Good effort!';
+        modelAnswer = parsed.modelAnswer || '';
+      } catch (_) {
+        feedback = 'Good attempt! Keep practicing.';
+      }
+
+      session.history.push({ question, answer: answer.trim(), score, feedback });
+      session.currentQ += 1;
+
+      const isLast = session.currentQ >= session.questions.length;
+      const nextQuestion = isLast ? null : session.questions[session.currentQ];
+
+      if (isLast) {
+        const totalScore = session.history.reduce((s, h) => s + h.score, 0);
+        const avgScore = Math.round(totalScore / session.history.length);
+        vivaDrillSessions.delete(sessionId); // cleanup
+
+        return res.json({
+          success: true,
+          graded: true,
+          score, feedback, modelAnswer,
+          isComplete: true,
+          totalScore: avgScore,
+          history: session.history
+        });
+      }
+
+      return res.json({
+        success: true,
+        graded: true,
+        score, feedback, modelAnswer,
+        isComplete: false,
+        currentQ: session.currentQ + 1,
+        totalQuestions: session.questions.length,
+        nextQuestion
+      });
+
+    } else {
+      return res.status(400).json({ error: `Unknown drill action: ${action}` });
+    }
+  } catch (err) {
+    console.error('[LabDrop AI Viva Drill]', err);
+    return res.status(500).json({ error: err.message || 'Drill processing failed.' });
+  }
+});
+
 // --- LabDrop AI Assistant (Exam Prep, Viva, Flowchart, and Follow-up Chat) ---
 app.post('/api/ai/analyze', async (req, res) => {
   const {

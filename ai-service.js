@@ -222,6 +222,144 @@ function callPollinations(prompt, systemInstruction = '', timeoutMs = 12000) {
 }
 
 /**
+ * SSE Streaming: Stream a Gemini response chunk-by-chunk.
+ * onChunk(text) fires for each token; onDone() fires at end; onError(err) on failure.
+ * Returns a Promise that resolves when streaming is complete.
+ */
+function streamSingleGeminiModel(model, bodyString, apiKey, onChunk, onDone, onError, timeoutMs = 30000) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(bodyString)
+        },
+        timeout: timeoutMs
+      },
+      (res) => {
+        if (res.statusCode >= 400) {
+          let errData = '';
+          res.on('data', c => errData += c);
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(errData);
+              const err = new Error(parsed.error?.message || `Gemini stream error (HTTP ${res.statusCode})`);
+              err.statusCode = res.statusCode;
+              onError(err); reject(err);
+            } catch (e) {
+              const err = new Error(`Gemini stream error (HTTP ${res.statusCode})`);
+              onError(err); reject(err);
+            }
+          });
+          return;
+        }
+
+        let buffer = '';
+        res.on('data', (chunk) => {
+          buffer += chunk.toString();
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // keep incomplete line
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const jsonStr = line.slice(6).trim();
+              if (!jsonStr || jsonStr === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(jsonStr);
+                const parts = parsed.candidates?.[0]?.content?.parts || [];
+                for (const p of parts) {
+                  if (p.text) onChunk(p.text);
+                }
+              } catch (_) {}
+            }
+          }
+        });
+
+        res.on('end', () => {
+          onDone();
+          resolve();
+        });
+
+        res.on('error', (err) => {
+          onError(err);
+          reject(err);
+        });
+      }
+    );
+
+    req.on('timeout', () => {
+      req.destroy();
+      const err = new Error('Gemini stream request timed out');
+      onError(err);
+      reject(err);
+    });
+
+    req.on('error', (err) => {
+      onError(err);
+      reject(err);
+    });
+
+    req.write(bodyString);
+    req.end();
+  });
+}
+
+/**
+ * Stream AI response using Gemini with SSE.
+ * onChunk(text), onDone(), onError(err)
+ */
+async function callGeminiStream(contents, systemInstruction = '', maxTokens = 4096, onChunk, onDone, onError) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    onError(new Error('GEMINI_API_KEY not configured'));
+    return;
+  }
+
+  let formattedContents;
+  if (Array.isArray(contents)) {
+    if (contents.length > 0 && contents[0].parts) {
+      formattedContents = contents;
+    } else {
+      formattedContents = [{ parts: contents }];
+    }
+  } else {
+    formattedContents = [{ parts: [{ text: String(contents) }] }];
+  }
+
+  const payload = {
+    contents: formattedContents,
+    generationConfig: { temperature: 0.3, maxOutputTokens: maxTokens }
+  };
+
+  if (systemInstruction) {
+    payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+  }
+
+  const bodyString = JSON.stringify(payload);
+
+  for (const model of GEMINI_MODELS) {
+    try {
+      await streamSingleGeminiModel(model, bodyString, apiKey, onChunk, onDone, onError);
+      return; // success
+    } catch (err) {
+      console.warn(`[LabDrop AI Stream] Model ${model} failed: ${err.message}`);
+    }
+  }
+
+  // All models failed — fall back to non-streaming callAi
+  try {
+    console.warn('[LabDrop AI Stream] All stream models failed. Falling back to batch callAi.');
+    const geminiParts = [{ text: (Array.isArray(formattedContents) ? formattedContents.map(c => c.parts?.map(p => p.text || '').join('') || '').join('') : String(contents)) }];
+    const result = await callAi(geminiParts.map(p => p.text).join(''), systemInstruction, maxTokens);
+    onChunk(result);
+    onDone();
+  } catch (fallbackErr) {
+    onError(fallbackErr);
+  }
+}
+
+/**
  * Execute a generation request with a single Gemini model
  */
 function executeSingleGeminiModel(model, bodyString, apiKey, timeoutMs = 8000) {
@@ -2296,5 +2434,6 @@ module.exports = {
   convertLatexAndTextSymbolsToUnicode,
   callAi,
   callGemini,
+  callGeminiStream,
   stripAiAds
 };

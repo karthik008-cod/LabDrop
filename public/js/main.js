@@ -4768,35 +4768,53 @@
         mimeType: lastCodePayload.mimeType || null
       }] : [];
 
-      const res = await fetch('/api/ai/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'chat',
-          prompt: text,
-          conversationHistory: labRecordConversationHistory,
-          previousOutput: currentMarkdown,
-          directFiles: directFilesPayload
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || 'Chat failed.');
-
+      // SSE Streaming chat
+      let fullText = '';
+      let streamStarted = false;
       const isEmojiWanted = /emoji|emoticon|smileys|use emojis|with emojis|add emojis/i.test(text);
-      const cleanedResult = stripAiAdsClient(data.result, isEmojiWanted);
-      labRecordConversationHistory.push({ role: 'user', content: text });
-      labRecordConversationHistory.push({ role: 'model', content: cleanedResult });
 
-      if (window.marked) {
-        botMsg.innerHTML = window.marked.parse(cleanedResult);
-      } else {
-        botMsg.textContent = cleanedResult;
-      }
+      await streamAiChat({
+        prompt: text,
+        conversationHistory: labRecordConversationHistory,
+        previousOutput: currentMarkdown,
+        directFiles: directFilesPayload
+      }, {
+        onChunk: (chunk) => {
+          fullText += chunk;
+          if (!streamStarted) {
+            botMsg.innerHTML = '';
+            streamStarted = true;
+          }
+          // Live plain text display during streaming
+          botMsg.textContent = fullText;
+          if (labRecordChatMessages) labRecordChatMessages.scrollTop = labRecordChatMessages.scrollHeight;
+        },
+        onDone: (cleanedFull) => {
+          const finalText = cleanedFull || stripAiAdsClient(fullText, isEmojiWanted);
+          labRecordConversationHistory.push({ role: 'user', content: text });
+          labRecordConversationHistory.push({ role: 'model', content: finalText });
+          if (window.marked) {
+            botMsg.innerHTML = window.marked.parse(finalText);
+          } else {
+            botMsg.textContent = finalText;
+          }
+          if (labRecordChatMessages) labRecordChatMessages.scrollTop = labRecordChatMessages.scrollHeight;
+          if (labRecordChatSubmitBtn) labRecordChatSubmitBtn.disabled = false;
+        },
+        onError: (errMsg) => {
+          botMsg.innerHTML = `<span style="color: #ef4444;">Error: ${escapeHtml(errMsg)}</span>`;
+          if (labRecordChatSubmitBtn) labRecordChatSubmitBtn.disabled = false;
+          if (labRecordChatMessages) labRecordChatMessages.scrollTop = labRecordChatMessages.scrollHeight;
+        }
+      });
+      return; // onDone/onError handle re-enabling button
     } catch (err) {
       botMsg.innerHTML = `<span style="color: #ef4444;">Error: ${escapeHtml(err.message)}</span>`;
     } finally {
-      if (labRecordChatSubmitBtn) labRecordChatSubmitBtn.disabled = false;
+      // only re-enable if not already handled by stream callbacks
+      if (labRecordChatSubmitBtn && labRecordChatSubmitBtn.disabled && !fullText) {
+        labRecordChatSubmitBtn.disabled = false;
+      }
       if (labRecordChatMessages) labRecordChatMessages.scrollTop = labRecordChatMessages.scrollHeight;
     }
   }
@@ -5277,35 +5295,47 @@
         }
       }
 
-      const res = await fetch('/api/ai/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'chat',
-          prompt: text,
-          conversationHistory: homeVivaConversationHistory,
-          previousOutput: lastGeneratedHomeVivaOutput || '',
-          directFiles: vivaDirectFilePayload ? [vivaDirectFilePayload] : []
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || 'Chat failed.');
-
+      let fullText = '';
+      let streamStarted = false;
       const isEmojiWanted = /emoji|emoticon|smileys|use emojis|with emojis|add emojis/i.test(text);
-      const cleanedVivaChat = stripAiAdsClient(data.result, isEmojiWanted);
-      homeVivaConversationHistory.push({ role: 'user', content: text });
-      homeVivaConversationHistory.push({ role: 'model', content: cleanedVivaChat });
 
-      if (window.marked) {
-        botMsg.innerHTML = window.marked.parse(cleanedVivaChat);
-      } else {
-        botMsg.textContent = cleanedVivaChat;
-      }
+      await streamAiChat({
+        prompt: text,
+        conversationHistory: homeVivaConversationHistory,
+        previousOutput: lastGeneratedHomeVivaOutput || '',
+        directFiles: vivaDirectFilePayload ? [vivaDirectFilePayload] : []
+      }, {
+        onChunk: (chunk) => {
+          fullText += chunk;
+          if (!streamStarted) {
+            botMsg.innerHTML = '';
+            streamStarted = true;
+          }
+          botMsg.textContent = fullText;
+          if (homeVivaChatMessages) homeVivaChatMessages.scrollTop = homeVivaChatMessages.scrollHeight;
+        },
+        onDone: (cleanedFull) => {
+          const finalText = cleanedFull || stripAiAdsClient(fullText, isEmojiWanted);
+          homeVivaConversationHistory.push({ role: 'user', content: text });
+          homeVivaConversationHistory.push({ role: 'model', content: finalText });
+          if (window.marked) {
+            botMsg.innerHTML = window.marked.parse(finalText);
+          } else {
+            botMsg.textContent = finalText;
+          }
+          if (homeVivaChatMessages) homeVivaChatMessages.scrollTop = homeVivaChatMessages.scrollHeight;
+          if (homeVivaChatSubmitBtn) homeVivaChatSubmitBtn.disabled = false;
+        },
+        onError: (errMsg) => {
+          botMsg.innerHTML = `<span style="color: #ef4444;">Error: ${escapeHtml(errMsg)}</span>`;
+          if (homeVivaChatSubmitBtn) homeVivaChatSubmitBtn.disabled = false;
+          if (homeVivaChatMessages) homeVivaChatMessages.scrollTop = homeVivaChatMessages.scrollHeight;
+        }
+      });
+      return;
     } catch (err) {
       botMsg.innerHTML = `<span style="color: #ef4444;">Error: ${escapeHtml(err.message)}</span>`;
     } finally {
-      if (homeVivaChatSubmitBtn) homeVivaChatSubmitBtn.disabled = false;
       if (homeVivaChatMessages) homeVivaChatMessages.scrollTop = homeVivaChatMessages.scrollHeight;
     }
   }
@@ -5329,6 +5359,85 @@
   });
 
   checkSharedFiles();
+
+  // ============================================================
+  // SSE Streaming AI Chat Helper
+  // ============================================================
+
+  /**
+   * Stream AI chat using the /api/ai/chat/stream SSE endpoint.
+   * Falls back to regular fetch if streaming is unavailable.
+   */
+  async function streamAiChat(payload, { onChunk, onDone, onError }) {
+    try {
+      const response = await fetch('/api/ai/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Stream request failed.' }));
+        onError(err.error || 'Stream request failed.');
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep incomplete line
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr) continue;
+            try {
+              const event = JSON.parse(jsonStr);
+              if (event.type === 'chunk' && event.text) {
+                onChunk(event.text);
+              } else if (event.type === 'done') {
+                onDone(event.fullText || '');
+                return;
+              } else if (event.type === 'error') {
+                onError(event.error || 'Unknown stream error');
+                return;
+              }
+            } catch (_) {}
+          }
+        }
+      }
+      onDone('');
+    } catch (err) {
+      // Network error or SSE not supported — fall back to batch fetch
+      console.warn('[LabDrop AI] SSE stream failed, falling back to batch:', err.message);
+      try {
+        const res = await fetch('/api/ai/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'chat', ...payload })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          onError(data.error || 'Chat failed.');
+          return;
+        }
+        onChunk(data.result || '');
+        onDone(data.result || '');
+      } catch (fallbackErr) {
+        onError(fallbackErr.message || 'Chat failed.');
+      }
+    }
+  }
+
+  // Expose globally for the Viva Drill module
+  window._labDropStreamAiChat = streamAiChat;
 
 })();
 
