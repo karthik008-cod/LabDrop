@@ -2,9 +2,13 @@ const mongoose = require('mongoose');
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
-  // Use latest mongoose driver options (they are defaults in newer versions, but good practice)
+  serverSelectionTimeoutMS: 2500,
+  connectTimeoutMS: 2500,
+  socketTimeoutMS: 5000
 }).then(() => console.log('✅ MongoDB connected successfully'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+  .catch(err => console.error('❌ MongoDB connection error:', err.message));
+
+const isDbConnected = () => mongoose.connection && mongoose.connection.readyState === 1;
 
 const userSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
@@ -96,15 +100,24 @@ const memoryCounters = {};
 module.exports = {
   users: {
     findOne: async (query) => {
-      return await User.findOne(query).lean();
+      if (!isDbConnected()) return null;
+      try {
+        return await User.findOne(query).lean();
+      } catch (_) { return null; }
     },
     find: async (query) => {
-      return await User.find(query || {}).lean();
+      if (!isDbConnected()) return [];
+      try {
+        return await User.find(query || {}).lean();
+      } catch (_) { return []; }
     },
     insert: async (user) => {
-      const newUser = new User(user);
-      await newUser.save();
-      return newUser.toObject();
+      if (!isDbConnected()) return user;
+      try {
+        const newUser = new User(user);
+        await newUser.save();
+        return newUser.toObject();
+      } catch (_) { return user; }
     }
   },
   transfers: {
@@ -209,45 +222,59 @@ module.exports = {
   },
   analytics: {
     get: async () => {
-      let stats = await Analytics.findOne({ id: 'global' }).lean();
-      if (!stats) {
-        const newStats = new Analytics({ id: 'global' });
-        await newStats.save();
-        return newStats.toObject();
+      if (!isDbConnected()) return { id: 'global', totalTransfersCreated: 0, totalFilesUploaded: 0, totalDownloads: 0, uniqueDevices: [] };
+      try {
+        let stats = await Analytics.findOne({ id: 'global' }).lean();
+        if (!stats) {
+          const newStats = new Analytics({ id: 'global' });
+          await newStats.save();
+          return newStats.toObject();
+        }
+        return stats;
+      } catch (_) {
+        return { id: 'global', totalTransfersCreated: 0, totalFilesUploaded: 0, totalDownloads: 0, uniqueDevices: [] };
       }
-      return stats;
     },
     set: async (statsData) => {
-      await Analytics.findOneAndUpdate({ id: 'global' }, statsData, { upsert: true });
+      if (!isDbConnected()) return;
+      try {
+        await Analytics.findOneAndUpdate({ id: 'global' }, statsData, { upsert: true });
+      } catch (_) {}
     }
   },
   dailyMetrics: {
     getToday: async (dateStr, initialCumulative = {}) => {
-      let doc = await DailyMetric.findOne({ date: dateStr }).lean();
-      if (!doc) {
-        const now = new Date();
-        const startOfDay = new Date(now).setHours(0, 0, 0, 0);
-        const newDoc = new DailyMetric({
-          date: dateStr,
-          timestamp: startOfDay,
-          transfers: 0,
-          cumulativeTransfers: initialCumulative.transfers || 0,
-          files: 0,
-          cumulativeFiles: initialCumulative.files || 0,
-          downloads: 0,
-          cumulativeDownloads: initialCumulative.downloads || 0,
-          visitors: 0,
-          cumulativeVisitors: initialCumulative.visitors || 0,
-          activeTransfers: initialCumulative.activeTransfers || 0,
-          storageBytes: 0,
-          visitorDevices: []
-        });
-        await newDoc.save();
-        return newDoc.toObject();
+      if (!isDbConnected()) return null;
+      try {
+        let doc = await DailyMetric.findOne({ date: dateStr }).lean();
+        if (!doc) {
+          const now = new Date();
+          const startOfDay = new Date(now).setHours(0, 0, 0, 0);
+          const newDoc = new DailyMetric({
+            date: dateStr,
+            timestamp: startOfDay,
+            transfers: 0,
+            cumulativeTransfers: initialCumulative.transfers || 0,
+            files: 0,
+            cumulativeFiles: initialCumulative.files || 0,
+            downloads: 0,
+            cumulativeDownloads: initialCumulative.downloads || 0,
+            visitors: 0,
+            cumulativeVisitors: initialCumulative.visitors || 0,
+            activeTransfers: initialCumulative.activeTransfers || 0,
+            storageBytes: 0,
+            visitorDevices: []
+          });
+          await newDoc.save();
+          return newDoc.toObject();
+        }
+        return doc;
+      } catch (_) {
+        return null;
       }
-      return doc;
     },
     recordVisit: async (dateStr, deviceId, currentTotals) => {
+      if (!isDbConnected()) return;
       try {
         let doc = await DailyMetric.findOne({ date: dateStr });
         if (!doc) {
@@ -286,6 +313,7 @@ module.exports = {
       }
     },
     recordTransfer: async (dateStr, { filesCount = 0, storageBytes = 0, currentTotals, activeCount = 0 }) => {
+      if (!isDbConnected()) return;
       try {
         let doc = await DailyMetric.findOne({ date: dateStr });
         if (!doc) {
@@ -326,6 +354,7 @@ module.exports = {
       }
     },
     recordDownload: async (dateStr, { currentTotals }) => {
+      if (!isDbConnected()) return;
       try {
         let doc = await DailyMetric.findOne({ date: dateStr });
         if (!doc) {
@@ -360,7 +389,12 @@ module.exports = {
       }
     },
     getAll: async () => {
-      return await DailyMetric.find().sort({ timestamp: 1 }).lean();
+      if (!isDbConnected()) return [];
+      try {
+        return await DailyMetric.find().sort({ timestamp: 1 }).lean();
+      } catch (_) {
+        return [];
+      }
     }
   }
 };
