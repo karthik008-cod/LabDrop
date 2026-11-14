@@ -4667,6 +4667,19 @@ body:has(.sidebar--open) .header {
   font-size: 1.05rem;
 }
 
+@media (max-width: 640px) {
+  .ai-tab-bar {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+  .ai-tab-bar .ai-tab-btn {
+    padding: 7px 6px;
+    font-size: 0.76rem;
+    gap: 3px;
+    border-radius: 6px;
+  }
+}
+
 /* ---- AI Chat Bubbles ---- */
 .ai-chat-user-bubble {
   align-self: flex-end;

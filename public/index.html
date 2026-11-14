@@ -1151,7 +1151,8 @@
       <!-- Tab Bar -->
       <div class="ai-tab-bar" id="homeAiTabBar">
         <button class="ai-tab-btn active" data-tab="labrecord" id="homeTabBtnLabRecord">Lab Record</button>
-        <button class="ai-tab-btn" data-tab="viva" id="homeTabBtnViva">Viva & Exam Prep</button>
+        <button class="ai-tab-btn" data-tab="viva" id="homeTabBtnViva">Viva &amp; Exam Prep</button>
+        <button class="ai-tab-btn" data-tab="drill" id="homeTabBtnDrill">⚡ Viva Drill</button>
       </div>
 
       <div class="modal__body" id="homeAiModalBody" style="padding: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
@@ -1739,6 +1740,104 @@
           </div>
 
         </div> <!-- end of homeTabContentViva -->
+
+        <!-- Tab 3: Interactive Viva Drill -->
+        <div class="ai-tab-content" id="homeTabContentDrill">
+          <div id="homeTabContentDrillScroll" class="ai-tab-scroll-container">
+            <div id="drillMainContainer" style="max-width: 680px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 14px;">
+              
+              <!-- Drill Setup View -->
+              <div id="drillSetupView" class="drill-card" style="background: var(--color-surface, #f9fafb); border: 1.5px solid var(--color-border, #e5e7eb); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 1.4rem;">🎯</span>
+                  <div>
+                    <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--color-text, #111);">Interactive Viva Voce Drill</h4>
+                    <p style="margin: 2px 0 0; font-size: 0.82rem; color: var(--color-text-secondary, #6b7280);">1-on-1 AI examiner simulation. Answer 5 questions one by one, get graded 1-10 with detailed critiques &amp; model answers.</p>
+                  </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <label for="drillTopicInput" style="font-size: 0.82rem; font-weight: 700; color: var(--color-text, #111);">Topic or Subject:</label>
+                  <input type="text" id="drillTopicInput" class="form-input" placeholder="e.g. Bubble Sort, Dijkstra's Algorithm, Operating Systems..." style="width: 100%; box-sizing: border-box; height: 40px; font-size: 0.9rem;" />
+                  <span style="font-size: 0.75rem; color: var(--color-text-secondary, #6b7280);">Tip: Leave empty to automatically use your selected lab file.</span>
+                </div>
+
+                <button type="button" class="btn btn--primary btn--ai" id="drillStartBtn" style="padding: 12px 20px; font-weight: 700; font-size: 0.95rem; justify-content: center; width: 100%; box-sizing: border-box;">
+                  🚀 Start 5-Question Viva Drill
+                </button>
+              </div>
+
+              <!-- Drill Question View -->
+              <div id="drillQuestionView" style="display: none; flex-direction: column; gap: 14px;">
+                <!-- Progress Header -->
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <span id="drillProgressText" style="font-size: 0.85rem; font-weight: 700; color: #B45309;">Question 1 of 5</span>
+                  <span id="drillSessionBadge" style="font-size: 0.75rem; font-weight: 700; background: rgba(245, 158, 11, 0.15); color: #B45309; padding: 3px 10px; border-radius: 999px;">Round 1/5</span>
+                </div>
+                <div style="height: 6px; background: var(--color-border, #e5e7eb); border-radius: 999px; overflow: hidden;">
+                  <div id="drillProgressFill" style="height: 100%; width: 20%; background: #F59E0B; transition: width 0.3s ease; border-radius: 999px;"></div>
+                </div>
+
+                <!-- Question Card -->
+                <div class="drill-question-box" style="background: var(--color-surface, #fff); border: 1.5px solid rgba(245, 158, 11, 0.4); border-radius: 12px; padding: 18px; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.08);">
+                  <div style="font-size: 0.75rem; font-weight: 800; color: #B45309; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Examiner's Question</div>
+                  <div id="drillQuestionText" style="font-size: 1.05rem; font-weight: 600; line-height: 1.55; color: var(--color-text, #111827);"></div>
+                </div>
+
+                <!-- Answer Input Area -->
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <label for="drillAnswerInput" style="font-size: 0.82rem; font-weight: 700; color: var(--color-text, #111);">Your Answer:</label>
+                  <textarea id="drillAnswerInput" class="form-input" rows="4" placeholder="Type your answer in clear academic language... (Press Ctrl + Enter to submit)" style="width: 100%; box-sizing: border-box; resize: vertical; min-height: 90px; font-family: inherit; font-size: 0.92rem; padding: 12px; line-height: 1.5;"></textarea>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.75rem; color: var(--color-text-secondary, #6b7280);">Shortcut: <kbd style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">Ctrl</kbd> + <kbd style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">Enter</kbd></span>
+                    <button type="button" class="btn btn--primary" id="drillSubmitBtn" style="padding: 10px 22px; font-weight: 700; font-size: 0.9rem;">Submit Answer →</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Drill Feedback View -->
+              <div id="drillFeedbackView" style="display: none; flex-direction: column; gap: 14px;">
+                <div style="background: var(--color-surface, #fff); border: 1.5px solid var(--color-border, #e5e7eb); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span id="drillScoreBadge" style="font-size: 1.1rem; font-weight: 800; padding: 4px 14px; border-radius: 999px; background: #22c55e; color: #fff;">8/10</span>
+                      <span style="font-size: 0.88rem; font-weight: 700; color: var(--color-text, #111);">Score for this question</span>
+                    </div>
+                  </div>
+
+                  <div style="border-top: 1px solid var(--color-border, #e5e7eb); padding-top: 10px;">
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--color-text-secondary, #6b7280); margin-bottom: 4px;">Examiner's Feedback:</div>
+                    <p id="drillFeedbackText" style="margin: 0; font-size: 0.92rem; line-height: 1.6; color: var(--color-text, #111);"></p>
+                  </div>
+
+                  <details style="background: var(--color-bg-secondary, #f9fafb); border: 1px solid var(--color-border, #e5e7eb); border-radius: 8px; padding: 10px 14px; cursor: pointer;">
+                    <summary style="font-size: 0.85rem; font-weight: 700; color: #B45309;">📖 View Model Answer</summary>
+                    <p id="drillModelAnswer" style="margin: 8px 0 0; font-size: 0.9rem; line-height: 1.55; color: var(--color-text, #111);"></p>
+                  </details>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end;">
+                  <button type="button" class="btn btn--primary" id="drillNextBtn" style="padding: 10px 24px; font-weight: 700; font-size: 0.92rem;">Next Question →</button>
+                </div>
+              </div>
+
+              <!-- Drill Complete View -->
+              <div id="drillCompleteView" style="display: none; flex-direction: column; align-items: center; text-align: center; background: var(--color-surface, #fff); border: 1.5px solid var(--color-border, #e5e7eb); border-radius: 14px; padding: 32px 20px; gap: 16px;">
+                <div style="font-size: 3rem;">🎓</div>
+                <div>
+                  <h3 style="margin: 0; font-size: 1.3rem; font-weight: 800; color: var(--color-text, #111);">Viva Voce Drill Completed!</h3>
+                  <p style="margin: 4px 0 0; font-size: 0.88rem; color: var(--color-text-secondary, #6b7280);">Here is your performance summary:</p>
+                </div>
+                <div id="drillFinalScore" style="font-size: 3rem; font-weight: 900; color: #D97706; line-height: 1;">8/10</div>
+                <div id="drillCompleteSummary" style="font-size: 0.95rem; font-weight: 600; color: var(--color-text, #111);"></div>
+                <button type="button" class="btn btn--primary" id="drillRestartBtn" style="padding: 10px 24px; font-weight: 700; font-size: 0.92rem; margin-top: 8px;">
+                  🔄 Practice Another Drill
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div> <!-- end of homeTabContentDrill -->
 
       </div>
 

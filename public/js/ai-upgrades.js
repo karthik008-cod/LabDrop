@@ -6,362 +6,9 @@
   'use strict';
 
   // ============================================================
-  // Upgrade 2: Interactive Viva Drill Mode
+  // Upgrade 2: Interactive Viva Drill Controller (In-Modal Tab)
   // ============================================================
 
-  const DRILL_STYLES = `
-#vivaDrillPanel {
-  position: fixed;
-  bottom: 90px;
-  right: 20px;
-  width: 360px;
-  max-width: calc(100vw - 32px);
-  background: var(--color-bg, #fff);
-  border: 1.5px solid var(--color-primary, #f59e0b);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  z-index: 9000;
-  display: none;
-  flex-direction: column;
-  overflow: hidden;
-  font-family: inherit;
-}
-#vivaDrillPanel.open { display: flex; }
-.drill-header {
-  background: var(--color-primary, #f59e0b);
-  color: #111;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-.drill-header button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 2px 6px;
-  color: #111;
-  border-radius: 4px;
-}
-.drill-header button:hover { background: rgba(0,0,0,0.1); }
-.drill-body {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
-  max-height: 460px;
-}
-.drill-setup { display: flex; flex-direction: column; gap: 10px; }
-.drill-setup input {
-  width: 100%; box-sizing: border-box;
-  padding: 9px 12px;
-  border: 1.5px solid var(--color-border, #e5e7eb);
-  border-radius: 8px;
-  font-size: 0.9rem;
-  background: var(--color-bg, #fff);
-  color: var(--color-text, #111);
-}
-.drill-setup input:focus { outline: none; border-color: var(--color-primary, #f59e0b); }
-.drill-start-btn {
-  background: var(--color-primary, #f59e0b);
-  color: #111;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 16px;
-  font-weight: 700;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: opacity 0.15s;
-}
-.drill-start-btn:hover { opacity: 0.85; }
-.drill-start-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.drill-progress {
-  font-size: 0.78rem;
-  color: var(--color-text-secondary, #6b7280);
-  font-weight: 600;
-  letter-spacing: 0.03em;
-}
-.drill-progress-bar {
-  height: 4px;
-  background: var(--color-border, #e5e7eb);
-  border-radius: 99px;
-  overflow: hidden;
-}
-.drill-progress-fill {
-  height: 100%;
-  background: var(--color-primary, #f59e0b);
-  border-radius: 99px;
-  transition: width 0.4s ease;
-}
-.drill-question-card {
-  background: var(--color-surface, #f9fafb);
-  border: 1.5px solid var(--color-border, #e5e7eb);
-  border-radius: 10px;
-  padding: 14px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  line-height: 1.5;
-  color: var(--color-text, #111);
-}
-.drill-answer-area {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.drill-answer-area textarea {
-  width: 100%; box-sizing: border-box;
-  padding: 10px 12px;
-  border: 1.5px solid var(--color-border, #e5e7eb);
-  border-radius: 8px;
-  font-size: 0.9rem;
-  resize: vertical;
-  min-height: 80px;
-  background: var(--color-bg, #fff);
-  color: var(--color-text, #111);
-  font-family: inherit;
-}
-.drill-answer-area textarea:focus { outline: none; border-color: var(--color-primary, #f59e0b); }
-.drill-submit-btn {
-  background: var(--color-primary, #f59e0b);
-  color: #111;
-  border: none;
-  border-radius: 8px;
-  padding: 9px 16px;
-  font-weight: 700;
-  cursor: pointer;
-  font-size: 0.88rem;
-  transition: opacity 0.15s;
-  align-self: flex-end;
-}
-.drill-submit-btn:hover { opacity: 0.85; }
-.drill-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.drill-feedback {
-  background: var(--color-surface, #f9fafb);
-  border-radius: 10px;
-  border: 1.5px solid var(--color-border, #e5e7eb);
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.drill-score-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--color-primary, #f59e0b);
-  color: #111;
-  font-weight: 800;
-  font-size: 0.88rem;
-  border-radius: 20px;
-  padding: 3px 10px;
-}
-.drill-score-badge.low { background: #ef4444; color: #fff; }
-.drill-score-badge.mid { background: #f59e0b; color: #111; }
-.drill-score-badge.high { background: #22c55e; color: #fff; }
-.drill-feedback-text { font-size: 0.88rem; color: var(--color-text-secondary, #6b7280); line-height: 1.5; }
-.drill-model-answer { font-size: 0.85rem; color: var(--color-text, #111); line-height: 1.5; }
-.drill-next-btn {
-  background: #111;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 9px 16px;
-  font-weight: 700;
-  cursor: pointer;
-  font-size: 0.88rem;
-  transition: opacity 0.15s;
-  align-self: flex-end;
-  margin-top: 4px;
-}
-.drill-next-btn:hover { opacity: 0.8; }
-.drill-complete {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  text-align: center;
-  padding: 8px 0;
-}
-.drill-complete-score {
-  font-size: 2.4rem;
-  font-weight: 900;
-  color: var(--color-primary, #f59e0b);
-}
-.drill-complete-label {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--color-text, #111);
-}
-.drill-restart-btn {
-  background: var(--color-primary, #f59e0b);
-  color: #111;
-  border: none;
-  border-radius: 8px;
-  padding: 9px 20px;
-  font-weight: 700;
-  cursor: pointer;
-  font-size: 0.9rem;
-  margin-top: 4px;
-}
-
-/* Vision Camera Button */
-.vision-camera-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1.5px solid var(--color-border, #e5e7eb);
-  background: var(--color-bg, #fff);
-  color: var(--color-text-secondary, #6b7280);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-  font-size: 1rem;
-}
-.vision-camera-btn:hover {
-  border-color: var(--color-primary, #f59e0b);
-  color: var(--color-primary, #f59e0b);
-  background: #fffbeb;
-}
-.vision-camera-btn.active {
-  border-color: var(--color-primary, #f59e0b);
-  background: var(--color-primary, #f59e0b);
-  color: #111;
-}
-.vision-preview-wrap {
-  display: none;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0 2px 0;
-}
-.vision-preview-wrap.show { display: flex; }
-.vision-preview-img {
-  width: 48px;
-  height: 48px;
-  object-fit: cover;
-  border-radius: 6px;
-  border: 1.5px solid var(--color-primary, #f59e0b);
-}
-.vision-preview-name {
-  font-size: 0.8rem;
-  color: var(--color-text-secondary, #6b7280);
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.vision-clear-btn {
-  font-size: 0.75rem;
-  color: #ef4444;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-.vision-clear-btn:hover { background: #fee2e2; }
-
-/* Drill floating trigger button */
-.drill-float-btn {
-  position: fixed;
-  bottom: 155px;
-  right: 20px;
-  background: #111;
-  color: #fff;
-  border: none;
-  border-radius: 50%;
-  width: 44px;
-  height: 44px;
-  font-size: 1.1rem;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 8999;
-  transition: transform 0.15s, opacity 0.15s;
-  title: 'Viva Drill Mode';
-}
-.drill-float-btn:hover { transform: scale(1.08); opacity: 0.9; }
-`;
-
-  // Inject styles
-  const styleEl = document.createElement('style');
-  styleEl.textContent = DRILL_STYLES;
-  document.head.appendChild(styleEl);
-
-  // ---- Build Viva Drill Panel ----
-  const drillPanel = document.createElement('div');
-  drillPanel.id = 'vivaDrillPanel';
-  drillPanel.innerHTML = `
-    <div class="drill-header">
-      <span>⚡ Viva Drill Mode</span>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <span id="drillSessionBadge" style="display:none;font-size:0.75rem;background:rgba(0,0,0,0.12);padding:2px 8px;border-radius:20px;"></span>
-        <button id="closeDrillPanel" title="Close">✕</button>
-      </div>
-    </div>
-    <div class="drill-body" id="drillBody">
-      <div class="drill-setup" id="drillSetup">
-        <div style="font-size:0.85rem;color:var(--color-text-secondary,#6b7280);line-height:1.5;">
-          Practice viva questions interactively. The AI asks, you answer, and it grades you in real time.
-        </div>
-        <input type="text" id="drillTopicInput" placeholder="Enter topic or leave blank to use uploaded file..." />
-        <button class="drill-start-btn" id="drillStartBtn">🚀 Start Drill (5 Questions)</button>
-      </div>
-
-      <div id="drillQuestion" style="display:none;flex-direction:column;gap:10px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <span class="drill-progress" id="drillProgressText">Question 1 of 5</span>
-        </div>
-        <div class="drill-progress-bar"><div class="drill-progress-fill" id="drillProgressFill" style="width:0%;"></div></div>
-        <div class="drill-question-card" id="drillQuestionText"></div>
-        <div class="drill-answer-area">
-          <textarea id="drillAnswerInput" placeholder="Type your answer here... (Ctrl+Enter to submit)"></textarea>
-          <button class="drill-submit-btn" id="drillSubmitBtn">Submit Answer →</button>
-        </div>
-      </div>
-
-      <div id="drillFeedback" style="display:none;flex-direction:column;gap:10px;">
-        <div class="drill-feedback">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            <span class="drill-score-badge" id="drillScoreBadge">8/10</span>
-            <span style="font-size:0.8rem;font-weight:600;color:var(--color-text-secondary,#6b7280);">Score</span>
-          </div>
-          <p class="drill-feedback-text" id="drillFeedbackText"></p>
-          <details style="margin-top:4px;">
-            <summary style="font-size:0.82rem;cursor:pointer;color:var(--color-text-secondary,#6b7280);">View model answer</summary>
-            <p class="drill-model-answer" id="drillModelAnswer"></p>
-          </details>
-        </div>
-        <button class="drill-next-btn" id="drillNextBtn">Next Question →</button>
-      </div>
-
-      <div id="drillComplete" class="drill-complete" style="display:none;">
-        <div class="drill-complete-score" id="drillFinalScore">7/10</div>
-        <div class="drill-complete-label">Drill Complete! 🎓</div>
-        <div style="font-size:0.85rem;color:var(--color-text-secondary,#6b7280);" id="drillCompleteSummary"></div>
-        <button class="drill-restart-btn" id="drillRestartBtn">🔄 New Drill</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(drillPanel);
-
-  // Floating trigger button
-  const drillFloatBtn = document.createElement('button');
-  drillFloatBtn.className = 'drill-float-btn';
-  drillFloatBtn.title = 'Viva Drill Mode';
-  drillFloatBtn.innerHTML = '🎯';
-  document.body.appendChild(drillFloatBtn);
-
-  // Drill state
   let drillSessionId = null;
   let drillCurrentQ = 0;
   let drillTotal = 5;
@@ -370,8 +17,19 @@
 
   const $ = (id) => document.getElementById(id);
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   function showDrillSection(section) {
-    ['drillSetup', 'drillQuestion', 'drillFeedback', 'drillComplete'].forEach(id => {
+    const sections = ['drillSetupView', 'drillQuestionView', 'drillFeedbackView', 'drillCompleteView'];
+    sections.forEach(id => {
       const el = $(id);
       if (el) el.style.display = 'none';
     });
@@ -379,23 +37,40 @@
     if (target) target.style.display = 'flex';
   }
 
-  drillFloatBtn.addEventListener('click', () => {
-    drillPanel.classList.toggle('open');
-  });
+  function syncDrillTopic() {
+    const topicInput = $('drillTopicInput');
+    if (!topicInput || topicInput.value.trim()) return;
 
-  $('closeDrillPanel').addEventListener('click', () => {
-    drillPanel.classList.remove('open');
-  });
+    let suggestedTopic = '';
+    try {
+      if (window.lastHomeVivaDirectFilePayload && window.lastHomeVivaDirectFilePayload.name) {
+        suggestedTopic = window.lastHomeVivaDirectFilePayload.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      } else if (window.lastCodePayload && (window.lastCodePayload.name || window.lastCodePayload.filename)) {
+        const n = window.lastCodePayload.name || window.lastCodePayload.filename;
+        suggestedTopic = n.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      }
+    } catch (_) {}
 
-  $('drillStartBtn').addEventListener('click', startDrill);
+    if (suggestedTopic) {
+      topicInput.placeholder = `e.g. ${suggestedTopic} (or type custom topic)`;
+    }
+  }
+  window._syncDrillTopic = syncDrillTopic;
+
+  function updateDrillProgress(current, total) {
+    const progressText = $('drillProgressText');
+    const progressFill = $('drillProgressFill');
+    const badge = $('drillSessionBadge');
+    if (progressText) progressText.textContent = `Question ${current} of ${total}`;
+    if (progressFill) progressFill.style.width = `${((current - 1) / total) * 100}%`;
+    if (badge) badge.textContent = `Round ${current}/${total}`;
+  }
 
   async function startDrill() {
     const topicInput = $('drillTopicInput');
-    const topic = topicInput ? topicInput.value.trim() : '';
+    let topic = topicInput ? topicInput.value.trim() : '';
     const startBtn = $('drillStartBtn');
-    if (startBtn) { startBtn.disabled = true; startBtn.textContent = 'Generating questions...'; }
 
-    // Try to use current file context
     let fileContent = '';
     let filename = '';
     try {
@@ -408,19 +83,29 @@
       }
     } catch (_) {}
 
+    if (!topic && filename) {
+      topic = filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+    }
+
+    if (startBtn) {
+      startBtn.disabled = true;
+      startBtn.innerHTML = '<span class="spinner" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:8px;"></span> Generating Questions...';
+    }
+
     try {
       const res = await fetch('/api/ai/viva-drill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'start',
-          topic: topic || filename || 'Computer Science Lab',
+          topic: topic || 'Computer Science Practical Lab',
           fileContent: fileContent.slice(0, 6000),
           filename
         })
       });
+
       const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || 'Failed to start drill.');
+      if (!res.ok || data.error) throw new Error(data.error || 'Failed to start viva drill.');
 
       drillSessionId = data.sessionId;
       drillCurrentQ = 1;
@@ -428,125 +113,175 @@
       drillScores = [];
 
       updateDrillProgress(drillCurrentQ, drillTotal);
-      $('drillQuestionText').textContent = data.question;
-      $('drillAnswerInput').value = '';
-      showDrillSection('drillQuestion');
-
-      const badge = $('drillSessionBadge');
-      if (badge) { badge.style.display = 'inline-block'; badge.textContent = `${drillCurrentQ}/${drillTotal}`; }
+      if ($('drillQuestionText')) $('drillQuestionText').textContent = data.question;
+      if ($('drillAnswerInput')) {
+        $('drillAnswerInput').value = '';
+        setTimeout(() => $('drillAnswerInput').focus(), 100);
+      }
+      showDrillSection('drillQuestionView');
 
     } catch (err) {
-      alert('Could not start drill: ' + err.message);
+      if (window.LabDialog) {
+        window.LabDialog.alert('Could not start drill: ' + err.message);
+      } else {
+        alert('Could not start drill: ' + err.message);
+      }
     } finally {
-      if (startBtn) { startBtn.disabled = false; startBtn.textContent = '🚀 Start Drill (5 Questions)'; }
+      if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.innerHTML = '🚀 Start 5-Question Viva Drill';
+      }
     }
   }
-
-  function updateDrillProgress(current, total) {
-    const progressText = $('drillProgressText');
-    const progressFill = $('drillProgressFill');
-    const badge = $('drillSessionBadge');
-    if (progressText) progressText.textContent = `Question ${current} of ${total}`;
-    if (progressFill) progressFill.style.width = `${((current - 1) / total) * 100}%`;
-    if (badge) badge.textContent = `${current}/${total}`;
-  }
-
-  $('drillSubmitBtn').addEventListener('click', submitDrillAnswer);
-
-  $('drillAnswerInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      e.preventDefault();
-      submitDrillAnswer();
-    }
-  });
 
   async function submitDrillAnswer() {
-    const answer = $('drillAnswerInput').value.trim();
-    if (!answer) return;
+    const answerInput = $('drillAnswerInput');
+    const answer = answerInput ? answerInput.value.trim() : '';
+    if (!answer) {
+      if (answerInput) answerInput.focus();
+      return;
+    }
     if (!drillSessionId) return;
 
     const submitBtn = $('drillSubmitBtn');
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Grading...'; }
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Grading...';
+    }
 
     try {
       const res = await fetch('/api/ai/viva-drill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'answer', sessionId: drillSessionId, answer })
+        body: JSON.stringify({
+          action: 'answer',
+          sessionId: drillSessionId,
+          answer
+        })
       });
+
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Grading failed.');
 
-      drillScores.push(data.score || 7);
+      const score = Math.max(1, Math.min(10, parseInt(data.score) || 7));
+      drillScores.push(score);
       drillNextQuestion = data.nextQuestion || null;
 
-      // Show feedback
       const scoreBadge = $('drillScoreBadge');
       if (scoreBadge) {
-        scoreBadge.textContent = `${data.score}/10`;
-        scoreBadge.className = 'drill-score-badge ' + (data.score >= 8 ? 'high' : data.score >= 5 ? 'mid' : 'low');
+        scoreBadge.textContent = `${score}/10`;
+        scoreBadge.style.background = score >= 8 ? '#22c55e' : score >= 5 ? '#f59e0b' : '#ef4444';
       }
-      const fbText = $('drillFeedbackText');
-      if (fbText) fbText.textContent = data.feedback || '';
-      const modelAns = $('drillModelAnswer');
-      if (modelAns) modelAns.textContent = data.modelAnswer || '';
 
-      showDrillSection('drillFeedback');
+      if ($('drillFeedbackText')) $('drillFeedbackText').textContent = data.feedback || 'Good attempt.';
+      if ($('drillModelAnswer')) $('drillModelAnswer').textContent = data.modelAnswer || 'Refer to lab record theory.';
 
-      if (data.isComplete) {
-        // Show next btn as "See Results"
-        const nextBtn = $('drillNextBtn');
-        if (nextBtn) { nextBtn.textContent = 'See Results 🏆'; }
+      showDrillSection('drillFeedbackView');
+
+      const nextBtn = $('drillNextBtn');
+      if (nextBtn) {
+        nextBtn.textContent = data.isComplete ? 'View Final Results 🏆' : 'Next Question →';
       }
 
     } catch (err) {
-      alert('Error: ' + err.message);
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Answer →'; }
+      if (window.LabDialog) {
+        window.LabDialog.alert('Error: ' + err.message);
+      } else {
+        alert('Error: ' + err.message);
+      }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Answer →';
+      }
     }
   }
 
-  $('drillNextBtn').addEventListener('click', () => {
+  function nextDrillQuestion() {
     if (!drillNextQuestion) {
-      // Show complete screen
-      const avg = drillScores.length ? Math.round(drillScores.reduce((a, b) => a + b, 0) / drillScores.length) : 0;
-      const finalScore = $('drillFinalScore');
-      if (finalScore) finalScore.textContent = `${avg}/10`;
-      const summary = $('drillCompleteSummary');
-      const grade = avg >= 8 ? 'Excellent!' : avg >= 6 ? 'Good job!' : 'Keep practicing!';
-      if (summary) summary.textContent = `Average score: ${avg}/10 — ${grade}`;
-      showDrillSection('drillComplete');
-      const badge = $('drillSessionBadge');
-      if (badge) badge.style.display = 'none';
+      // Completed drill
+      const avg = drillScores.length ? (drillScores.reduce((a, b) => a + b, 0) / drillScores.length).toFixed(1) : '7.0';
+      const numAvg = parseFloat(avg);
+
+      if ($('drillFinalScore')) $('drillFinalScore').textContent = `${avg}/10`;
+      
+      let summaryText = '';
+      if (numAvg >= 8.5) {
+        summaryText = 'Outstanding Performance! You are fully prepared to ace your university viva voce examination.';
+      } else if (numAvg >= 7.0) {
+        summaryText = 'Solid Knowledge! A quick review of algorithm edge cases and precautions will make it a 10/10.';
+      } else {
+        summaryText = 'Good Practice Run! Review the model answers and experiment aims before your oral exam.';
+      }
+
+      if ($('drillCompleteSummary')) $('drillCompleteSummary').textContent = summaryText;
+      showDrillSection('drillCompleteView');
+
     } else {
       drillCurrentQ += 1;
       updateDrillProgress(drillCurrentQ, drillTotal);
-      $('drillQuestionText').textContent = drillNextQuestion;
-      $('drillAnswerInput').value = '';
-      $('drillNextBtn').textContent = 'Next Question →';
-      showDrillSection('drillQuestion');
-      $('drillAnswerInput').focus();
+      if ($('drillQuestionText')) $('drillQuestionText').textContent = drillNextQuestion;
+      if ($('drillAnswerInput')) {
+        $('drillAnswerInput').value = '';
+        setTimeout(() => $('drillAnswerInput').focus(), 100);
+      }
+      showDrillSection('drillQuestionView');
     }
-  });
+  }
 
-  $('drillRestartBtn').addEventListener('click', () => {
+  function restartDrill() {
     drillSessionId = null;
     drillScores = [];
     drillNextQuestion = null;
-    if ($('drillTopicInput')) $('drillTopicInput').value = '';
-    showDrillSection('drillSetup');
-    const badge = $('drillSessionBadge');
-    if (badge) badge.style.display = 'none';
-  });
+    drillCurrentQ = 0;
+    syncDrillTopic();
+    showDrillSection('drillSetupView');
+  }
+
+  function initDrillEvents() {
+    const startBtn = $('drillStartBtn');
+    if (startBtn) startBtn.addEventListener('click', startDrill);
+
+    const submitBtn = $('drillSubmitBtn');
+    if (submitBtn) submitBtn.addEventListener('click', submitDrillAnswer);
+
+    const nextBtn = $('drillNextBtn');
+    if (nextBtn) nextBtn.addEventListener('click', nextDrillQuestion);
+
+    const restartBtn = $('drillRestartBtn');
+    if (restartBtn) restartBtn.addEventListener('click', restartDrill);
+
+    const answerInput = $('drillAnswerInput');
+    if (answerInput) {
+      answerInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          submitDrillAnswer();
+        }
+      });
+    }
+
+    const topicInput = $('drillTopicInput');
+    if (topicInput) {
+      topicInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          startDrill();
+        }
+      });
+    }
+  }
 
   // ============================================================
-  // Upgrade 3: Vision Analysis — Camera/Photo Upload in AI Chat
+  // Upgrade 3: Vision Analysis — Camera & File Upload in AI Chat
   // ============================================================
 
   function injectVisionButton(chatFormId, chatInputId, messagesId, getHistory, getFilesPayload) {
     const form = document.getElementById(chatFormId);
     if (!form) return;
+    if (form.querySelector('.vision-camera-btn')) return; // already injected
 
-    // Create hidden file input
+    // Hidden file input supporting camera capture on mobile
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'image/*';
@@ -554,12 +289,19 @@
     fileInput.id = chatFormId + '_visionInput';
     form.appendChild(fileInput);
 
-    // Camera button
+    // Sleek Camera Button with SVG icon
     const camBtn = document.createElement('button');
     camBtn.type = 'button';
     camBtn.className = 'vision-camera-btn';
-    camBtn.title = 'Snap or upload a photo for AI vision analysis';
-    camBtn.innerHTML = '📷';
+    camBtn.title = 'Snap or attach a photo / waveform / diagram';
+    camBtn.setAttribute('aria-label', 'Attach photo for vision analysis');
+    camBtn.style.cssText = 'height: 38px; width: 38px; border-radius: 8px; border: 1.5px solid var(--color-border, #e5e7eb); background: var(--color-bg, #fff); color: var(--color-text-secondary, #6b7280); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.15s ease; padding: 0; box-sizing: border-box;';
+    camBtn.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+        <circle cx="12" cy="13" r="4"></circle>
+      </svg>
+    `;
 
     // Insert before the submit button
     const submitBtn = form.querySelector('button[type="submit"]') || form.querySelector('button');
@@ -569,14 +311,18 @@
       form.appendChild(camBtn);
     }
 
-    // Vision preview container (inside form)
+    // Preview Strip
     const previewWrap = document.createElement('div');
     previewWrap.className = 'vision-preview-wrap';
     previewWrap.id = chatFormId + '_visionPreview';
+    previewWrap.style.cssText = 'display: none; align-items: center; gap: 8px; padding: 6px 12px; background: rgba(245, 158, 11, 0.08); border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.25); margin-bottom: 6px;';
     previewWrap.innerHTML = `
-      <img class="vision-preview-img" id="${chatFormId}_visionImg" src="" alt="photo preview" />
-      <span class="vision-preview-name" id="${chatFormId}_visionName">photo.jpg</span>
-      <button type="button" class="vision-clear-btn" id="${chatFormId}_visionClear">✕</button>
+      <img class="vision-preview-img" id="${chatFormId}_visionImg" src="" alt="preview" style="width: 36px; height: 36px; object-fit: cover; border-radius: 6px; border: 1.5px solid #f59e0b;" />
+      <div style="flex: 1; min-width: 0;">
+        <div id="${chatFormId}_visionName" style="font-size: 0.78rem; font-weight: 700; color: var(--color-text, #111); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">photo.jpg</div>
+        <div style="font-size: 0.72rem; color: #b45309;">Ready for AI Vision Analysis</div>
+      </div>
+      <button type="button" class="vision-clear-btn" id="${chatFormId}_visionClear" style="background: none; border: none; font-size: 1rem; color: #ef4444; cursor: pointer; padding: 4px 6px;">✕</button>
     `;
     form.parentNode.insertBefore(previewWrap, form);
 
@@ -593,11 +339,19 @@
       if (!file) return;
       fileInput.value = '';
 
+      if (file.size > 20 * 1024 * 1024) {
+        if (window.LabDialog) {
+          window.LabDialog.alert('Image is too large. Please select a photo under 20 MB.');
+        } else {
+          alert('Image is too large. Please select a photo under 20 MB.');
+        }
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (e) => {
         const dataUrl = e.target.result;
-        const base64 = dataUrl.split(',')[1];
-        pendingImageBase64 = base64;
+        pendingImageBase64 = dataUrl.split(',')[1];
         pendingImageMime = file.type || 'image/jpeg';
         pendingImageName = file.name || 'photo.jpg';
 
@@ -605,13 +359,14 @@
         const prevName = document.getElementById(chatFormId + '_visionName');
         if (prevImg) prevImg.src = dataUrl;
         if (prevName) prevName.textContent = pendingImageName;
-        previewWrap.classList.add('show');
-        camBtn.classList.add('active');
+        previewWrap.style.display = 'flex';
+        camBtn.style.background = '#fef3c7';
+        camBtn.style.borderColor = '#f59e0b';
+        camBtn.style.color = '#b45309';
 
-        // Set a helpful prompt hint in the input
         const chatInput = document.getElementById(chatInputId);
         if (chatInput && !chatInput.value.trim()) {
-          chatInput.value = 'Please analyze this image and explain what you see.';
+          chatInput.value = 'Please transcribe and analyze this diagram / handwritten note in detail.';
         }
       };
       reader.readAsDataURL(file);
@@ -621,32 +376,36 @@
       pendingImageBase64 = null;
       pendingImageMime = null;
       pendingImageName = null;
-      previewWrap.classList.remove('show');
-      camBtn.classList.remove('active');
+      previewWrap.style.display = 'none';
+      camBtn.style.background = 'var(--color-bg, #fff)';
+      camBtn.style.borderColor = 'var(--color-border, #e5e7eb)';
+      camBtn.style.color = 'var(--color-text-secondary, #6b7280)';
     });
 
-    // Hook into form submit to inject image into directFiles
+    // Intercept form submit to send vision image
     form.addEventListener('submit', (e) => {
-      if (!pendingImageBase64) return; // no image, normal submit
+      if (!pendingImageBase64) return; // normal submit
       e.preventDefault();
       e.stopImmediatePropagation();
 
       const chatInput = document.getElementById(chatInputId);
-      const text = (chatInput ? chatInput.value.trim() : '') || 'Please analyze this image in detail.';
+      const text = (chatInput ? chatInput.value.trim() : '') || 'Please analyze this photo in detail.';
       if (chatInput) chatInput.value = '';
 
       const messages = document.getElementById(messagesId);
       if (messages) {
         messages.style.display = 'flex';
-        // User bubble with image thumbnail
+
+        // User Bubble with photo indicator
         const userBubble = document.createElement('div');
         userBubble.className = 'ai-chat-user-bubble';
-        userBubble.innerHTML = `<img src="data:${pendingImageMime};base64,${pendingImageBase64.slice(0, 50)}..." style="display:none;" />${escapeHtml(text)} <span style="font-size:0.75rem;opacity:0.6;">📷 Photo attached</span>`;
+        userBubble.innerHTML = `<span>${escapeHtml(text)}</span><div style="font-size: 0.72rem; opacity: 0.85; margin-top: 4px; display: flex; align-items: center; gap: 4px;">📷 <em>Photo attached: ${escapeHtml(pendingImageName)}</em></div>`;
         messages.appendChild(userBubble);
 
+        // Bot Thinking Bubble
         const botBubble = document.createElement('div');
         botBubble.className = 'ai-chat-bot-bubble';
-        botBubble.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Analyzing image...';
+        botBubble.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Inspecting image with Vision AI...';
         messages.appendChild(botBubble);
         messages.scrollTop = messages.scrollHeight;
 
@@ -654,14 +413,15 @@
         const imgMime = pendingImageMime;
         const imgName = pendingImageName;
 
-        // Clear pending
+        // Reset state
         pendingImageBase64 = null;
         pendingImageMime = null;
         pendingImageName = null;
-        previewWrap.classList.remove('show');
-        camBtn.classList.remove('active');
+        previewWrap.style.display = 'none';
+        camBtn.style.background = 'var(--color-bg, #fff)';
+        camBtn.style.borderColor = 'var(--color-border, #e5e7eb)';
+        camBtn.style.color = 'var(--color-text-secondary, #6b7280)';
 
-        // Build directFiles with the image
         const baseFiles = (getFilesPayload ? getFilesPayload() : []);
         const directFiles = [...baseFiles, {
           name: imgName,
@@ -671,10 +431,12 @@
         }];
 
         const history = getHistory ? getHistory() : [];
-
         const streamAiChat = window._labDropStreamAiChat;
+
         if (streamAiChat) {
           let fullText = '';
+          let streamStarted = false;
+
           streamAiChat({
             prompt: text,
             conversationHistory: history,
@@ -683,11 +445,17 @@
           }, {
             onChunk: (chunk) => {
               fullText += chunk;
+              if (!streamStarted) {
+                botBubble.innerHTML = '';
+                streamStarted = true;
+              }
               botBubble.textContent = fullText;
               messages.scrollTop = messages.scrollHeight;
             },
             onDone: (cleaned) => {
               const final = cleaned || fullText;
+              history.push({ role: 'user', content: text });
+              history.push({ role: 'model', content: final });
               if (window.marked) {
                 botBubble.innerHTML = window.marked.parse(final);
               } else {
@@ -696,7 +464,7 @@
               messages.scrollTop = messages.scrollHeight;
             },
             onError: (err) => {
-              botBubble.innerHTML = `<span style="color:#ef4444;">Vision error: ${escapeHtml(String(err))}</span>`;
+              botBubble.innerHTML = `<span style="color:#ef4444;">Vision AI error: ${escapeHtml(String(err))}</span>`;
               messages.scrollTop = messages.scrollHeight;
             }
           });
@@ -705,8 +473,7 @@
     }, true);
   }
 
-  // Inject vision buttons into both chat forms
-  document.addEventListener('DOMContentLoaded', () => {
+  function initVisionButtons() {
     injectVisionButton(
       'labRecordChatForm',
       'labRecordChatInput',
@@ -717,6 +484,7 @@
         return p ? [{ name: p.filename || p.name || 'file', content: p.codeContent || p.content || '', pdfBase64: p.pdfBase64 || null, mimeType: p.mimeType || null }] : [];
       }
     );
+
     injectVisionButton(
       'homeVivaChatForm',
       'homeVivaChatInput',
@@ -727,24 +495,17 @@
         return p ? [{ name: p.filename || p.name || 'file', content: p.codeContent || p.content || '', pdfBase64: p.pdfBase64 || null, mimeType: p.mimeType || null }] : [];
       }
     );
-  });
+  }
 
-  // Also try immediately (if DOM is already ready)
-  if (document.readyState !== 'loading') {
-    injectVisionButton(
-      'labRecordChatForm',
-      'labRecordChatInput',
-      'labRecordChatMessages',
-      () => [],
-      () => []
-    );
-    injectVisionButton(
-      'homeVivaChatForm',
-      'homeVivaChatInput',
-      'homeVivaChatMessages',
-      () => [],
-      () => []
-    );
+  // Initialize all features once DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      initDrillEvents();
+      initVisionButtons();
+    });
+  } else {
+    initDrillEvents();
+    initVisionButtons();
   }
 
 })();

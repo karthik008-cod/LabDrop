@@ -4842,22 +4842,31 @@
   // ============================================================
   const homeTabBtnLabRecord = document.getElementById('homeTabBtnLabRecord');
   const homeTabBtnViva = document.getElementById('homeTabBtnViva');
+  const homeTabBtnDrill = document.getElementById('homeTabBtnDrill');
   const homeTabContentLabRecord = document.getElementById('homeTabContentLabRecord');
   const homeTabContentViva = document.getElementById('homeTabContentViva');
+  const homeTabContentDrill = document.getElementById('homeTabContentDrill');
 
   function switchHomeAiTab(tabName) {
+    [homeTabBtnLabRecord, homeTabBtnViva, homeTabBtnDrill].forEach(btn => {
+      if (btn) btn.classList.remove('active');
+    });
+    [homeTabContentLabRecord, homeTabContentViva, homeTabContentDrill].forEach(content => {
+      if (content) content.classList.remove('active');
+    });
+
     if (tabName === 'labrecord') {
       if (homeTabBtnLabRecord) homeTabBtnLabRecord.classList.add('active');
-      if (homeTabBtnViva) homeTabBtnViva.classList.remove('active');
       if (homeTabContentLabRecord) homeTabContentLabRecord.classList.add('active');
-      if (homeTabContentViva) homeTabContentViva.classList.remove('active');
       const activeName = lastHomeVivaDirectFilePayload ? lastHomeVivaDirectFilePayload.name : null;
       populateRecordSourceSelect(activeName);
+    } else if (tabName === 'drill') {
+      if (homeTabBtnDrill) homeTabBtnDrill.classList.add('active');
+      if (homeTabContentDrill) homeTabContentDrill.classList.add('active');
+      if (window._syncDrillTopic) window._syncDrillTopic();
     } else {
       if (homeTabBtnViva) homeTabBtnViva.classList.add('active');
-      if (homeTabBtnLabRecord) homeTabBtnLabRecord.classList.remove('active');
       if (homeTabContentViva) homeTabContentViva.classList.add('active');
-      if (homeTabContentLabRecord) homeTabContentLabRecord.classList.remove('active');
       const activeName = (recordSourceSelect && recordSourceSelect.value && !recordSourceSelect.value.startsWith('__link_'))
         ? recordSourceSelect.value
         : (lastCodePayload ? (lastCodePayload.name || lastCodePayload.filename) : null);
@@ -4867,6 +4876,7 @@
 
   if (homeTabBtnLabRecord) homeTabBtnLabRecord.addEventListener('click', () => switchHomeAiTab('labrecord'));
   if (homeTabBtnViva) homeTabBtnViva.addEventListener('click', () => switchHomeAiTab('viva'));
+  if (homeTabBtnDrill) homeTabBtnDrill.addEventListener('click', () => switchHomeAiTab('drill'));
 
   // ============================================================
   // Homepage AI Modal: Viva & Exam Prep Tab
