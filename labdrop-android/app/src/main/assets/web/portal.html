@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>LabDrop — Offline Lab Transfer</title>
+  <style>
+    :root {
+      --primary: #f59e0b;
+      --primary-dark: #d97706;
+      --emerald: #10b981;
+      --emerald-bg: #ecfdf5;
+      --bg: #faf7f2;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 16px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+    .container { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 16px; }
+    .header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+    .brand { font-size: 1.35rem; font-weight: 800; color: var(--primary-dark); }
+    .badge { font-size: 0.72rem; font-weight: 700; color: #065f46; background: var(--emerald-bg); border: 1px solid rgba(16,185,129,0.3); padding: 4px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .card { background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+    .card-title { font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .card-sub { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; }
+    .btn-zip { display: flex; justify-content: center; align-items: center; gap: 8px; width: 100%; background: var(--primary); color: #fff; font-size: 0.95rem; font-weight: 700; border: none; border-radius: 10px; padding: 14px; margin-top: 14px; text-decoration: none; cursor: pointer; transition: background 0.2s; }
+    .btn-zip:hover, .btn-zip:active { background: var(--primary-dark); }
+    .file-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+    .file-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; }
+    .file-info { display: flex; flex-direction: column; gap: 2px; overflow: hidden; margin-right: 12px; }
+    .file-name { font-size: 0.88rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-meta { font-size: 0.75rem; color: var(--text-muted); }
+    .btn-dl { background: #fff; color: var(--primary-dark); border: 1.5px solid var(--primary); font-size: 0.78rem; font-weight: 700; padding: 6px 14px; border-radius: 8px; text-decoration: none; white-space: nowrap; transition: all 0.2s; }
+    .btn-dl:hover, .btn-dl:active { background: var(--primary); color: #fff; }
+    .footer { text-align: center; font-size: 0.76rem; color: var(--text-muted); margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="brand">LabDrop</div>
+      <div class="badge">⚡ 100% Offline</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Shared Lab Files</div>
+      <div class="card-sub" id="transferSummary">Streaming directly from Android Phone via local Wi-Fi.</div>
+      <a href="/download/all" class="btn-zip" id="btnZipAll">
+        <span>📦 Download All Files as ZIP</span>
+      </a>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="font-size: 0.95rem; margin-bottom: 10px;">Available Files (<span id="fileCount">0</span>)</div>
+      <div class="file-list" id="filesList">
+        <!-- Rendered by JS or replaced server-side -->
+      </div>
+    </div>
+
+    <div class="footer">
+      LabDrop • Offline Lab Mesh • No Internet Used
+    </div>
+  </div>
+
+  <script>
+    // Fetch active files list from Android server API
+    fetch('/api/info')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('fileCount').textContent = data.files.length;
+        document.getElementById('transferSummary').textContent = data.files.length + ' file(s) • ' + data.totalSizeFormatted + ' total';
+        const list = document.getElementById('filesList');
+        list.innerHTML = '';
+        data.files.forEach(f => {
+          const item = document.createElement('div');
+          item.className = 'file-item';
+          item.innerHTML = `
+            <div class="file-info">
+              <span class="file-name" title="${f.name}">${f.name}</span>
+              <span class="file-meta">${f.formattedSize}</span>
+            </div>
+            <a href="/download/${f.id}" class="btn-dl">Download</a>
+          `;
+          list.appendChild(item);
+        });
+      })
+      .catch(err => {
+        console.error('Failed to load file list', err);
+      });
+  </script>
+</body>
+</html>

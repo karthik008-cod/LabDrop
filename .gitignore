@@ -3,4 +3,5 @@ uploads/
 .env
 scratch/
 temp/
+public/download/
 

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LabDrop</string>
+    <string name="title_offline_host">Offline Lab Broadcaster</string>
+    <string name="subtitle_offline_host">Share files with everyone in the room without internet or mobile data.</string>
+    <string name="btn_select_files">+ Add Lab Files</string>
+    <string name="btn_start_broadcast">⚡ Start Offline Broadcast</string>
+    <string name="btn_stop_broadcast">⏹ Stop Broadcasting</string>
+    <string name="status_stopped">Status: Ready to broadcast</string>
+    <string name="status_running">🟢 Broadcasting live on local Wi-Fi / Hotspot</string>
+    <string name="tab_offline">Offline Hub</string>
+    <string name="tab_online">Cloud LabDrop</string>
+</resources>
