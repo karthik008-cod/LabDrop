@@ -235,6 +235,65 @@ function verifyPin(req, res, transfer) {
 }
 
 // ============================================================
+// Proximity & Geofencing Verification (Lab Radius Check)
+// ============================================================
+
+function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Earth radius in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function isSameLocalSubnet(ip1, ip2) {
+  if (!ip1 || !ip2) return false;
+  const clean1 = String(ip1).replace(/^.*:/, '').trim();
+  const clean2 = String(ip2).replace(/^.*:/, '').trim();
+  if (clean1 === clean2) return true;
+  if (clean1 === '127.0.0.1' || clean2 === '127.0.0.1') return true;
+  const isPrivate1 = /^(192\.168|10\.|172\.(1[6-9]|2[0-9]|3[0-1]))/.test(clean1);
+  const isPrivate2 = /^(192\.168|10\.|172\.(1[6-9]|2[0-9]|3[0-1]))/.test(clean2);
+  if (isPrivate1 && isPrivate2) return true; // Both on private lab LAN / Hotspot
+  const p1 = clean1.split('.');
+  const p2 = clean2.split('.');
+  if (p1.length === 4 && p2.length === 4) {
+    return p1[0] === p2[0] && p1[1] === p2[1] && p1[2] === p2[2];
+  }
+  return false;
+}
+
+function checkTransferProximity(req, transfer) {
+  if (!transfer.proximity || !transfer.proximity.enabled) {
+    return { ok: true, reason: 'No proximity lock required.' };
+  }
+
+  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+  if (isSameLocalSubnet(clientIp, transfer.proximity.senderIp)) {
+    return { ok: true, reason: 'Verified on same local lab Wi-Fi.' };
+  }
+
+  const rLat = parseFloat(req.headers['x-receiver-lat'] || req.query.lat || req.body?.lat);
+  const rLon = parseFloat(req.headers['x-receiver-lon'] || req.query.lon || req.body?.lon);
+
+  if (transfer.proximity.lat && transfer.proximity.lon && !isNaN(rLat) && !isNaN(rLon)) {
+    const dist = calculateHaversineDistance(transfer.proximity.lat, transfer.proximity.lon, rLat, rLon);
+    const radius = transfer.proximity.radius || 25;
+    if (dist <= radius) {
+      return { ok: true, distance: Math.round(dist), radius, reason: `Nearby verified (${Math.round(dist)}m from sender).` };
+    } else {
+      return { ok: false, distance: Math.round(dist), radius, reason: `You are ${Math.round(dist)}m away. This transfer is locked to within ${radius}m of the lab.` };
+    }
+  }
+
+  // Location required but not provided
+  return { ok: false, requiresGps: true, radius: transfer.proximity.radius || 25, reason: 'Location verification required.' };
+}
+
+// ============================================================
 // Ensure uploads directory exists
 // ============================================================
 
@@ -1130,6 +1189,35 @@ app.get('/api/my-transfers', optionalAuth, async (req, res) => {
 });
 
 // ============================================================
+// Local File Upload API (Offline / LAN Transfers)
+// ============================================================
+
+app.put('/api/upload/local/:transferId/:storageName', (req, res) => {
+  const { transferId, storageName } = req.params;
+  const safeTransferId = String(transferId).replace(/[^a-zA-Z0-9_-]/g, '');
+  const safeStorageName = sanitizeFilename(storageName);
+
+  const transferDir = path.join(CONFIG.UPLOAD_DIR, safeTransferId);
+  if (!fs.existsSync(transferDir)) {
+    fs.mkdirSync(transferDir, { recursive: true });
+  }
+
+  const filePath = path.join(transferDir, safeStorageName);
+  const writeStream = fs.createWriteStream(filePath);
+
+  req.pipe(writeStream);
+
+  writeStream.on('finish', () => {
+    res.status(200).send('OK');
+  });
+
+  writeStream.on('error', (err) => {
+    console.error(`[Local Upload Error] ${filePath}:`, err);
+    res.status(500).json({ error: 'Failed to write local file.' });
+  });
+});
+
+// ============================================================
 // Direct-to-S3 Presigned Upload API (10,000+ Concurrent Capacity)
 // ============================================================
 
@@ -1224,7 +1312,9 @@ app.post('/api/upload/initiate', optionalAuth, async (req, res) => {
       }
     }
 
-    // Generate S3 presigned PUT URLs for each file
+    const isOfflineTransfer = (req.body.isOffline === true || req.body.isOffline === 'true' || !S3_BUCKET_NAME);
+
+    // Generate S3 presigned PUT URLs or local upload URLs for each file
     const files = [];
     const presignedFiles = [];
 
@@ -1235,13 +1325,17 @@ app.post('/api/upload/initiate', optionalAuth, async (req, res) => {
       const s3Key = `${transferId}/${storageName}`;
       const contentType = f.type || 'application/octet-stream';
 
-      const putCommand = new PutObjectCommand({
-        Bucket: S3_BUCKET_NAME,
-        Key: s3Key,
-        ContentType: contentType,
-      });
-
-      const uploadUrl = await getSignedUrl(s3Client, putCommand, { expiresIn: 900 }); // 15 mins
+      let uploadUrl;
+      if (isOfflineTransfer) {
+        uploadUrl = `/api/upload/local/${transferId}/${storageName}`;
+      } else {
+        const putCommand = new PutObjectCommand({
+          Bucket: S3_BUCKET_NAME,
+          Key: s3Key,
+          ContentType: contentType,
+        });
+        uploadUrl = await getSignedUrl(s3Client, putCommand, { expiresIn: 900 }); // 15 mins
+      }
 
       files.push({
         id: fileId,
@@ -1265,6 +1359,18 @@ app.post('/api/upload/initiate', optionalAuth, async (req, res) => {
     const isPending = files.length > 0;
     const initialStatus = isPending ? 'PENDING' : 'ACTIVE';
 
+    // Proximity Lock setup
+    let proximity = null;
+    if (req.body.proximityLock === true || req.body.proximityLock === 'true') {
+      proximity = {
+        enabled: true,
+        lat: req.body.senderLat ? parseFloat(req.body.senderLat) : null,
+        lon: req.body.senderLon ? parseFloat(req.body.senderLon) : null,
+        radius: parseInt(req.body.proximityRadius || '25', 10),
+        senderIp: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
+      };
+    }
+
     const transfer = {
       id: transferId,
       shortCode,
@@ -1279,6 +1385,8 @@ app.post('/api/upload/initiate', optionalAuth, async (req, res) => {
       totalSize,
       downloadCount: 0,
       isSavedForLater,
+      isOffline: isOfflineTransfer,
+      proximity,
       userId,
       userEmail,
       status: initialStatus
@@ -1360,18 +1468,30 @@ app.post('/api/upload/complete', optionalAuth, async (req, res) => {
       return res.status(404).json({ error: 'Transfer not found or expired.' });
     }
 
-    // Verify files in S3 and update actual sizes if available
+    // Verify files on local disk or S3 and update actual sizes
     for (const f of transfer.files) {
-      try {
-        const head = await s3Client.send(new HeadObjectCommand({
-          Bucket: S3_BUCKET_NAME,
-          Key: `${transfer.id}/${f.storageName}`
-        }));
-        if (head.ContentLength) {
-          f.size = head.ContentLength;
+      const localPath = path.join(CONFIG.UPLOAD_DIR, transfer.id, f.storageName);
+      if (transfer.isOffline || fs.existsSync(localPath)) {
+        try {
+          if (fs.existsSync(localPath)) {
+            f.size = fs.statSync(localPath).size;
+          }
+        } catch (_) {}
+      } else {
+        try {
+          const head = await s3Client.send(new HeadObjectCommand({
+            Bucket: S3_BUCKET_NAME,
+            Key: `${transfer.id}/${f.storageName}`
+          }));
+          if (head.ContentLength) {
+            f.size = head.ContentLength;
+          }
+        } catch (err) {
+          console.warn(`[Upload Complete] Note: Could not head-check ${f.storageName}:`, err.message);
+          if (fs.existsSync(localPath)) {
+            f.size = fs.statSync(localPath).size;
+          }
         }
-      } catch (err) {
-        console.warn(`[Upload Complete] Note: Could not head-check ${f.storageName}:`, err.message);
       }
     }
 
@@ -1389,7 +1509,7 @@ app.post('/api/upload/complete', optionalAuth, async (req, res) => {
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = req.get('host');
     let baseUrl = `${protocol}://${host}`;
-    if (host.includes('localhost') || host.includes('127.0.0.1')) {
+    if (transfer.isOffline || host.includes('localhost') || host.includes('127.0.0.1')) {
       const localIP = getLocalIPv4();
       if (localIP) baseUrl = `http://${localIP}:${CONFIG.PORT}`;
     } else {
@@ -1662,11 +1782,24 @@ app.get('/api/transfer/:id', async (req, res) => {
 
   if (!verifyPin(req, res, transfer)) return;
 
+  const proxCheck = checkTransferProximity(req, transfer);
+  if (!proxCheck.ok) {
+    return res.status(403).json({
+      error: proxCheck.reason,
+      proximityBlocked: true,
+      requiresGps: proxCheck.requiresGps || false,
+      distance: proxCheck.distance || null,
+      maxRadius: proxCheck.radius || 25
+    });
+  }
+
   res.json({
     id: transfer.id,
     shortCode: transfer.shortCode,
     transferName: transfer.transferName,
     requirePin: !!transfer.pinHash,
+    isOffline: !!transfer.isOffline,
+    proximity: transfer.proximity ? { enabled: true, radius: transfer.proximity.radius || 25 } : null,
     files: transfer.files.map((f) => ({
       id: f.id,
       name: f.originalName,
@@ -1683,6 +1816,27 @@ app.get('/api/transfer/:id', async (req, res) => {
     linkCount: (transfer.links || []).length,
     createdAt: transfer.createdAt,
     expiresAt: transfer.expiresAt,
+  });
+});
+
+// --- Verify Proximity with Receiver Location ---
+app.post('/api/transfer/:id/verify-proximity', async (req, res) => {
+  const transfer = await storage.transfers.get(req.params.id);
+  if (!transfer) return res.status(404).json({ error: 'Transfer not found or expired.' });
+  const proxCheck = checkTransferProximity(req, transfer);
+  if (!proxCheck.ok) {
+    return res.status(403).json({
+      success: false,
+      error: proxCheck.reason,
+      proximityBlocked: true,
+      distance: proxCheck.distance || null,
+      maxRadius: proxCheck.radius || 25
+    });
+  }
+  res.json({
+    success: true,
+    distance: proxCheck.distance || 0,
+    message: proxCheck.reason || 'Proximity verified.'
   });
 });
 
@@ -1703,6 +1857,11 @@ app.get('/download/:transferId/zip', async (req, res) => {
   }
 
   if (!verifyPin(req, res, transfer)) return;
+
+  const proxCheckZip = checkTransferProximity(req, transfer);
+  if (!proxCheckZip.ok) {
+    return res.status(403).json({ error: proxCheckZip.reason, proximityBlocked: true });
+  }
 
   const fsMap = transfer.folderStructure || {};
 
@@ -1755,6 +1914,34 @@ app.get('/download/:transferId/zip', async (req, res) => {
   const usedEntryNames = new Set();
 
   for (const file of filesToZip) {
+    const folderName = fsMap[file.originalName];
+    let entryName = file.originalName;
+    if (folderName) {
+       // Prevent directory traversal attacks in the ZIP structure itself
+       const safeFolder = folderName.replace(/^(\.\.(\/|\\|$))+/, '');
+       entryName = path.join(safeFolder, file.originalName).replace(/\\/g, '/');
+    }
+
+    // Handle duplicate entry names inside zip
+    let finalEntryName = entryName;
+    let counter = 1;
+    const parsedPath = path.posix.parse(entryName);
+    while (usedEntryNames.has(finalEntryName.toLowerCase())) {
+      finalEntryName = path.posix.join(
+        parsedPath.dir,
+        `${parsedPath.name} (${counter})${parsedPath.ext}`
+      );
+      counter++;
+    }
+    usedEntryNames.add(finalEntryName.toLowerCase());
+
+    // Check local disk first (for offline transfers)
+    const localPath = path.join(CONFIG.UPLOAD_DIR, transfer.id, file.storageName);
+    if (fs.existsSync(localPath)) {
+      archive.append(fs.createReadStream(localPath), { name: finalEntryName });
+      continue;
+    }
+
     const s3Key = `${transfer.id}/${file.storageName}`;
     const command = new GetObjectCommand({
       Bucket: S3_BUCKET_NAME,
@@ -1763,27 +1950,6 @@ app.get('/download/:transferId/zip', async (req, res) => {
 
     try {
       const response = await s3Client.send(command);
-      const folderName = fsMap[file.originalName];
-      let entryName = file.originalName;
-      if (folderName) {
-         // Prevent directory traversal attacks in the ZIP structure itself
-         const safeFolder = folderName.replace(/^(\.\.(\/|\\|$))+/, '');
-         entryName = path.join(safeFolder, file.originalName).replace(/\\/g, '/');
-      }
-
-      // Handle duplicate entry names inside zip
-      let finalEntryName = entryName;
-      let counter = 1;
-      const parsedPath = path.posix.parse(entryName);
-      while (usedEntryNames.has(finalEntryName.toLowerCase())) {
-        finalEntryName = path.posix.join(
-          parsedPath.dir,
-          `${parsedPath.name} (${counter})${parsedPath.ext}`
-        );
-        counter++;
-      }
-      usedEntryNames.add(finalEntryName.toLowerCase());
-
       archive.append(response.Body, { name: finalEntryName });
     } catch (err) {
       console.error(`Failed to fetch file from S3 for ZIP: ${s3Key}`, err);
@@ -1814,11 +1980,29 @@ app.get('/download/:transferId/:fileId', async (req, res) => {
 
   if (!verifyPin(req, res, transfer)) return;
 
+  const proxCheckFile = checkTransferProximity(req, transfer);
+  if (!proxCheckFile.ok) {
+    return res.status(403).json({ error: proxCheckFile.reason, proximityBlocked: true });
+  }
+
   const file = transfer.files.find((f) => f.id === req.params.fileId);
 
   if (!file) {
     if (req.accepts('html')) return res.status(404).sendFile(path.join(__dirname, 'public', 'expired.html'));
     return res.status(404).json({ error: 'File not found.' });
+  }
+
+  const localFilePath = path.join(CONFIG.UPLOAD_DIR, transfer.id, file.storageName);
+  if (fs.existsSync(localFilePath)) {
+    const isInline = req.query.inline === '1' || req.query.preview === '1';
+    let downloadFilename = req.query.name ? String(req.query.name) : file.originalName;
+    res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
+    const disposition = isInline ? 'inline' : `attachment; filename="${encodeURIComponent(downloadFilename)}"`;
+    res.setHeader('Content-Disposition', disposition);
+    res.setHeader('Content-Length', fs.statSync(localFilePath).size);
+    transfer.downloadCount = (transfer.downloadCount || 0) + 1;
+    storage.transfers.set(transfer.id, transfer).catch(() => {});
+    return fs.createReadStream(localFilePath).pipe(res);
   }
 
   const s3Key = `${transfer.id}/${file.storageName}`;
@@ -2373,25 +2557,44 @@ app.post('/api/transfer/:id/append',
   }
 );
 
-// Helper: fetch file text and binary payload (for PDF and image diagrams) from S3
+// Helper: fetch file text and binary payload (for PDF and image diagrams) from S3 or local disk
 async function fetchFilePayloadFromS3(transferId, storageName, maxBytes = 15 * 1024 * 1024, originalName = '') {
-  const s3Key = `${transferId}/${storageName}`;
-  const command = new GetObjectCommand({
-    Bucket: S3_BUCKET_NAME,
-    Key: s3Key,
-  });
+  let rawBuffer = null;
+  const localPath = path.join(CONFIG.UPLOAD_DIR, transferId, storageName);
 
-  const response = await s3Client.send(command);
-  const chunks = [];
-  let totalBytes = 0;
-
-  for await (const chunk of response.Body) {
-    chunks.push(chunk);
-    totalBytes += chunk.length;
-    if (totalBytes >= maxBytes) break;
+  if (fs.existsSync(localPath)) {
+    try {
+      const stats = fs.statSync(localPath);
+      const readLength = Math.min(stats.size, maxBytes);
+      const fd = fs.openSync(localPath, 'r');
+      const buf = Buffer.alloc(readLength);
+      fs.readSync(fd, buf, 0, readLength, 0);
+      fs.closeSync(fd);
+      rawBuffer = buf;
+    } catch (localReadErr) {
+      console.warn(`[Local Payload Read] Failed ${storageName}:`, localReadErr.message);
+    }
   }
 
-  const rawBuffer = Buffer.concat(chunks);
+  if (!rawBuffer) {
+    const s3Key = `${transferId}/${storageName}`;
+    const command = new GetObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: s3Key,
+    });
+
+    const response = await s3Client.send(command);
+    const chunks = [];
+    let totalBytes = 0;
+
+    for await (const chunk of response.Body) {
+      chunks.push(chunk);
+      totalBytes += chunk.length;
+      if (totalBytes >= maxBytes) break;
+    }
+
+    rawBuffer = Buffer.concat(chunks);
+  }
   const combinedName = `${originalName || ''} ${storageName || ''}`.toLowerCase();
   const isPdf = combinedName.includes('.pdf') || (rawBuffer.length >= 4 && rawBuffer.slice(0, 4).toString() === '%PDF');
   const isImage = /\.(png|jpe?g|webp|gif|bmp)$/i.test(combinedName);

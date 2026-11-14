@@ -800,6 +800,30 @@
                   </svg>
                 </div>
               </button>
+
+              <!-- Offline Direct / LAN Transfer Card -->
+              <button type="button" class="wizard-type-card" id="wizardTypeOfflineBtn">
+                <div class="wizard-type-icon wizard-type-icon--offline" style="background: rgba(16, 185, 129, 0.12); color: #059669;">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                    <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                    <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                  </svg>
+                </div>
+                <div class="wizard-type-info">
+                  <div class="wizard-type-top">
+                    <span class="wizard-type-name">Offline Direct Transfer</span>
+                    <span class="wizard-badge" style="background: #10B981; color: #fff;">100% OFFLINE</span>
+                  </div>
+                  <p class="wizard-type-desc">Zero internet needed. Fast Wi-Fi transfer directly inside the lab room.</p>
+                </div>
+                <div class="wizard-type-arrow">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -899,6 +923,19 @@
                   <span class="code-status-text">Leave blank to auto-generate code.</span>
                 </div>
               </div>
+            </div>
+
+            <!-- Proximity Geofence Constraint Toggle -->
+            <div class="wizard-field" style="margin-bottom: 14px; padding: 10px 14px; background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.25); border-radius: 8px;">
+              <label class="wizard-checkbox-label" style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; margin: 0;">
+                <input type="checkbox" id="wizardProximityLock" style="margin-top: 3px; accent-color: #10B981; width: 16px; height: 16px; cursor: pointer;" />
+                <div>
+                  <span style="font-weight: 700; font-size: 0.88rem; color: #065f46; display: block; line-height: 1.3;">
+                    📍 Proximity Lock (&lt; <span id="wizardProximityRadiusLabel">25m</span> Lab Radius)
+                  </span>
+                  <p style="margin: 2px 0 0; font-size: 0.76rem; color: #047857; line-height: 1.4;">Only devices physically inside the lab room or on the same Wi-Fi can receive these files.</p>
+                </div>
+              </label>
             </div>
 
             <!-- TWO BUTTONS (Requirement 5): Left: With Security Code, Right: Without Security Code -->

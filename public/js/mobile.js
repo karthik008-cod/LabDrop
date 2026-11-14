@@ -246,6 +246,82 @@
     showState('error');
   }
 
+  let verifiedProximityLat = null;
+  let verifiedProximityLon = null;
+
+  function showProximityLockUI(errData, transferId) {
+    const icon = `
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+        <circle cx="12" cy="10" r="3"></circle>
+      </svg>
+    `;
+    const title = '📍 Lab Proximity Check';
+    let msg = errData.error || `This transfer is locked to within ${errData.maxRadius || 25}m of the lab room.`;
+    
+    errorIcon.innerHTML = icon;
+    errorTitle.textContent = title;
+    
+    errorMessage.innerHTML = `
+      <p style="margin: 0 0 14px 0; color: var(--color-text-secondary); line-height: 1.5;">${escapeHtml(msg)}</p>
+      <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+        <button type="button" class="btn btn--primary" id="btnVerifyProximityLocation" style="padding: 10px 20px; font-weight:700;">
+          📍 Verify My Location &amp; Unlock
+        </button>
+        <span style="font-size:0.75rem; color:var(--color-text-secondary);">(Or connect to the same lab Wi-Fi hotspot to auto-unlock)</span>
+      </div>
+    `;
+    showState('error');
+
+    setTimeout(() => {
+      const btn = document.getElementById('btnVerifyProximityLocation');
+      if (btn) {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          btn.textContent = 'Checking location...';
+          if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser.');
+            btn.disabled = false;
+            btn.textContent = '📍 Verify My Location & Unlock';
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+              verifiedProximityLat = pos.coords.latitude;
+              verifiedProximityLon = pos.coords.longitude;
+              btn.textContent = 'Verifying distance...';
+              try {
+                const vRes = await fetch(`/api/transfer/${transferId}/verify-proximity`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ lat: verifiedProximityLat, lon: verifiedProximityLon })
+                });
+                const vData = await vRes.json();
+                if (vData.success) {
+                  loadTransfer(0);
+                } else {
+                  btn.disabled = false;
+                  btn.textContent = '📍 Retry Verification';
+                  alert(vData.error || 'Distance verification failed. You are outside the lab room.');
+                }
+              } catch (e) {
+                btn.disabled = false;
+                btn.textContent = '📍 Retry Verification';
+                alert('Verification request failed.');
+              }
+            },
+            (err) => {
+              btn.disabled = false;
+              btn.textContent = '📍 Retry Verification';
+              alert('Could not access location: ' + err.message + '. Please allow location access or connect to the lab Wi-Fi.');
+            },
+            { timeout: 8000, enableHighAccuracy: true }
+          );
+        });
+      }
+    }, 50);
+  }
+
   // ---- Extract transfer ID from URL ----
   function getTransferId() {
     // URL format: /t/:id
@@ -271,6 +347,10 @@
     try {
       const headers = {};
       if (currentPin) headers['x-transfer-pin'] = currentPin;
+      if (verifiedProximityLat !== null && verifiedProximityLon !== null) {
+        headers['x-receiver-lat'] = String(verifiedProximityLat);
+        headers['x-receiver-lon'] = String(verifiedProximityLon);
+      }
 
       const res = await fetch(`/api/transfer/${transferId}`, { headers });
 
@@ -294,6 +374,14 @@
         pinInput.value = '';
         showState('pin');
         return;
+      }
+
+      if (res.status === 403) {
+        const errData = await res.json().catch(() => ({}));
+        if (errData.proximityBlocked || errData.requiresGps) {
+          showProximityLockUI(errData, transferId);
+          return;
+        }
       }
       
       if (res.status === 429) {

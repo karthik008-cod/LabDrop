@@ -61,6 +61,8 @@
   const wizardStepIndicator = $('#wizardStepIndicator');
   const wizardTypeQuickBtn = $('#wizardTypeQuickBtn');
   const wizardTypeSaveBtn = $('#wizardTypeSaveBtn');
+  const wizardTypeOfflineBtn = $('#wizardTypeOfflineBtn');
+  const wizardProximityLock = $('#wizardProximityLock');
   const wizardAuthEmail = $('#wizardAuthEmail');
   const wizardAuthPassword = $('#wizardAuthPassword');
   const wizardAuthSubmitBtn = $('#wizardAuthSubmitBtn');
@@ -1407,7 +1409,13 @@
 
   function updateSelectedModeChip() {
     if (!wizardSelectedModeChip) return;
-    if (transferMode === 'save') {
+    if (transferMode === 'offline') {
+      wizardSelectedModeChip.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+        <span>Offline LAN</span>
+      `;
+      wizardSelectedModeChip.className = 'wizard-mode-pill-tag wizard-mode-pill-tag--offline';
+    } else if (transferMode === 'save') {
       wizardSelectedModeChip.innerHTML = `
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline></svg>
         <span>7-Day Saved</span>
@@ -1679,6 +1687,15 @@
       } else {
         goToWizardSlide(1); // Prompt login in-modal
       }
+    });
+  }
+
+  if (wizardTypeOfflineBtn) {
+    wizardTypeOfflineBtn.addEventListener('click', () => {
+      setTransferMode('offline');
+      updateSelectedModeChip();
+      if (wizardProximityLock) wizardProximityLock.checked = true;
+      goToWizardSlide(2);
     });
   }
 
@@ -2006,6 +2023,22 @@
         const resolvedRequirePin = modalRequirePin ? modalRequirePin.checked : (requirePinCheck ? requirePinCheck.checked : false);
         const resolvedPinVal = (modalCustomPin && modalCustomPin.value.trim()) || (customPinInput && customPinInput.value.trim()) || '';
 
+        const isOfflineChoice = (transferMode === 'offline');
+        const isProximityLocked = wizardProximityLock ? wizardProximityLock.checked : false;
+
+        let senderCoords = null;
+        if (isProximityLocked && typeof navigator !== 'undefined' && navigator.geolocation) {
+          try {
+            senderCoords = await new Promise((resolve) => {
+              navigator.geolocation.getCurrentPosition(
+                pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+                () => resolve(null),
+                { timeout: 2500, enableHighAccuracy: true }
+              );
+            });
+          } catch (_) {}
+        }
+
         const initPayload = {
           files: filesMeta,
           links: allLinks,
@@ -2013,7 +2046,11 @@
           transferName: resolvedName,
           customCode: customCode || undefined,
           requirePin: resolvedRequirePin,
-          saveForLater: transferMode === 'save'
+          saveForLater: transferMode === 'save',
+          isOffline: isOfflineChoice,
+          proximityLock: isProximityLocked,
+          senderLat: senderCoords ? senderCoords.lat : null,
+          senderLon: senderCoords ? senderCoords.lon : null
         };
 
         if (resolvedRequirePin && resolvedPinVal.length === 6 && /^\d+$/.test(resolvedPinVal)) {

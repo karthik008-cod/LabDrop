@@ -36,6 +36,8 @@ const transferSchema = new mongoose.Schema({
   totalSize: { type: Number, default: 0 },
   downloadCount: { type: Number, default: 0 },
   isSavedForLater: { type: Boolean, default: false },
+  isOffline: { type: Boolean, default: false },
+  proximity: { type: mongoose.Schema.Types.Mixed, default: null },
   userId: String,
   userEmail: String,
   status: { type: String, default: 'ACTIVE' }
@@ -87,6 +89,10 @@ const dailyMetricSchema = new mongoose.Schema({
 });
 const DailyMetric = mongoose.model('DailyMetric', dailyMetricSchema);
 
+// In-memory transfer and counter cache for offline/LAN operations
+const memoryTransfers = new Map();
+const memoryCounters = {};
+
 module.exports = {
   users: {
     findOne: async (query) => {
@@ -103,38 +109,102 @@ module.exports = {
   },
   transfers: {
     get: async (id) => {
-      return await Transfer.findOne({ id }).lean();
+      if (!id) return null;
+      if (memoryTransfers.has(id)) {
+        return memoryTransfers.get(id);
+      }
+      try {
+        if (mongoose.connection.readyState === 1) {
+          const doc = await Transfer.findOne({ id }).lean();
+          if (doc) {
+            memoryTransfers.set(id, doc);
+            return doc;
+          }
+        }
+      } catch (_) {}
+      return null;
     },
     set: async (id, transferData) => {
-      await Transfer.findOneAndUpdate({ id }, transferData, { upsert: true, returnDocument: 'after' });
+      if (!id) return;
+      memoryTransfers.set(id, transferData);
+      try {
+        if (mongoose.connection.readyState === 1) {
+          await Transfer.findOneAndUpdate({ id }, transferData, { upsert: true, returnDocument: 'after' });
+        }
+      } catch (err) {
+        console.warn(`[Storage] MongoDB set failed for ${id} (in-memory offline cache active):`, err.message);
+      }
     },
     delete: async (id) => {
-      await Transfer.deleteOne({ id });
+      if (!id) return;
+      memoryTransfers.delete(id);
+      try {
+        if (mongoose.connection.readyState === 1) {
+          await Transfer.deleteOne({ id });
+        }
+      } catch (_) {}
     },
     getAll: async () => {
-      return await Transfer.find().lean();
+      const allMap = new Map(memoryTransfers);
+      try {
+        if (mongoose.connection.readyState === 1) {
+          const docs = await Transfer.find().lean();
+          docs.forEach(d => allMap.set(d.id, d));
+        }
+      } catch (_) {}
+      return Array.from(allMap.values());
     },
     find: async (query) => {
-      return await Transfer.find(query).lean();
+      try {
+        if (mongoose.connection.readyState === 1) {
+          return await Transfer.find(query).lean();
+        }
+      } catch (_) {}
+      return Array.from(memoryTransfers.values());
     },
     findByActiveCode: async (code) => {
       if (!code) return null;
       const upper = String(code).trim().toUpperCase();
       const now = Date.now();
-      return await Transfer.findOne({
-        shortCode: upper,
-        status: { $ne: 'EXPIRED' },
-        expiresAt: { $gt: now }
-      }).lean();
+
+      // Check in-memory transfers first (instant)
+      for (const t of memoryTransfers.values()) {
+        if (t.shortCode === upper && t.status !== 'EXPIRED' && t.expiresAt > now) {
+          return t;
+        }
+      }
+
+      try {
+        if (mongoose.connection.readyState === 1) {
+          const doc = await Transfer.findOne({
+            shortCode: upper,
+            status: { $ne: 'EXPIRED' },
+            expiresAt: { $gt: now }
+          }).lean();
+          if (doc) {
+            memoryTransfers.set(doc.id, doc);
+            return doc;
+          }
+        }
+      } catch (_) {}
+      return null;
     },
     saveAll: async () => { /* No-op for MongoDB */ },
     getNextSequence: async (timeBlockId) => {
-      const counter = await Counter.findByIdAndUpdate(
-        timeBlockId,
-        { $inc: { seq: 1 } },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
-      return counter.seq;
+      try {
+        if (mongoose.connection.readyState === 1) {
+          const counter = await Counter.findByIdAndUpdate(
+            timeBlockId,
+            { $inc: { seq: 1 } },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          );
+          if (counter && typeof counter.seq === 'number') {
+            return counter.seq;
+          }
+        }
+      } catch (_) {}
+      memoryCounters[timeBlockId] = (memoryCounters[timeBlockId] || 0) + 1;
+      return memoryCounters[timeBlockId];
     }
   },
   analytics: {
