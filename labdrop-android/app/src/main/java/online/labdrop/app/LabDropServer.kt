@@ -132,8 +132,8 @@ class LabDropServer(
             return handleZipDownload(transferId)
         }
 
-        // 12. Frontend Pages: /t/:id -> transfer.html
-        if (uri.startsWith("/t/")) {
+        // 12. Frontend Pages: /t/:id or /transfer.html -> transfer.html
+        if (uri.startsWith("/t/", ignoreCase = true) || uri.startsWith("/transfer.html", ignoreCase = true)) {
             return serveAssetFile("transfer.html", "text/html; charset=UTF-8")
                 ?: newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found")
         }
@@ -415,10 +415,9 @@ class LabDropServer(
 
     private fun handleGetTransfer(transfer: TransferRecord): Response {
         val transferJson = buildTransferJsonObject(transfer)
-        val res = JSONObject().apply {
-            put("transfer", transferJson)
-        }
-        return newJsonResponse(res.toString())
+        // Return flat properties for modern web clients AND nested "transfer" object for backwards compatibility
+        transferJson.put("transfer", JSONObject(transferJson.toString()))
+        return newJsonResponse(transferJson.toString())
     }
 
     private fun buildTransferJsonObject(transfer: TransferRecord): JSONObject {

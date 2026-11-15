@@ -2586,8 +2586,11 @@ body:has(.sidebar--open) .header {
 #transferDirectLink {
   font-family: 'Space Grotesk', 'JetBrains Mono', Consolas, monospace !important;
   font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 1px !important;
+  text-transform: none !important;
+  word-break: break-all !important;
+  overflow-wrap: anywhere !important;
+  max-width: 100% !important;
+  line-height: 1.4 !important;
 }
 
 .qr-stats {
@@ -6833,5 +6836,331 @@ select.form-input option,
   }
   .docx-page {
     padding: 20px 16px;
+  }
+}
+
+
+/* ============================================================
+   Comprehensive Mobile Perfect-Fit Rules (< 768px & < 480px)
+   Eliminates all horizontal overflow and ensures 100% wide fit
+   ============================================================ */
+@media (max-width: 768px) {
+  *, *::before, *::after {
+    box-sizing: border-box !important;
+  }
+
+  html, body {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: relative !important;
+    background: #FAF5E8 !important;
+  }
+
+  .page-wrapper {
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: 0 12px 24px 12px !important;
+    margin: 0 auto !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .header {
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  .header__container {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 12px !important;
+    margin: 0 auto !important;
+    box-sizing: border-box !important;
+  }
+
+  .workspace-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    gap: 12px !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .main-area, #selectSection, #uploadSection, #qrSection {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .dropzone {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 16px 12px !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+  }
+
+  #linkInput {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .quick-receive-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 12px 14px !important;
+    box-sizing: border-box !important;
+    margin: 12px 0 !important;
+  }
+
+  .quick-receive-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .quick-receive-info {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .quick-receive-form {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .quick-receive-input-box {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .quick-receive-input {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .quick-receive-scan-btn,
+  .quick-receive-submit-btn {
+    flex: 1 1 calc(50% - 4px) !important;
+    height: 40px !important;
+    box-sizing: border-box !important;
+    justify-content: center !important;
+  }
+
+  .file-list-header {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin-top: 10px !important;
+  }
+
+  .file-list-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .file-item {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    padding: 10px 12px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .file-card-top {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .file-item__icon {
+    flex-shrink: 0 !important;
+  }
+
+  .file-item__details {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .file-item__name {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    display: block !important;
+  }
+
+  .file-item__remove {
+    flex-shrink: 0 !important;
+  }
+
+  .file-item__actions {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    margin-top: 8px !important;
+    padding-left: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .compact-create-transfer-btn,
+  #createTransferBtn {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .qr-card, .upload-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 16px 12px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+  }
+
+  .qr-image-wrapper {
+    max-width: 100% !important;
+    padding: 8px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  #qrImage {
+    max-width: 100% !important;
+    width: min(240px, 70vw) !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1 !important;
+    object-fit: contain !important;
+    display: block !important;
+    margin: 0 auto !important;
+  }
+
+  .qr-code-text {
+    font-size: 2.2rem !important;
+    letter-spacing: 4px !important;
+  }
+
+  #transferDirectLinkWrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0 4px !important;
+  }
+
+  #transferDirectLink {
+    max-width: 100% !important;
+    word-break: break-all !important;
+    overflow-wrap: anywhere !important;
+    text-transform: none !important;
+    font-size: 0.82rem !important;
+    display: inline-block !important;
+  }
+
+  .qr-stats {
+    gap: 16px !important;
+    margin: 12px 0 !important;
+    padding-top: 10px !important;
+  }
+
+  .stat-item__val {
+    font-size: 1.25rem !important;
+  }
+
+  .qr-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .qr-actions button,
+  .qr-actions a {
+    flex: 1 1 calc(50% - 4px) !important;
+    box-sizing: border-box !important;
+    justify-content: center !important;
+  }
+
+  .bottom-actions,
+  .qr-bottom-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .bottom-actions button,
+  .qr-bottom-actions button {
+    flex: 1 1 50% !important;
+    box-sizing: border-box !important;
+  }
+
+  .ai-fab-btn {
+    bottom: 16px !important;
+    right: 14px !important;
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .ai-fab-tooltip {
+    display: none !important;
+  }
+
+  .modal-overlay {
+    padding: 8px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow-x: hidden !important;
+  }
+
+  .modal,
+  .modal--wizard,
+  .modal--info-dialog {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
   }
 }

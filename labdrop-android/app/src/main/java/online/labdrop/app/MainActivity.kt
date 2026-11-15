@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -57,6 +58,8 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.statusBarColor = Color.parseColor("#FAF5E8")
+        window.navigationBarColor = Color.parseColor("#FAF5E8")
         setContentView(R.layout.activity_main)
 
         initViews()
@@ -97,6 +100,12 @@ class MainActivity : AppCompatActivity() {
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
         settings.cacheMode = WebSettings.LOAD_NO_CACHE
+
+        // Disable horizontal scrollbar and overscroll to ensure an exact, clean 100% wide fit
+        webView.isHorizontalScrollBarEnabled = false
+        webView.isVerticalScrollBarEnabled = true
+        webView.overScrollMode = View.OVER_SCROLL_NEVER
+        webView.setBackgroundColor(Color.parseColor("#FAF5E8"))
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {

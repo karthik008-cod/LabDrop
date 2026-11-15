@@ -2280,6 +2280,22 @@
     }
   }
 
+  function getShareableTransferUrl(transfer) {
+    if (!transfer) return window.location.href;
+    const candidate = transfer.directUrl || transfer.url || (transfer.transfer && (transfer.transfer.directUrl || transfer.transfer.url));
+    // 1. If candidate from server has a real LAN IP (not 127.0.0.1 or localhost), ALWAYS prioritize it!
+    if (candidate && !candidate.includes('127.0.0.1') && !candidate.includes('localhost')) {
+      return candidate;
+    }
+    // 2. If running on a public website (e.g. labdrop.online):
+    if (window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost') {
+      const tid = transfer.id || transfer.transferId || (transfer.transfer && (transfer.transfer.id || transfer.transfer.transferId));
+      return tid ? `${window.location.origin}/t/${tid}` : (candidate || window.location.origin);
+    }
+    // 3. Fallback:
+    return candidate || window.location.href;
+  }
+
   // ---- Show QR / Transfer View ----
   function showTransferView(data) {
     if (data && data.transfer && (!data.shortCode || !data.qrCode)) {
@@ -2287,7 +2303,7 @@
     }
     const resolvedCode = data.shortCode || data.code || (data.transfer && data.transfer.shortCode) || '';
     const resolvedQr = data.qrCode || (data.transfer && data.transfer.qrCode) || '';
-    const resolvedUrl = data.directUrl || data.url || (data.transfer && (data.transfer.directUrl || data.transfer.url)) || (window.location.origin + '/?code=' + resolvedCode);
+    const resolvedUrl = getShareableTransferUrl(data);
 
     showSection(qrSection);
     clearWorkbenchDraft();
@@ -2576,8 +2592,7 @@
   // ---- Copy URL ----
   copyUrlBtn.addEventListener('click', () => {
     if (!currentTransfer) return;
-    const transferId = currentTransfer.id || currentTransfer.transferId;
-    const linkToCopy = transferId ? `${window.location.origin}/t/${transferId}` : (currentTransfer.directUrl || currentTransfer.url || (window.location.origin + '/?code=' + currentTransfer.shortCode));
+    const linkToCopy = getShareableTransferUrl(currentTransfer);
     const handleSuccess = () => {
       copyUrlBtn.textContent = 'Copied!';
       setTimeout(() => (copyUrlBtn.textContent = 'Copy Link'), 2000);
@@ -2609,8 +2624,7 @@
   shareWhatsAppBtn.addEventListener('click', () => {
     if (!currentTransfer) return;
     const name = currentTransfer.transferName || 'Lab Files';
-    const transferId = currentTransfer.id || currentTransfer.transferId;
-    const link = transferId ? `${window.location.origin}/t/${transferId}` : (currentTransfer.directUrl || currentTransfer.url || (window.location.origin + '/?code=' + currentTransfer.shortCode));
+    const link = getShareableTransferUrl(currentTransfer);
     const msg = `*${name}* — Download from LabDrop:\n${link}\n\nTransfer Code: *${currentTransfer.shortCode}*`;
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     if (isMobile) {
@@ -2626,10 +2640,11 @@
     shareNativeBtn.addEventListener('click', () => {
       if (!currentTransfer) return;
       const name = currentTransfer.transferName || 'Lab Files';
+      const link = getShareableTransferUrl(currentTransfer);
       navigator.share({
         title: `LabDrop: ${name}`,
         text: `Download "${name}" from LabDrop. Code: ${currentTransfer.shortCode}`,
-        url: currentTransfer.url
+        url: link
       }).catch(() => {});
     });
   }

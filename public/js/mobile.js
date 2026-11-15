@@ -324,12 +324,17 @@
 
   // ---- Extract transfer ID from URL ----
   function getTransferId() {
-    // URL format: /t/:id
+    // 1. URL format: /t/:id (case-insensitive for both 't' and 'T')
     const parts = window.location.pathname.split('/');
-    const tIndex = parts.indexOf('t');
+    const tIndex = parts.findIndex(p => p.toLowerCase() === 't');
     if (tIndex !== -1 && parts[tIndex + 1]) {
       return parts[tIndex + 1];
     }
+    // 2. Query parameter format: ?code=... or ?t=... or ?id=...
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('code')) return params.get('code');
+    if (params.get('t')) return params.get('t');
+    if (params.get('id')) return params.get('id');
     return null;
   }
 
@@ -395,7 +400,10 @@
         return;
       }
 
-      const data = await res.json();
+      let data = await res.json();
+      if (data && data.transfer && (!data.files || !data.fileCount)) {
+        data = Object.assign({}, data.transfer, data);
+      }
       activeTransferData = data;
       renderTransfer();
     } catch (err) {
