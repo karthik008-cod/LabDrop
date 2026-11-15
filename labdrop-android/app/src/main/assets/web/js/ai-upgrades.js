@@ -129,7 +129,7 @@
     } finally {
       if (startBtn) {
         startBtn.disabled = false;
-        startBtn.innerHTML = '🚀 Start 5-Question Viva Drill';
+        startBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4.5c1.62-1.63 5-2 5-2"></path><path d="M12 15v5s3.03-.55 4.5-2c1.63-1.62 2-5 2-5"></path></svg><span>Start 5-Question Viva Drill</span>';
       }
     }
   }
@@ -180,7 +180,7 @@
 
       const nextBtn = $('drillNextBtn');
       if (nextBtn) {
-        nextBtn.textContent = data.isComplete ? 'View Final Results 🏆' : 'Next Question →';
+        nextBtn.textContent = data.isComplete ? 'View Final Results →' : 'Next Question →';
       }
 
     } catch (err) {
@@ -322,7 +322,7 @@
         <div id="${chatFormId}_visionName" style="font-size: 0.78rem; font-weight: 700; color: var(--color-text, #111); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">photo.jpg</div>
         <div style="font-size: 0.72rem; color: #b45309;">Ready for AI Vision Analysis</div>
       </div>
-      <button type="button" class="vision-clear-btn" id="${chatFormId}_visionClear" style="background: none; border: none; font-size: 1rem; color: #ef4444; cursor: pointer; padding: 4px 6px;">✕</button>
+      <button type="button" class="vision-clear-btn" id="${chatFormId}_visionClear" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 4px 6px; display: inline-flex; align-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
     `;
     form.parentNode.insertBefore(previewWrap, form);
 
@@ -399,7 +399,7 @@
         // User Bubble with photo indicator
         const userBubble = document.createElement('div');
         userBubble.className = 'ai-chat-user-bubble';
-        userBubble.innerHTML = `<span>${escapeHtml(text)}</span><div style="font-size: 0.72rem; opacity: 0.85; margin-top: 4px; display: flex; align-items: center; gap: 4px;">📷 <em>Photo attached: ${escapeHtml(pendingImageName)}</em></div>`;
+        userBubble.innerHTML = `<span>${escapeHtml(text)}</span><div style="font-size: 0.72rem; opacity: 0.85; margin-top: 4px; display: flex; align-items: center; gap: 4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg><em>Photo attached: ${escapeHtml(pendingImageName)}</em></div>`;
         messages.appendChild(userBubble);
 
         // Bot Thinking Bubble

@@ -256,7 +256,7 @@
         <circle cx="12" cy="10" r="3"></circle>
       </svg>
     `;
-    const title = '📍 Lab Proximity Check';
+    const title = 'Lab Proximity Check';
     let msg = errData.error || `This transfer is locked to within ${errData.maxRadius || 25}m of the lab room.`;
     
     errorIcon.innerHTML = icon;
@@ -266,7 +266,7 @@
       <p style="margin: 0 0 14px 0; color: var(--color-text-secondary); line-height: 1.5;">${escapeHtml(msg)}</p>
       <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
         <button type="button" class="btn btn--primary" id="btnVerifyProximityLocation" style="padding: 10px 20px; font-weight:700;">
-          📍 Verify My Location &amp; Unlock
+          Verify My Location &amp; Unlock
         </button>
         <span style="font-size:0.75rem; color:var(--color-text-secondary);">(Or connect to the same lab Wi-Fi hotspot to auto-unlock)</span>
       </div>
@@ -282,7 +282,7 @@
           if (!navigator.geolocation) {
             alert('Geolocation is not supported by your browser.');
             btn.disabled = false;
-            btn.textContent = '📍 Verify My Location & Unlock';
+            btn.textContent = 'Verify My Location & Unlock';
             return;
           }
           navigator.geolocation.getCurrentPosition(
@@ -301,18 +301,18 @@
                   loadTransfer(0);
                 } else {
                   btn.disabled = false;
-                  btn.textContent = '📍 Retry Verification';
+                  btn.textContent = 'Retry Verification';
                   alert(vData.error || 'Distance verification failed. You are outside the lab room.');
                 }
               } catch (e) {
                 btn.disabled = false;
-                btn.textContent = '📍 Retry Verification';
+                btn.textContent = 'Retry Verification';
                 alert('Verification request failed.');
               }
             },
             (err) => {
               btn.disabled = false;
-              btn.textContent = '📍 Retry Verification';
+              btn.textContent = 'Retry Verification';
               alert('Could not access location: ' + err.message + '. Please allow location access or connect to the lab Wi-Fi.');
             },
             { timeout: 8000, enableHighAccuracy: true }
@@ -498,7 +498,7 @@
       const icon = FILE_ICONS[cat] || FILE_ICONS.file;
       const fileQs = currentPin ? `?pin=${currentPin}` : '';
       
-      const customName = file.customName || file.name;
+      const customName = file.customName || file.name || file.originalName || 'File';
       const downloadQs = fileQs + (file.customName ? (fileQs ? '&' : '?') + 'name=' + encodeURIComponent(file.customName) : '');
       const downloadUrl = `/download/${data.id}/${file.id}${downloadQs}`;
       const isPreviewable = !isPptFile(customName) && (isCodeFile(customName) || isImageFile(customName) || isPdfFile(customName) || isOfficeFile(customName) || cat === 'code' || cat === 'image' || cat === 'pdf');
@@ -511,13 +511,15 @@
       const li = document.createElement('li');
       li.className = 'file-item';
       li.innerHTML = `
-        <div class="file-item__icon file-item__icon--${cat}" ${isPreviewable ? `style="cursor: pointer;" title="Preview ${escapeHtml(customName)}"` : ''}>${icon}</div>
-        <div class="file-item__details ${isPreviewable ? 'file-item__details--clickable' : ''}" ${isPreviewable ? `title="Tap to preview ${escapeHtml(customName)}"` : ''} data-file-id="${file.id}">
-          <div class="file-item__name" title="${escapeHtml(customName)}">${escapeHtml(customName)}</div>
-          <div class="file-item__size">${formatBytes(file.size)}</div>
+        <div class="file-card-top">
+          <input type="checkbox" class="file-checkbox" data-file-id="${file.id}" style="margin-right: 4px; transform: scale(1.1); flex-shrink: 0;" />
+          <div class="file-item__icon file-item__icon--${cat}" ${isPreviewable ? `style="cursor: pointer;" title="Preview ${escapeHtml(customName)}"` : ''}>${icon}</div>
+          <div class="file-item__details ${isPreviewable ? 'file-item__details--clickable' : ''}" ${isPreviewable ? `title="Tap to preview ${escapeHtml(customName)}"` : ''} data-file-id="${file.id}">
+            <div class="file-item__name" title="${escapeHtml(customName)}">${escapeHtml(customName)}</div>
+            <div class="file-item__size">${formatBytes(file.size)}</div>
+          </div>
         </div>
-        <div class="file-item__actions" style="display:flex; gap: 4px; align-items: center;">
-          <input type="checkbox" class="file-checkbox" data-file-id="${file.id}" style="margin-right: 8px; transform: scale(1.2);" />
+        <div class="file-item__actions" style="display:flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px;">
           ${previewBtnHtml}
           <button class="btn btn--outline btn--icon ai-file-btn" data-file-id="${file.id}" title="AI Viva &amp; Exam Prep (Beta) for ${escapeHtml(customName)}" style="font-size: 0.85rem; padding: 6px 10px; color: #B45309; border-color: rgba(245, 158, 11, 0.35); background: rgba(255, 209, 102, 0.15);">
             AI

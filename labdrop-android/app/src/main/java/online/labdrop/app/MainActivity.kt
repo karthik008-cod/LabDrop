@@ -28,8 +28,6 @@ class MainActivity : AppCompatActivity() {
     private var server: LabDropServer? = null
     private lateinit var webView: WebView
     private lateinit var swipeRefresh: SwipeRefreshLayout
-    private lateinit var llHotspotBanner: LinearLayout
-    private lateinit var tvHotspotIp: TextView
 
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
 
@@ -69,8 +67,6 @@ class MainActivity : AppCompatActivity() {
     private fun initViews() {
         webView = findViewById(R.id.webView)
         swipeRefresh = findViewById(R.id.swipeRefresh)
-        llHotspotBanner = findViewById(R.id.llHotspotBanner)
-        tvHotspotIp = findViewById(R.id.tvHotspotIp)
 
         swipeRefresh.setOnRefreshListener {
             webView.reload()
@@ -85,11 +81,8 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             server?.start()
-
-            // Keep floating banner hidden until offline transfer is explicitly created
-            llHotspotBanner.visibility = View.GONE
         } catch (e: Exception) {
-            tvHotspotIp.text = "Local Server Error: ${e.message}"
+            // Server error
         }
     }
 
@@ -113,6 +106,25 @@ class MainActivity : AppCompatActivity() {
 
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                 if (url == null) return false
+                if (url.startsWith("whatsapp://") || url.startsWith("https://wa.me/") || url.startsWith("https://api.whatsapp.com/")) {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        this@MainActivity.startActivity(intent)
+                        return true
+                    } catch (e: Exception) {
+                        Toast.makeText(this@MainActivity, "WhatsApp not installed", Toast.LENGTH_SHORT).show()
+                        return true
+                    }
+                }
+                if (url.startsWith("intent://")) {
+                    try {
+                        val intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
+                        this@MainActivity.startActivity(intent)
+                        return true
+                    } catch (e: Exception) {
+                        return true
+                    }
+                }
                 if (url.contains("/download/")) {
                     startFileDownload(url)
                     return true
@@ -159,21 +171,12 @@ class MainActivity : AppCompatActivity() {
     class WebAppInterface(private val activity: MainActivity) {
         @JavascriptInterface
         fun showOfflineTransferCreated(code: String, url: String) {
-            activity.runOnUiThread {
-                val ip = NetworkUtils.getLocalIpAddress()
-                activity.tvHotspotIp.text = "Offline Hub Active • Code: $code"
-                activity.llHotspotBanner.visibility = View.VISIBLE
-                activity.llHotspotBanner.setOnClickListener {
-                    Toast.makeText(activity, "Code: $code\nOpen in browser: $url", Toast.LENGTH_LONG).show()
-                }
-            }
+            // Floating banner removed per user requirement
         }
 
         @JavascriptInterface
         fun hideOfflineBanner() {
-            activity.runOnUiThread {
-                activity.llHotspotBanner.visibility = View.GONE
-            }
+            // Floating banner removed per user requirement
         }
     }
 

@@ -847,16 +847,18 @@
       const li = document.createElement('li');
       li.className = 'file-item';
       li.innerHTML = `
-        <div class="file-item__icon file-item__icon--${cat}" ${isPreviewable ? `style="cursor: pointer;" title="Preview ${escapeHtml(file.name)}"` : ''}>${icon}</div>
-        <div class="file-item__details ${isPreviewable ? 'file-item__details--clickable' : ''}" ${isPreviewable ? `title="Click to preview ${escapeHtml(file.name)}"` : ''} data-index="${index}">
-          <div class="file-item__name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
-          <div class="file-item__size">${formatBytes(file.size)}</div>
+        <div class="file-card-top">
+          <div class="file-item__icon file-item__icon--${cat}" ${isPreviewable ? `style="cursor: pointer;" title="Preview ${escapeHtml(file.name)}"` : ''}>${icon}</div>
+          <div class="file-item__details ${isPreviewable ? 'file-item__details--clickable' : ''}" ${isPreviewable ? `title="Click to preview ${escapeHtml(file.name)}"` : ''} data-index="${index}">
+            <div class="file-item__name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
+            <div class="file-item__size">${formatBytes(file.size)}</div>
+          </div>
+          <button class="file-item__remove" data-index="${index}" title="Remove file" aria-label="Remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
         </div>
         <div class="file-item__actions">
           ${previewBtnHtml}
           ${recordBtnHtml}
-          <button type="button" class="file-item__move" data-index="${index}" data-type="file" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
-          <button class="file-item__remove" data-index="${index}" title="Remove file" aria-label="Remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+          <button type="button" class="file-item__move" data-index="${index}" data-type="file" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
         </div>
       `;
       fileList.appendChild(li);
@@ -906,32 +908,36 @@
       if (!isUrl) {
         li.className = 'file-item file-item--code';
         li.innerHTML = `
-          <div class="file-item__icon file-item__icon--code">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-          </div>
-          <div class="file-item__details">
-            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-              <span class="file-item__size" style="font-weight: 600; font-size: 0.82rem; color: var(--color-primary-dark);">${typeLabel}</span>
-              <span style="font-size: 0.75rem; color: var(--color-text-secondary);">${link.length.toLocaleString()} chars</span>
+          <div class="file-card-top">
+            <div class="file-item__icon file-item__icon--code">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
             </div>
-            <div class="file-item__name">${linkify(link)}</div>
-          </div>
-          <div class="file-item__actions">
-            <button type="button" class="file-item__move" data-index="${idx}" data-type="link" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
+            <div class="file-item__details">
+              <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                <span class="file-item__size" style="font-weight: 600; font-size: 0.82rem; color: var(--color-primary-dark);">${typeLabel}</span>
+                <span style="font-size: 0.75rem; color: var(--color-text-secondary);">${link.length.toLocaleString()} chars</span>
+              </div>
+            </div>
             <button type="button" class="file-item__remove" data-index="${idx}" title="Remove" aria-label="Remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+          </div>
+          <div class="file-item__name" style="margin-top: 6px; word-break: break-all;">${linkify(link)}</div>
+          <div class="file-item__actions">
+            <button type="button" class="file-item__move" data-index="${idx}" data-type="link" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
           </div>
         `;
       } else {
         li.className = 'file-item';
         li.innerHTML = `
-          <div class="file-item__icon file-item__icon--data"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div>
-          <div class="file-item__details">
-            <div class="file-item__name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${linkify(link)}</div>
-            <div class="file-item__size">Link</div>
+          <div class="file-card-top">
+            <div class="file-item__icon file-item__icon--data"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div>
+            <div class="file-item__details">
+              <div class="file-item__name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${linkify(link)}</div>
+              <div class="file-item__size">Link</div>
+            </div>
+            <button type="button" class="file-item__remove" data-index="${idx}" title="Remove" aria-label="Remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
           </div>
           <div class="file-item__actions">
-            <button type="button" class="file-item__move" data-index="${idx}" data-type="link" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; margin-right: 0.2rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
-            <button type="button" class="file-item__remove" data-index="${idx}" title="Remove" aria-label="Remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            <button type="button" class="file-item__move" data-index="${idx}" data-type="link" title="Move to folder" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer;">Move</button>
           </div>
         `;
       }
@@ -2286,13 +2292,6 @@
     showSection(qrSection);
     clearWorkbenchDraft();
 
-    // If running in Android APK, notify native bridge to show offline pill when offline transfer is created
-    if (window.AndroidBridge && window.AndroidBridge.showOfflineTransferCreated) {
-      try {
-        window.AndroidBridge.showOfflineTransferCreated(resolvedCode, resolvedUrl);
-      } catch (err) {}
-    }
-
     qrImage.src = resolvedQr;
     transferCode.textContent = resolvedCode;
     transferUrl.textContent = resolvedUrl;
@@ -2305,9 +2304,9 @@
       directLinkEl.href = link;
       try {
         const u = new URL(link);
-        directLinkEl.textContent = u.host + '/?code=' + resolvedCode;
+        directLinkEl.textContent = u.host + (u.pathname && u.pathname !== '/' ? u.pathname : '') + (u.search || '');
       } catch (e) {
-        directLinkEl.textContent = 'labdrop.online/?code=' + resolvedCode;
+        directLinkEl.textContent = resolvedUrl;
       }
     }
     statFiles.textContent = data.fileCount + (data.linkCount > 0 ? ` (+${data.linkCount} links)` : '');
@@ -2334,7 +2333,9 @@
     const rootLinks = [];
 
     (data.files || []).forEach((f) => {
-      const folder = fs[f.name];
+      const fileName = f.name || f.originalName || 'File';
+      f.name = fileName;
+      const folder = fs[fileName];
       if (folder) {
         if (!groups[folder]) groups[folder] = { files: [], links: [] };
         groups[folder].files.push(f);
@@ -2357,23 +2358,25 @@
     qrFileList.innerHTML = '';
 
     function renderFileItem(f) {
-      const cat = f.category || 'file';
+      const fileName = f.name || f.originalName || 'File';
+      const cat = f.category || (typeof getFileCategory === 'function' ? getFileCategory(fileName) : 'file');
       const icon = FILE_ICONS[cat] || FILE_ICONS.file;
-      const isPreviewable = !isPptFile(f.name) && (isCodeFile(f.name) || isImageFile(f.name) || isPdfFile(f.name) || isOfficeFile(f.name) || cat === 'code' || cat === 'image' || cat === 'pdf');
+      const isPreviewable = !isPptFile(fileName) && (isCodeFile(fileName) || isImageFile(fileName) || isPdfFile(fileName) || isOfficeFile(fileName) || cat === 'code' || cat === 'image' || cat === 'pdf');
+      const fileId = f.id || f.storageName || '';
       const li = document.createElement('li');
       li.className = 'file-item';
       li.innerHTML = `
-        <div class="file-item__icon file-item__icon--${cat}" ${isPreviewable ? `style="cursor: pointer;" title="Preview ${escapeHtml(f.name)}"` : ''}>${icon}</div>
-        <div class="file-item__details ${isPreviewable ? 'file-item__details--clickable' : ''}" ${isPreviewable ? `title="Click to preview ${escapeHtml(f.name)}"` : ''} data-file-id="${f.id}">
-          <div class="file-item__name">${escapeHtml(f.name)}</div>
-          <div class="file-item__size">${formatBytes(f.size)}</div>
-        </div>
-        ${isPreviewable ? `
-        <div class="file-item__actions">
-          <button type="button" class="btn btn--outline btn--icon qr-preview-btn" data-file-id="${f.id}" title="Preview ${escapeHtml(f.name)}" style="font-size: 0.85rem; padding: 4px 8px; color: #0284c7; border-color: rgba(14, 165, 233, 0.35); background: rgba(14, 165, 233, 0.08); display: inline-flex; align-items: center; justify-content: center;">
+        <div class="file-card-top">
+          <div class="file-item__icon file-item__icon--${cat}" ${isPreviewable ? `style="cursor: pointer;" title="Preview ${escapeHtml(fileName)}"` : ''}>${icon}</div>
+          <div class="file-item__details ${isPreviewable ? 'file-item__details--clickable' : ''}" ${isPreviewable ? `title="Click to preview ${escapeHtml(fileName)}"` : ''} data-file-id="${fileId}">
+            <div class="file-item__name" title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</div>
+            <div class="file-item__size">${formatBytes(f.size || 0)}</div>
+          </div>
+          ${isPreviewable ? `
+          <button type="button" class="btn btn--outline btn--icon qr-preview-btn" data-file-id="${fileId}" title="Preview ${escapeHtml(fileName)}" style="font-size: 0.85rem; padding: 4px 8px; color: #0284c7; border-color: rgba(14, 165, 233, 0.35); background: rgba(14, 165, 233, 0.08); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-          </button>
-        </div>` : ''}
+          </button>` : ''}
+        </div>
       `;
       return li;
     }
@@ -2387,22 +2390,22 @@
       if (!isUrl) {
         li.className = 'file-item file-item--code';
         li.innerHTML = `
-          <div class="file-item__icon file-item__icon--code">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-          </div>
-          <div class="file-item__details">
-            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-              <span class="file-item__size" style="font-weight: 600; font-size: 0.82rem; color: var(--color-primary-dark);">${isMultiLine ? `Code (${lineCount} lines)` : 'Text'}</span>
-              <span style="font-size: 0.75rem; color: var(--color-text-secondary);">${link.length.toLocaleString()} chars</span>
+          <div class="file-card-top">
+            <div class="file-item__icon file-item__icon--code">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
             </div>
-            <div class="file-item__name">${linkify(link)}</div>
-          </div>
-          <div class="file-item__actions">
-            <button type="button" class="btn btn--outline btn--sm copy-code-btn" style="white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-weight: 600;">
+            <div class="file-item__details">
+              <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                <span class="file-item__size" style="font-weight: 600; font-size: 0.82rem; color: var(--color-primary-dark);">${isMultiLine ? `Code (${lineCount} lines)` : 'Text'}</span>
+                <span style="font-size: 0.75rem; color: var(--color-text-secondary);">${link.length.toLocaleString()} chars</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn--outline btn--sm copy-code-btn" style="white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-weight: 600; flex-shrink: 0;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
               <span>Copy</span>
             </button>
           </div>
+          <div class="file-item__name" style="margin-top: 6px; word-break: break-all;">${linkify(link)}</div>
         `;
         const copyBtn = li.querySelector('.copy-code-btn');
         if (copyBtn) {
@@ -2436,13 +2439,13 @@
       } else {
         li.className = 'file-item';
         li.innerHTML = `
-          <div class="file-item__icon file-item__icon--data"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div>
-          <div class="file-item__details">
-            <div class="file-item__name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${linkify(link)}</div>
-            <div class="file-item__size">Link</div>
-          </div>
-          <div class="file-item__actions">
-            <a href="${escapeHtml(link.trim())}" target="_blank" class="btn btn--outline btn--sm">Open</a>
+          <div class="file-card-top">
+            <div class="file-item__icon file-item__icon--data"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="classic-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div>
+            <div class="file-item__details">
+              <div class="file-item__name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${linkify(link)}</div>
+              <div class="file-item__size">Link</div>
+            </div>
+            <a href="${escapeHtml(link.trim())}" target="_blank" class="btn btn--outline btn--sm" style="flex-shrink: 0;">Open</a>
           </div>
         `;
       }
@@ -2573,30 +2576,48 @@
   // ---- Copy URL ----
   copyUrlBtn.addEventListener('click', () => {
     if (!currentTransfer) return;
-    const linkToCopy = currentTransfer.directUrl || currentTransfer.url || (window.location.origin + '/?code=' + currentTransfer.shortCode);
-    navigator.clipboard.writeText(linkToCopy).then(() => {
+    const transferId = currentTransfer.id || currentTransfer.transferId;
+    const linkToCopy = transferId ? `${window.location.origin}/t/${transferId}` : (currentTransfer.directUrl || currentTransfer.url || (window.location.origin + '/?code=' + currentTransfer.shortCode));
+    const handleSuccess = () => {
       copyUrlBtn.textContent = 'Copied!';
       setTimeout(() => (copyUrlBtn.textContent = 'Copy Link'), 2000);
-    }).catch(() => {
-      const textarea = document.createElement('textarea');
-      textarea.value = currentTransfer.url;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      copyUrlBtn.textContent = 'Copied!';
-      setTimeout(() => (copyUrlBtn.textContent = 'Copy Link'), 2000);
-    });
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(linkToCopy).then(handleSuccess).catch(() => {
+        fallbackCopyText(linkToCopy, handleSuccess);
+      });
+    } else {
+      fallbackCopyText(linkToCopy, handleSuccess);
+    }
   });
+
+  function fallbackCopyText(text, cb) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      if (cb) cb();
+    } catch (e) {}
+    document.body.removeChild(textarea);
+  }
 
   // ---- Share via WhatsApp ----
   shareWhatsAppBtn.addEventListener('click', () => {
     if (!currentTransfer) return;
     const name = currentTransfer.transferName || 'Lab Files';
-    const link = currentTransfer.directUrl || currentTransfer.url || (window.location.origin + '/?code=' + currentTransfer.shortCode);
+    const transferId = currentTransfer.id || currentTransfer.transferId;
+    const link = transferId ? `${window.location.origin}/t/${transferId}` : (currentTransfer.directUrl || currentTransfer.url || (window.location.origin + '/?code=' + currentTransfer.shortCode));
     const msg = `*${name}* — Download from LabDrop:\n${link}\n\nTransfer Code: *${currentTransfer.shortCode}*`;
-    const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
-    window.open(waUrl, '_blank');
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = `whatsapp://send?text=${encodeURIComponent(msg)}`;
+    } else {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    }
   });
 
   // ---- Native Share API ----
@@ -2977,7 +2998,7 @@
   (function handleDirectCodeUrl() {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      const directCode = (urlParams.get('code') || urlParams.get('c') || '').trim();
+      const directCode = (urlParams.get('code') || urlParams.get('CODE') || urlParams.get('c') || urlParams.get('C') || '').trim();
       const errParam = urlParams.get('error');
 
       if (directCode) {
@@ -3354,7 +3375,7 @@
               const isDroppedMedia = data.title && /^(document|photo|video|audio|file)\s+from\s+/i.test(data.title.trim());
               const looksLikeFilename = data.text.trim().length < 260 && !data.text.includes('\n') && /\.(pdf|docx?|pptx?|xlsx?|zip|rar|7z|png|jpe?g|mp4|mp3)$/i.test(data.text.trim());
               if (isDroppedMedia || looksLikeFilename) {
-                showAlert(`⚠️ Android did not grant permission to read "${data.text.trim()}" via WhatsApp share. Please tap "+ Select Files" to pick it directly.`, 'warning');
+                showAlert(`Notice: Android did not grant permission to read "${data.text.trim()}" via WhatsApp share. Please tap "+ Select Files" to pick it directly.`, 'warning');
                 hasAdded = true;
               } else {
                 const blob = new Blob([data.text], { type: 'text/plain;charset=utf-8' });
@@ -3483,7 +3504,7 @@
 
               if (shareMeta && shareMeta.shareError === 'file_stream_missing') {
                 const missingName = shareMeta.missingFileName || 'Document';
-                showAlert(`⚠️ Android did not pass the file data for "${missingName}". Please tap "+ Select Files" to pick it directly from storage.`, 'warning');
+                showAlert(`Notice: Android did not pass the file data for "${missingName}". Please tap "+ Select Files" to pick it directly from storage.`, 'warning');
                 hasAddedAnything = true;
               } else if (sharedLink) {
                 const activeFolder = getActiveFolder();

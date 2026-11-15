@@ -17,35 +17,4 @@
             android:layout_height="match_parent" />
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <!-- Offline Hotspot Floating Pill Banner (Hidden by default; shown only when offline transfer is created) -->
-    <LinearLayout
-        android:id="@+id/llHotspotBanner"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|center_horizontal"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/bg_status_pill"
-        android:elevation="8dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingHorizontal="14dp"
-        android:paddingVertical="7dp"
-        android:visibility="gone">
-
-        <View
-            android:layout_width="8dp"
-            android:layout_height="8dp"
-            android:background="@drawable/dot_green"
-            android:layout_marginEnd="8dp" />
-
-        <TextView
-            android:id="@+id/tvHotspotIp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Offline Hub Active • http://192.168.43.1:8080"
-            android:textColor="#065F46"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

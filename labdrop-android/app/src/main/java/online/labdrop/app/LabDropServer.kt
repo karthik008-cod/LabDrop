@@ -153,6 +153,30 @@ class LabDropServer(
         return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found")
     }
 
+    private fun generate4DigitCode(): String {
+        var code = (1000..9999).random().toString()
+        while (transfers.values.any { it.shortCode == code }) {
+            code = (1000..9999).random().toString()
+        }
+        return code
+    }
+
+    private fun getFileCategory(name: String): String {
+        val ext = name.substringAfterLast('.', "").lowercase()
+        return when (ext) {
+            "jpg", "jpeg", "png", "gif", "webp", "svg", "bmp" -> "image"
+            "pdf" -> "pdf"
+            "doc", "docx", "txt", "rtf", "odt" -> "document"
+            "xls", "xlsx", "csv" -> "spreadsheet"
+            "ppt", "pptx" -> "presentation"
+            "zip", "rar", "7z", "tar", "gz" -> "archive"
+            "mp4", "mkv", "avi", "mov", "webm" -> "video"
+            "mp3", "wav", "flac", "m4a", "ogg" -> "audio"
+            "js", "ts", "py", "java", "c", "cpp", "cs", "html", "css", "json", "xml", "kt" -> "code"
+            else -> "file"
+        }
+    }
+
     private fun handleUploadInitiate(session: IHTTPSession): Response {
         return try {
             val map = HashMap<String, String>()
@@ -162,7 +186,7 @@ class LabDropServer(
 
             val transferId = UUID.randomUUID().toString()
             val customCode = json.optString("customCode", "").trim().uppercase()
-            val shortCode = if (customCode.isNotEmpty()) customCode else UUID.randomUUID().toString().substring(0, 6).uppercase()
+            val shortCode = if (customCode.isNotEmpty()) customCode else generate4DigitCode()
             val transferName = json.optString("transferName", "Offline Lab Transfer")
 
             val filesArray = json.optJSONArray("files") ?: JSONArray()
@@ -231,7 +255,7 @@ class LabDropServer(
             val customCode = params["customCode"]?.firstOrNull()?.trim()?.uppercase() ?: ""
             val transferName = params["transferName"]?.firstOrNull() ?: "Offline Transfer"
             val transferId = UUID.randomUUID().toString()
-            val shortCode = if (customCode.isNotEmpty()) customCode else UUID.randomUUID().toString().substring(0, 6).uppercase()
+            val shortCode = if (customCode.isNotEmpty()) customCode else generate4DigitCode()
 
             val transferDir = File(uploadsDir, transferId).apply { mkdirs() }
             val fileRecords = mutableListOf<TransferFileRecord>()
@@ -264,7 +288,7 @@ class LabDropServer(
             val now = System.currentTimeMillis()
             val expiresAt = now + 30 * 60 * 1000L
             val localIp = NetworkUtils.getLocalIpAddress()
-            val directUrl = "http://$localIp:8080/?CODE=$shortCode"
+            val directUrl = "http://$localIp:8080/t/$transferId"
             val qrCodeDataUrl = NetworkUtils.generateQrBase64(directUrl, 400)
 
             val transfer = TransferRecord(
@@ -361,7 +385,7 @@ class LabDropServer(
             transfer.totalSize = totalBytes
 
             val localIp = NetworkUtils.getLocalIpAddress()
-            val directUrl = "http://$localIp:8080/?CODE=${transfer.shortCode}"
+            val directUrl = "http://$localIp:8080/t/${transfer.id}"
             val qrCodeDataUrl = NetworkUtils.generateQrBase64(directUrl, 400)
             transfer.directUrl = directUrl
             transfer.qrCode = qrCodeDataUrl
@@ -402,10 +426,12 @@ class LabDropServer(
         for (f in transfer.files) {
             val fObj = JSONObject().apply {
                 put("id", f.id)
+                put("name", f.originalName)
                 put("originalName", f.originalName)
                 put("storageName", f.storageName)
                 put("size", f.size)
                 put("mimetype", f.mimetype)
+                put("category", getFileCategory(f.originalName))
             }
             filesArray.put(fObj)
         }
