@@ -357,7 +357,18 @@
         headers['x-receiver-lon'] = String(verifiedProximityLon);
       }
 
-      const res = await fetch(`/api/transfer/${transferId}`, { headers });
+      let res;
+      if (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
+        try {
+          const onlineRes = await fetch(`https://labdrop.online/api/transfer/${transferId}`, { headers });
+          if (onlineRes.ok) {
+            res = onlineRes;
+          }
+        } catch (_) {}
+      }
+      if (!res) {
+        res = await fetch(`/api/transfer/${transferId}`, { headers });
+      }
 
       if (res.status === 404) {
         if (retryCount < 3) {
@@ -2991,7 +3002,18 @@
       const headers = {};
       if (currentPin) headers['x-transfer-pin'] = currentPin;
 
-      const res = await fetch(`/api/transfer/${transferId}`, { headers });
+      let res;
+      if (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
+        try {
+          const onlineRes = await fetch(`https://labdrop.online/api/transfer/${transferId}`, { headers });
+          if (onlineRes.ok) {
+            res = onlineRes;
+          }
+        } catch (_) {}
+      }
+      if (!res) {
+        res = await fetch(`/api/transfer/${transferId}`, { headers });
+      }
       if (!res.ok) return;
 
       const data = await res.json();

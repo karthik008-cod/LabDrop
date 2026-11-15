@@ -1415,24 +1415,30 @@
 
   function updateSelectedModeChip() {
     if (!wizardSelectedModeChip) return;
+    const wizardProximityContainer = document.getElementById('wizardProximityContainer');
     if (transferMode === 'offline') {
       wizardSelectedModeChip.innerHTML = `
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
         <span>Offline LAN</span>
       `;
       wizardSelectedModeChip.className = 'wizard-mode-pill-tag wizard-mode-pill-tag--offline';
+      if (wizardProximityContainer) wizardProximityContainer.style.display = 'block';
     } else if (transferMode === 'save') {
       wizardSelectedModeChip.innerHTML = `
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline></svg>
         <span>7-Day Saved</span>
       `;
       wizardSelectedModeChip.className = 'wizard-mode-pill-tag wizard-mode-pill-tag--save';
+      if (wizardProximityContainer) wizardProximityContainer.style.display = 'none';
+      if (wizardProximityLock) wizardProximityLock.checked = false;
     } else {
       wizardSelectedModeChip.innerHTML = `
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
         <span>30-Min Quick</span>
       `;
       wizardSelectedModeChip.className = 'wizard-mode-pill-tag wizard-mode-pill-tag--quick';
+      if (wizardProximityContainer) wizardProximityContainer.style.display = 'none';
+      if (wizardProximityLock) wizardProximityLock.checked = false;
     }
   }
 
@@ -2087,7 +2093,10 @@
         const resolvedPinVal = (modalCustomPin && modalCustomPin.value.trim()) || (customPinInput && customPinInput.value.trim()) || '';
 
         const isOfflineChoice = (transferMode === 'offline');
-        const isProximityLocked = wizardProximityLock ? wizardProximityLock.checked : false;
+        const apiBase = isOfflineChoice 
+          ? '' 
+          : ((window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') ? 'https://labdrop.online' : '');
+        const isProximityLocked = (isOfflineChoice && wizardProximityLock) ? wizardProximityLock.checked : false;
 
         let senderCoords = null;
         if (isProximityLocked && typeof navigator !== 'undefined' && navigator.geolocation) {
@@ -2120,13 +2129,18 @@
           initPayload.customPin = resolvedPinVal;
         }
 
-        const initRes = await fetch('/api/upload/initiate', {
+        const initRes = await fetch(`${apiBase}/api/upload/initiate`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
           },
           body: JSON.stringify(initPayload)
+        }).catch(err => {
+          if (!isOfflineChoice && (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')) {
+            throw new Error('Could not connect to labdrop.online. Please check your internet connection, or choose "Offline LAN" to share without internet.');
+          }
+          throw err;
         });
 
         if (!initRes.ok) {
@@ -2187,7 +2201,7 @@
           if (progressText) progressText.textContent = 'Finalizing transfer…';
 
           // Complete the transfer
-          const compRes = await fetch('/api/upload/complete', {
+          const compRes = await fetch(`${apiBase}/api/upload/complete`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -2264,7 +2278,7 @@
             }
           };
           xhr.onerror = () => reject(new Error('Network error. Make sure the server is running.'));
-          xhr.open('POST', '/api/upload');
+          xhr.open('POST', `${apiBase}/api/upload`);
           if (authToken) {
             xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
           }
@@ -2282,16 +2296,20 @@
 
   function getShareableTransferUrl(transfer) {
     if (!transfer) return window.location.href;
+    const isOffline = transfer.isOffline || (transfer.transfer && transfer.transfer.isOffline) || (transferMode === 'offline');
+    const code = transfer.shortCode || transfer.code || (transfer.transfer && (transfer.transfer.shortCode || transfer.transfer.code));
+
+    // 1. For 30-Min Quick or 7-Day Saved transfers: ALWAYS use https://labdrop.online/?code=****
+    if (!isOffline && code) {
+      return `https://labdrop.online/?code=${code}`;
+    }
+
+    // 2. For Offline LAN transfers: Prioritize real LAN IP (Wi-Fi / Hotspot IP)
     const candidate = transfer.directUrl || transfer.url || (transfer.transfer && (transfer.transfer.directUrl || transfer.transfer.url));
-    // 1. If candidate from server has a real LAN IP (not 127.0.0.1 or localhost), ALWAYS prioritize it!
     if (candidate && !candidate.includes('127.0.0.1') && !candidate.includes('localhost')) {
       return candidate;
     }
-    // 2. If running on a public website (e.g. labdrop.online):
-    if (window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost') {
-      const tid = transfer.id || transfer.transferId || (transfer.transfer && (transfer.transfer.id || transfer.transfer.transferId));
-      return tid ? `${window.location.origin}/t/${tid}` : (candidate || window.location.origin);
-    }
+
     // 3. Fallback:
     return candidate || window.location.href;
   }
@@ -2302,13 +2320,21 @@
       data = Object.assign({}, data.transfer, data);
     }
     const resolvedCode = data.shortCode || data.code || (data.transfer && data.transfer.shortCode) || '';
-    const resolvedQr = data.qrCode || (data.transfer && data.transfer.qrCode) || '';
+    const isOffline = data.isOffline || (data.transfer && data.transfer.isOffline) || (transferMode === 'offline');
     const resolvedUrl = getShareableTransferUrl(data);
+    let resolvedQr = data.qrCode || (data.transfer && data.transfer.qrCode) || '';
 
     showSection(qrSection);
     clearWorkbenchDraft();
 
     qrImage.src = resolvedQr;
+    if (!isOffline && resolvedCode && typeof QRCode !== 'undefined' && QRCode.toDataURL) {
+      QRCode.toDataURL(resolvedUrl, { width: 400, margin: 1 }, (err, url) => {
+        if (!err && url) {
+          qrImage.src = url;
+        }
+      });
+    }
     transferCode.textContent = resolvedCode;
     transferUrl.textContent = resolvedUrl;
 
@@ -2990,12 +3016,11 @@
     if (submitBtn) submitBtn.disabled = true;
     
     try {
-      const res = await fetch(`/api/transfer/code/${encodeURIComponent(code)}`);
-      const data = await res.json();
-      if (res.ok && data.id) {
-        window.location.href = `/t/${data.id}`;
+      const result = await performCodeLookup(code);
+      if (result.ok && result.targetUrl) {
+        window.location.href = result.targetUrl;
       } else {
-        receiveError.textContent = data.error || 'Transfer not found or has expired.';
+        receiveError.textContent = result.error || 'Transfer not found or has expired.';
         receiveError.style.display = 'block';
       }
     } catch(err) {
@@ -3005,6 +3030,38 @@
       if (submitBtn) submitBtn.disabled = false;
     }
   });
+
+  async function performCodeLookup(inputCode) {
+    const cleanCode = encodeURIComponent(inputCode.trim().toUpperCase());
+    if (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
+      try {
+        const onRes = await fetch(`https://labdrop.online/api/transfer/code/${cleanCode}`);
+        if (onRes.ok) {
+          const onData = await onRes.json();
+          if (onData && onData.id) {
+            return { ok: true, targetUrl: `https://labdrop.online/t/${onData.id}` };
+          }
+        }
+      } catch (_) {}
+      try {
+        const locRes = await fetch(`/api/transfer/code/${cleanCode}`);
+        const locData = await locRes.json();
+        if (locRes.ok && locData && locData.id) {
+          return { ok: true, targetUrl: `/t/${locData.id}` };
+        }
+        return { ok: false, error: locData.error || 'Transfer not found or has expired.' };
+      } catch (e) {
+        return { ok: false, error: 'Could not connect to server. Please check your network.' };
+      }
+    }
+
+    const res = await fetch(`/api/transfer/code/${cleanCode}`);
+    const data = await res.json();
+    if (res.ok && data && data.id) {
+      return { ok: true, targetUrl: `/t/${data.id}` };
+    }
+    return { ok: false, error: data.error || 'Transfer not found or has expired.' };
+  }
 
   // ---- Initialize ----
   showSection(selectSection);
@@ -3020,24 +3077,16 @@
         if (receiveCodeInput) receiveCodeInput.value = directCode.toUpperCase();
         if (receiveError) receiveError.style.display = 'none';
 
-        fetch(`/api/transfer/code/${encodeURIComponent(directCode.toUpperCase())}`)
-          .then(res => res.json().then(data => ({ ok: res.ok, status: res.status, data })))
-          .then(({ ok, data }) => {
-            if (ok && data.id) {
-              window.location.href = `/t/${data.id}`;
-            } else if (receiveError) {
-              receiveError.textContent = data.error || `Transfer code "${directCode}" not found or has expired.`;
-              receiveError.style.display = 'block';
-              const receiveCard = document.querySelector('.quick-receive-card') || document.querySelector('.receive-card');
-              if (receiveCard) receiveCard.scrollIntoView({ behavior: 'smooth' });
-            }
-          })
-          .catch(() => {
-            if (receiveError) {
-              receiveError.textContent = 'Network error while looking up transfer code.';
-              receiveError.style.display = 'block';
-            }
-          });
+        performCodeLookup(directCode.toUpperCase()).then(result => {
+          if (result.ok && result.targetUrl) {
+            window.location.href = result.targetUrl;
+          } else if (receiveError) {
+            receiveError.textContent = result.error || `Transfer code "${directCode}" not found or has expired.`;
+            receiveError.style.display = 'block';
+            const receiveCard = document.querySelector('.quick-receive-card') || document.querySelector('.receive-card');
+            if (receiveCard) receiveCard.scrollIntoView({ behavior: 'smooth' });
+          }
+        });
       } else if (errParam && receiveError) {
         const errCode = (urlParams.get('code') || '').trim();
         if (errParam === 'expired') {
@@ -5667,7 +5716,8 @@
             // parse errors are ignored (it just keeps scanning)
           }
         ).catch(async err => {
-          await window.LabDialog.alert("Camera access denied or unavailable.");
+          console.warn("Camera start error:", err);
+          await window.LabDialog.alert("Camera access denied or unavailable. Please allow Camera permission in the prompt or app settings to scan QR codes.");
           qrScannerModalOverlay.style.display = 'none';
           qrScannerModalOverlay.classList.remove('active');
         });

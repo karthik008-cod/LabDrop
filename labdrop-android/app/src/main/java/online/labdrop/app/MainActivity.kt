@@ -1,9 +1,11 @@
 package online.labdrop.app
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
@@ -11,6 +13,7 @@ import android.os.Environment
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
+import android.webkit.PermissionRequest
 import android.webkit.URLUtil
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -22,6 +25,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 class MainActivity : AppCompatActivity() {
@@ -53,6 +57,20 @@ class MainActivity : AppCompatActivity() {
 
         filePathCallback?.onReceiveValue(if (uris.isNotEmpty()) uris.toTypedArray() else null)
         filePathCallback = null
+    }
+
+    private var pendingPermissionRequest: PermissionRequest? = null
+
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            pendingPermissionRequest?.grant(pendingPermissionRequest?.resources)
+        } else {
+            pendingPermissionRequest?.deny()
+            Toast.makeText(this, "Camera permission is required to scan QR codes", Toast.LENGTH_LONG).show()
+        }
+        pendingPermissionRequest = null
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -143,6 +161,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                if (request == null) return
+                val requestedResources = request.resources
+                val needsCamera = requestedResources.any { it == PermissionRequest.RESOURCE_VIDEO_CAPTURE }
+
+                if (needsCamera) {
+                    if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                        request.grant(requestedResources)
+                    } else {
+                        pendingPermissionRequest = request
+                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                } else {
+                    request.grant(requestedResources)
+                }
+            }
+
             override fun onShowFileChooser(
                 mWebView: WebView?,
                 filePathCallback: ValueCallback<Array<Uri>>?,
