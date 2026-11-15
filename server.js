@@ -1338,12 +1338,17 @@ app.post('/api/upload/initiate', optionalAuth, async (req, res) => {
       if (isOfflineTransfer) {
         uploadUrl = `/api/upload/local/${transferId}/${storageName}`;
       } else {
-        const putCommand = new PutObjectCommand({
-          Bucket: S3_BUCKET_NAME,
-          Key: s3Key,
-          ContentType: contentType,
-        });
-        uploadUrl = await getSignedUrl(s3Client, putCommand, { expiresIn: 900 }); // 15 mins
+        try {
+          const putCommand = new PutObjectCommand({
+            Bucket: S3_BUCKET_NAME,
+            Key: s3Key,
+            ContentType: contentType,
+          });
+          uploadUrl = await getSignedUrl(s3Client, putCommand, { expiresIn: 900 }); // 15 mins
+        } catch (s3Err) {
+          console.warn('[S3 Presign Warning] Could not presign URL, using local route:', s3Err.message);
+          uploadUrl = `/api/upload/local/${transferId}/${storageName}`;
+        }
       }
 
       files.push({
@@ -3561,20 +3566,20 @@ setInterval(cleanupOrphanedS3Files, 6 * 60 * 60 * 1000);
 
   // 404 Handler
   app.use((req, res, next) => {
-    if (req.accepts('html')) {
-      res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+    if (req.path.startsWith('/api/') || !req.accepts('html')) {
+      res.status(404).json({ error: 'Endpoint not found.' });
     } else {
-      res.status(404).json({ error: 'Not found' });
+      res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
     }
   });
 
   app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
     if (!res.headersSent) {
-      if (req.accepts('html')) {
-        res.status(500).sendFile(path.join(__dirname, 'public', '500.html'));
+      if (req.path.startsWith('/api/') || !req.accepts('html')) {
+        res.status(500).json({ error: err.message || 'An unexpected error occurred.' });
       } else {
-        res.status(500).json({ error: 'An unexpected error occurred.' });
+        res.status(500).sendFile(path.join(__dirname, 'public', '500.html'));
       }
     }
   });

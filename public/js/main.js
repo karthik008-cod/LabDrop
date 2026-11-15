@@ -1461,6 +1461,7 @@
     }
 
     updateStepDots(targetIdx);
+    updateSelectedModeChip();
 
     // Auto-focus relevant field after slide transition without triggering container scroll
     setTimeout(() => {
@@ -2080,6 +2081,17 @@
     try {
       let response = null;
 
+      const resolvedName = (modalTransferName && modalTransferName.value.trim()) || (transferNameInput && transferNameInput.value.trim()) || undefined;
+      const resolvedRequirePin = modalRequirePin ? modalRequirePin.checked : (requirePinCheck ? requirePinCheck.checked : false);
+      const resolvedPinVal = (modalCustomPin && modalCustomPin.value.trim()) || (customPinInput && customPinInput.value.trim()) || '';
+
+      const isOfflineChoice = (transferMode === 'offline');
+      const isAndroidApp = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost');
+      const apiBase = isOfflineChoice 
+        ? '' 
+        : (isAndroidApp ? 'https://labdrop.online' : '');
+      const isProximityLocked = (isOfflineChoice && wizardProximityLock) ? wizardProximityLock.checked : false;
+
       // ---- Method 1: High-Capacity Direct-to-S3 Presigned Upload ----
       try {
         const filesMeta = allFiles.map((f) => ({
@@ -2087,16 +2099,6 @@
           size: f.size,
           type: f.type || 'application/octet-stream'
         }));
-
-        const resolvedName = (modalTransferName && modalTransferName.value.trim()) || (transferNameInput && transferNameInput.value.trim()) || undefined;
-        const resolvedRequirePin = modalRequirePin ? modalRequirePin.checked : (requirePinCheck ? requirePinCheck.checked : false);
-        const resolvedPinVal = (modalCustomPin && modalCustomPin.value.trim()) || (customPinInput && customPinInput.value.trim()) || '';
-
-        const isOfflineChoice = (transferMode === 'offline');
-        const apiBase = isOfflineChoice 
-          ? '' 
-          : ((window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') ? 'https://labdrop.online' : '');
-        const isProximityLocked = (isOfflineChoice && wizardProximityLock) ? wizardProximityLock.checked : false;
 
         let senderCoords = null;
         if (isProximityLocked && typeof navigator !== 'undefined' && navigator.geolocation) {
@@ -2137,7 +2139,7 @@
           },
           body: JSON.stringify(initPayload)
         }).catch(err => {
-          if (!isOfflineChoice && (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')) {
+          if (!isOfflineChoice && isAndroidApp) {
             throw new Error('Could not connect to labdrop.online. Please check your internet connection, or choose "Offline LAN" to share without internet.');
           }
           throw err;
@@ -2277,7 +2279,13 @@
               }
             }
           };
-          xhr.onerror = () => reject(new Error('Network error. Make sure the server is running.'));
+          xhr.onerror = () => {
+            if (!isOfflineChoice && isAndroidApp) {
+              reject(new Error('Could not connect to LabDrop online. Please check your internet connection, or choose "Offline LAN" to share without internet.'));
+            } else {
+              reject(new Error('Network error. Make sure the server is running.'));
+            }
+          };
           xhr.open('POST', `${apiBase}/api/upload`);
           if (authToken) {
             xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);

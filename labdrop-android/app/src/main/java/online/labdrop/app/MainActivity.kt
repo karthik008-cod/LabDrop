@@ -118,6 +118,9 @@ class MainActivity : AppCompatActivity() {
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
         settings.cacheMode = WebSettings.LOAD_NO_CACHE
+        settings.textZoom = 100
+        settings.displayZoomControls = false
+        settings.builtInZoomControls = false
 
         // Disable horizontal scrollbar and overscroll to ensure an exact, clean 100% wide fit
         webView.isHorizontalScrollBarEnabled = false
